@@ -11,7 +11,12 @@
     <!-- Chart.js CDN for Modern Analytics Charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="./assets/css/style.css">
+    <!-- Google Fonts: Plus Jakarta Sans, Outfit & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261022_v2">
 </head>
 
 <body>
@@ -58,10 +63,15 @@
     <div class="main">
         <header class="topbar">
             <div class="topbar-left">
-                <h3 style="font-size: 16px; font-weight: 700;">Central SaaS License Dashboard</h3>
+                <h3 style="font-size: 15px; font-weight: 800; letter-spacing: -0.01em;">Central SaaS License Dashboard</h3>
+                <div class="topbar-badge-live">
+                    <span class="topbar-pulse-dot"></span>
+                    <span>Live Telemetry: <strong>Online</strong></span>
+                </div>
             </div>
             <div style="display: flex; gap: 8px;">
-                <a href="client_demo/apotek.html" target="_blank" class="btn btn-sm" style="background: #0d9488; color: white; border: none; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">💊 Demo Client Apotek</a>
+                <a href="http://localhost:8080/software-showcase/" target="_blank" class="btn btn-sm" style="background: rgba(99, 102, 241, 0.15); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 700; text-decoration: none;">🚀 Portfolio Showcase</a>
+                <a href="client_demo/apotek.html" target="_blank" class="btn btn-sm" style="background: rgba(13, 148, 136, 0.2); color: #2dd4bf; border: 1px solid rgba(13, 148, 136, 0.4); font-weight: 700; text-decoration: none;">💊 Demo Client Apotek</a>
                 <button class="btn btn-primary btn-sm" @click="openModal('tester')">⚡ Test License API</button>
             </div>
         </header>
@@ -111,7 +121,7 @@
                     </div>
                     <div class="card">
                         <div class="stat-title">Total Revenue</div>
-                        <div class="stat-value" style="font-size: 18px; color: #1e293b;">{{ formatRupiah(stats.total_revenue) }}</div>
+                        <div class="stat-value" style="font-size: 20px; color: #38bdf8;">{{ formatRupiah(stats.total_revenue) }}</div>
                         <small style="color: var(--muted); font-size: 11px;">Akumulasi nilai kontrak aktif</small>
                     </div>
                 </div>
@@ -1158,6 +1168,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=1791567343"></script>
+<script src="./assets/js/app.js?v=20261022_v2"></script>
 </body>
 </html>

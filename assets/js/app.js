@@ -409,6 +409,11 @@ createApp({
         renderCharts() {
             if (typeof Chart === 'undefined') return;
 
+            // Global Chart.js Dark Mode Aesthetics
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+            Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
+
             const setupChart = (id, config) => {
                 const canvas = document.getElementById(id);
                 if (!canvas) return;
@@ -475,9 +480,9 @@ createApp({
                     labels: revApps.map(a => a.application_name),
                     datasets: [{
                         data: revApps.map(a => parseFloat(a.total_revenue) || 0),
-                        backgroundColor: ['#2563eb', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
+                        backgroundColor: ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'],
+                        borderWidth: 3,
+                        borderColor: '#0c1019',
                         hoverOffset: 6
                     }]
                 },
@@ -490,7 +495,7 @@ createApp({
                             labels: {
                                 boxWidth: 12,
                                 padding: 14,
-                                font: { size: 11, family: 'Inter' }
+                                font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }
                             }
                         },
                         tooltip: {
@@ -499,11 +504,11 @@ createApp({
                             }
                         }
                     },
-                    cutout: '68%'
+                    cutout: '70%'
                 }
             });
 
-            // 3. Monthly Revenue Trend - Line / Area Chart
+            // 3. Monthly Revenue Trend - Line / Area Chart (Glowing Neon Curve)
             const trend = this.analytics.monthly_trend || [];
             setupChart('chartMonthlyTrend', {
                 type: 'line',
@@ -512,14 +517,16 @@ createApp({
                     datasets: [{
                         label: 'Pendapatan',
                         data: trend.map(t => parseFloat(t.revenue) || 0),
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.08)',
-                        borderWidth: 2.5,
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                        borderWidth: 3,
                         fill: true,
-                        tension: 0.35,
-                        pointBackgroundColor: '#2563eb',
-                        pointHoverRadius: 6,
-                        pointRadius: 4
+                        tension: 0.4,
+                        pointBackgroundColor: '#38bdf8',
+                        pointBorderColor: '#0c1019',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                        pointRadius: 5
                     }]
                 },
                 options: {
@@ -610,9 +617,9 @@ createApp({
                     labels: cycleLabels.length ? cycleLabels : ['Bulanan', 'Tahunan'],
                     datasets: [{
                         data: cycleCounts.length ? cycleCounts : [0, 0],
-                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
+                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b'],
+                        borderWidth: 3,
+                        borderColor: '#0c1019',
                         hoverOffset: 6
                     }]
                 },
@@ -620,14 +627,14 @@ createApp({
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11, family: 'Inter' } } },
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" } } },
                         tooltip: {
                             callbacks: {
                                 label: (ctx) => ` ${ctx.label}: ${ctx.raw} Kontrak Subskripsi`
                             }
                         }
                     },
-                    cutout: '68%'
+                    cutout: '70%'
                 }
             });
 
@@ -671,9 +678,9 @@ createApp({
                     labels: ['Validasi Sukses (Authorized)', 'Validasi Gagal (Blocked/Expired)'],
                     datasets: [{
                         data: [apiH.success || 0, apiH.failed || 0],
-                        backgroundColor: ['#10b981', '#ef4444'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
+                        backgroundColor: ['#10b981', '#f43f5e'],
+                        borderWidth: 3,
+                        borderColor: '#0c1019',
                         hoverOffset: 6
                     }]
                 },
@@ -681,7 +688,7 @@ createApp({
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11, family: 'Inter' } } },
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" } } },
                         tooltip: {
                             callbacks: {
                                 label: (ctx) => ` ${ctx.label}: ${ctx.raw} Requests`
