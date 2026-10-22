@@ -1,0 +1,39 @@
+LEVEL 7 — Customer masuk
+
+Baru kemudian:
+
+customers
+
+PT SEHAT SENTOSA
+
+Customer memilih:
+
+Application
+APOTEK
+
+Package
+PROFESSIONAL
+
+Sistem membuat:
+
+subscriptions
+
+SUB-2026-00001
+│
+├── Customer: PT SEHAT SENTOSA
+├── Application: APOTEK
+├── Package: PROFESSIONAL
+├── Users: 10
+├── Start: 01-10-2026
+└── End: 31-10-2026
+
+Kemudian sistem mengambil konfigurasi package dan membuat:
+
+subscription_modules
+
+Dashboard      ✓
+Master Obat    ✓
+Inventory      ✓
+Penjualan      ✓
+Pembelian      ✓
+Kasir          ✓

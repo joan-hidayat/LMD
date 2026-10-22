@@ -1,0 +1,306 @@
+A. applications
+applications
+────────────────────────────
+id                  BIGINT PK
+code                VARCHAR(50) UNIQUE
+name                VARCHAR(100)
+slug                VARCHAR(100) UNIQUE
+description         TEXT NULL
+status              ENUM
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+Contoh:
+
+1 | APOTEK      | Apotek Management System
+2 | DISTRIBUTOR  | Distributor Management System
+3 | TMS         | Training Management System
+
+===================================================
+B. modules
+modules
+────────────────────────────
+id                  BIGINT PK
+application_id      BIGINT FK
+code                VARCHAR(50)
+name                VARCHAR(100)
+slug                VARCHAR(100)
+description         TEXT NULL
+status              ENUM
+sort_order          INT
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+Constraint:
+
+UNIQUE(application_id, code)
+
+Jadi:
+
+APOTEK / INVENTORY
+
+dan
+
+DISTRIBUTOR / INVENTORY
+
+boleh punya code yang sama karena application-nya berbeda.
+
+===========================================
+C. packages
+packages
+────────────────────────────
+id                  BIGINT PK
+application_id      BIGINT FK
+code                VARCHAR(50)
+name                VARCHAR(100)
+slug                VARCHAR(100)
+description         TEXT NULL
+base_price          DECIMAL(15,2)
+billing_cycle       ENUM
+max_users           INT
+status              ENUM
+is_public           BOOLEAN
+sort_order          INT
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+is_public penting.
+
+Karena lu bisa punya:
+
+Basic         → public
+Professional  → public
+Enterprise    → private
+Custom        → private
+
+==========================================
+D. package_modules
+package_modules
+────────────────────────────
+id                  BIGINT PK
+package_id          BIGINT FK
+module_id           BIGINT FK
+included            BOOLEAN
+additional_price    DECIMAL(15,2)
+created_at          DATETIME
+updated_at          DATETIME
+
+Constraint:
+
+UNIQUE(package_id, module_id)
+
+Contoh:
+
+Professional
+│
+├── Inventory      included = 1
+├── Sales          included = 1
+├── Purchase       included = 1
+├── Accounting     included = 0
+│                  additional_price = 150000
+└── Multi Branch   included = 0
+                   additional_price = 200000
+
+========================================
+E. customers
+
+Ini baru domain subscription.
+
+customers
+────────────────────────────
+id                  BIGINT PK
+code                VARCHAR(50) UNIQUE
+name                VARCHAR(150)
+email               VARCHAR(150)
+phone               VARCHAR(50)
+status              ENUM
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+
+======================================
+F. subscriptions
+subscriptions
+────────────────────────────
+id                  BIGINT PK
+subscription_no     VARCHAR(50) UNIQUE
+
+customer_id         BIGINT FK
+application_id      BIGINT FK
+package_id          BIGINT FK
+
+start_date          DATE
+end_date            DATE
+
+billing_cycle       ENUM
+
+max_users           INT
+
+base_price          DECIMAL(15,2)
+addon_price         DECIMAL(15,2)
+discount_amount     DECIMAL(15,2)
+tax_amount          DECIMAL(15,2)
+total_price         DECIMAL(15,2)
+
+status              ENUM
+
+created_at          DATETIME
+updated_at          DATETIME
+
+
+===========================================
+G. subscription_modules
+
+Ini snapshot konfigurasi customer.
+
+subscription_modules
+────────────────────────────
+id                  BIGINT PK
+subscription_id     BIGINT FK
+module_id           BIGINT FK
+
+enabled             BOOLEAN
+
+price               DECIMAL(15,2)
+
+source              ENUM
+                    package
+                    addon
+                    custom
+
+created_at          DATETIME
+updated_at          DATETIME
+
+Constraint:
+
+UNIQUE(subscription_id, module_id)
+
+=====================================
+H. licenses
+licenses
+────────────────────────────
+id                  BIGINT PK
+
+license_key         VARCHAR(150) UNIQUE
+
+subscription_id     BIGINT FK
+application_id      BIGINT FK
+
+issued_at           DATETIME
+expires_at          DATETIME
+
+status              ENUM
+
+last_checked_at     DATETIME NULL
+
+created_at          DATETIME
+updated_at          DATETIME
+
+=================================
+I. license_modules
+license_modules
+────────────────────────────
+id                  BIGINT PK
+license_id          BIGINT FK
+module_id           BIGINT FK
+enabled             BOOLEAN
+created_at          DATETIME
+updated_at          DATETIME
+
+Constraint:
+
+UNIQUE(license_id, module_id)
+
+
+===============================
+J. application_instances
+
+Ini representasi aplikasi customer yang benar-benar ter-install/terdaftar.
+
+application_instances
+────────────────────────────
+id                  BIGINT PK
+
+license_id          BIGINT FK
+
+instance_key        VARCHAR(150) UNIQUE
+instance_name       VARCHAR(150)
+
+domain              VARCHAR(255)
+
+environment         ENUM
+                    production
+                    staging
+                    development
+
+last_seen_at        DATETIME NULL
+
+status              ENUM
+
+created_at          DATETIME
+updated_at          DATETIME
+
+Contohnya:
+
+PT ABC
+│
+├── Apotek Jakarta
+│   instance_key = APO-JKT-001
+│
+├── Apotek Tangerang
+│   instance_key = APO-TNG-001
+│
+└── Apotek Bekasi
+    instance_key = APO-BKS-001
+
+===================================
+K. license_activations
+license_activations
+────────────────────────────
+id                  BIGINT PK
+
+license_id          BIGINT FK
+instance_id         BIGINT FK
+
+activation_key      VARCHAR(150) UNIQUE
+
+activated_at        DATETIME
+last_seen_at        DATETIME NULL
+
+ip_address          VARCHAR(45) NULL
+
+status              ENUM
+
+created_at          DATETIME
+updated_at          DATETIME
+
+====================================
+L. license_logs
+
+Untuk audit License API.
+
+license_logs
+────────────────────────────
+id                  BIGINT PK
+
+license_id          BIGINT FK NULL
+instance_id         BIGINT FK NULL
+
+action              VARCHAR(50)
+
+ip_address          VARCHAR(45) NULL
+
+request_id          VARCHAR(100)
+
+request_data        JSON NULL
+response_data       JSON NULL
+
+result              ENUM
+                    success
+                    failed
+
+created_at          DATETIME

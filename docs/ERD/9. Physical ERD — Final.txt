@@ -1,0 +1,1112 @@
+A. Physical ERD — Final
+1. applications 🟢
+
+Master seluruh aplikasi yang dikelola Central SaaS.
+
+applications
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+code                VARCHAR(50) UNIQUE
+name                VARCHAR(100)
+slug                VARCHAR(100) UNIQUE
+description         TEXT NULL
+status              ENUM(
+                      'draft',
+                      'active',
+                      'inactive'
+                    )
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+Contoh:
+
+APOTEK
+DISTRIBUTOR
+TMS
+ERP
+2. modules 🟢
+
+Daftar module yang dimiliki masing-masing aplikasi.
+
+modules
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+application_id      BIGINT UNSIGNED FK
+code                VARCHAR(50)
+name                VARCHAR(100)
+slug                VARCHAR(100)
+module_type         ENUM(
+                      'standard',
+                      'advanced'
+                    )
+description         TEXT NULL
+status              ENUM(
+                      'draft',
+                      'active',
+                      'inactive'
+                    )
+sort_order          INT
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+Relationship:
+
+APPLICATION 1 ─────── N MODULE
+
+Contoh:
+
+APOTEK
+│
+├── A → standard
+├── B → standard
+├── C → standard
+├── D → advanced
+├── E → advanced
+└── F → advanced
+Aturan
+
+Standard module
+
+module dasar aplikasi
+masuk ke package tertentu
+tidak dianggap sebagai optional feature oleh customer
+
+Advanced module
+
+feature tambahan
+bisa hanya tersedia di package tertentu
+3. packages 🟢
+
+Master paket penjualan untuk masing-masing aplikasi.
+
+packages
+────────────────────────────────────
+id                      BIGINT UNSIGNED PK
+application_id          BIGINT UNSIGNED FK
+code                    VARCHAR(50)
+name                    VARCHAR(100)
+slug                    VARCHAR(100)
+description             TEXT NULL
+base_price              DECIMAL(15,2)
+billing_cycle           ENUM(
+                          'monthly',
+                          'quarterly',
+                          'semi_annual',
+                          'annual',
+                          'one_time'
+                        )
+max_users               INT UNSIGNED
+future_module_access    BOOLEAN
+status                  ENUM(
+                          'draft',
+                          'active',
+                          'inactive'
+                        )
+is_public               BOOLEAN
+sort_order              INT
+created_at              DATETIME
+updated_at              DATETIME
+deleted_at              DATETIME NULL
+
+Relationship:
+
+APPLICATION 1 ─────── N PACKAGE
+
+Contoh:
+
+APOTEK
+│
+├── BASIC
+│   ├── Rp300.000
+│   └── 3 users
+│
+├── PROFESSIONAL
+│   ├── Rp750.000
+│   └── 10 users
+│
+└── ENTERPRISE
+    ├── Rp1.500.000
+    ├── 50 users
+    └── future_module_access = true
+future_module_access
+
+Menentukan apakah package berhak memperoleh module baru dari developer tanpa harus upgrade package.
+
+Contoh:
+
+BASIC         false
+PROFESSIONAL  false
+ENTERPRISE    true
+4. package_modules 🟢
+
+Relasi module yang termasuk dalam package.
+
+package_modules
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+package_id          BIGINT UNSIGNED FK
+module_id           BIGINT UNSIGNED FK
+additional_price    DECIMAL(15,2)
+created_at          DATETIME
+updated_at          DATETIME
+
+Unique:
+
+UNIQUE(package_id, module_id)
+
+Relationship:
+
+PACKAGE N ─────── N MODULE
+          │
+          ↓
+   PACKAGE_MODULES
+
+Contoh:
+
+BASIC
+├── A
+├── B
+└── C
+
+PROFESSIONAL
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+ENTERPRISE
+├── A
+├── B
+├── C
+├── D
+├── E
+├── F
+├── G
+├── H
+└── I
+Penting
+
+Tidak ada lagi:
+
+included
+
+Karena kalau row package_modules ada, berarti module tersebut memang termasuk package.
+
+5. customers 🟢
+
+Master customer yang membeli aplikasi.
+
+customers
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+code                VARCHAR(50) UNIQUE
+name                VARCHAR(150)
+email               VARCHAR(150)
+phone               VARCHAR(50)
+status              ENUM(
+                      'active',
+                      'inactive',
+                      'blocked'
+                    )
+created_at          DATETIME
+updated_at          DATETIME
+deleted_at          DATETIME NULL
+
+Relationship:
+
+CUSTOMER 1 ─────── N SUBSCRIPTION
+6. subscriptions 🟢
+
+Menyimpan kontrak/langganan customer terhadap package.
+
+subscriptions
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+subscription_no     VARCHAR(100) UNIQUE
+customer_id         BIGINT UNSIGNED FK
+application_id      BIGINT UNSIGNED FK
+package_id          BIGINT UNSIGNED FK
+
+start_date          DATE
+end_date            DATE NULL
+
+billing_cycle       ENUM(
+                      'monthly',
+                      'quarterly',
+                      'semi_annual',
+                      'annual',
+                      'one_time'
+                    )
+
+max_users           INT UNSIGNED
+
+base_price          DECIMAL(15,2)
+addon_price         DECIMAL(15,2)
+discount_amount     DECIMAL(15,2)
+tax_amount          DECIMAL(15,2)
+total_price         DECIMAL(15,2)
+
+status              ENUM(
+                      'pending',
+                      'active',
+                      'suspended',
+                      'expired',
+                      'cancelled'
+                    )
+
+created_at          DATETIME
+updated_at          DATETIME
+
+Relationship:
+
+CUSTOMER
+   │
+   │ 1:N
+   ↓
+SUBSCRIPTION
+   │
+   ├── APPLICATION
+   └── PACKAGE
+Kenapa max_users disimpan lagi?
+
+Karena:
+
+packages.max_users
+
+adalah default/template.
+
+Sedangkan:
+
+subscriptions.max_users
+
+adalah batas yang benar-benar berlaku untuk customer tersebut.
+
+7. subscription_modules 🟢
+
+Menyimpan entitlement module yang dimiliki subscription.
+
+subscription_modules
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+subscription_id     BIGINT UNSIGNED FK
+module_id           BIGINT UNSIGNED FK
+source              ENUM(
+                      'package',
+                      'future_module',
+                      'addon',
+                      'custom'
+                    )
+price               DECIMAL(15,2)
+created_at          DATETIME
+updated_at          DATETIME
+
+Unique:
+
+UNIQUE(subscription_id, module_id)
+Tidak ada:
+enabled
+
+Karena:
+
+Kalau module ada di subscription_modules, berarti subscription tersebut berhak menggunakan module tersebut.
+
+Contoh:
+
+SUB-001
+Package = PROFESSIONAL
+
+subscription_modules
+────────────────────
+A
+B
+C
+D
+E
+F
+
+Semua otomatis usable.
+
+8. licenses 🟢
+
+Credential lisensi yang digunakan aplikasi customer.
+
+licenses
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+license_key         VARCHAR(150) UNIQUE
+subscription_id     BIGINT UNSIGNED FK
+application_id      BIGINT UNSIGNED FK
+
+issued_at            DATETIME
+expires_at           DATETIME NULL
+
+status              ENUM(
+                      'active',
+                      'suspended',
+                      'expired',
+                      'revoked'
+                    )
+
+last_checked_at     DATETIME NULL
+
+created_at          DATETIME
+updated_at          DATETIME
+
+Relationship:
+
+SUBSCRIPTION 1 ─────── N LICENSE
+9. license_modules 🟢
+
+Kita tetapkan sebagai snapshot entitlement license.
+
+license_modules
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+license_id          BIGINT UNSIGNED FK
+module_id           BIGINT UNSIGNED FK
+created_at          DATETIME
+updated_at          DATETIME
+
+Unique:
+
+UNIQUE(license_id, module_id)
+
+Flow:
+
+PACKAGE_MODULES
+       ↓
+SUBSCRIPTION_MODULES
+       ↓
+LICENSE_MODULES
+
+Kenapa tetap disimpan?
+
+Karena license perlu memiliki kondisi entitlement yang jelas ketika diterbitkan/di-update.
+
+Misalnya:
+
+License v1
+A B C D E F
+
+Kemudian package berubah.
+
+Historical license tetap bisa diketahui memiliki entitlement apa pada saat tertentu.
+
+10. application_instances 🟢
+
+Instance aplikasi customer yang menggunakan license.
+
+application_instances
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+license_id          BIGINT UNSIGNED FK
+instance_key        VARCHAR(150) UNIQUE
+instance_name       VARCHAR(150)
+domain              VARCHAR(255)
+
+environment         ENUM(
+                      'production',
+                      'staging',
+                      'development'
+                    )
+
+last_seen_at        DATETIME NULL
+
+status              ENUM(
+                      'active',
+                      'inactive',
+                      'blocked'
+                    )
+
+created_at          DATETIME
+updated_at          DATETIME
+
+Relationship:
+
+LICENSE 1 ─────── N APPLICATION_INSTANCES
+
+Contoh:
+
+License APOTEK Customer A
+│
+├── Production
+│   └── apotek.customer-a.com
+│
+├── Staging
+│   └── staging-apotek.customer-a.com
+│
+└── Development
+    └── localhost
+11. license_activations 🟢
+
+Mencatat aktivasi instance terhadap license.
+
+license_activations
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+license_id          BIGINT UNSIGNED FK
+instance_id         BIGINT UNSIGNED FK
+activation_key      VARCHAR(150) UNIQUE
+
+activated_at        DATETIME
+last_seen_at        DATETIME NULL
+
+ip_address          VARCHAR(45) NULL
+
+status              ENUM(
+                      'active',
+                      'revoked'
+                    )
+
+created_at          DATETIME
+updated_at          DATETIME
+
+Relationship:
+
+LICENSE
+   │
+   └── APPLICATION_INSTANCE
+              │
+              └── LICENSE_ACTIVATION
+12. license_logs 🟢
+
+Audit log seluruh aktivitas license.
+
+license_logs
+────────────────────────────────────
+id                  BIGINT UNSIGNED PK
+
+license_id          BIGINT UNSIGNED FK NULL
+instance_id         BIGINT UNSIGNED FK NULL
+
+action              VARCHAR(50)
+request_id          VARCHAR(100)
+ip_address          VARCHAR(45)
+
+request_data        JSON NULL
+response_data       JSON NULL
+
+result              ENUM(
+                      'success',
+                      'failed'
+                    )
+
+created_at          DATETIME
+
+Contoh action:
+
+activate
+validate
+heartbeat
+module_check
+deactivate
+expired
+invalid_license
+13. users ❌
+
+TIDAK MASUK CENTRAL SaaS
+
+User adalah tanggung jawab aplikasi.
+
+Misalnya Apotek:
+
+users
+├── Admin
+├── Apoteker
+├── Kasir
+└── Gudang
+
+Central SaaS tidak perlu mengetahui struktur tersebut.
+
+Central SaaS hanya memberikan:
+
+max_users = 10
+14. roles / permissions ❌
+
+Juga bukan bagian Central SaaS.
+
+Aplikasi sendiri yang mengatur:
+
+User
+   ↓
+Role
+   ↓
+Permission
+
+Contoh:
+
+Central SaaS
+    │
+    └── Module A,B,C + max 10 users
+                  │
+                  ↓
+             Aplikasi
+                  │
+          ┌───────┴───────┐
+          ↓               ↓
+        Role            User
+          ↓
+      Permission
+15. billing / payment 🟡 FUTURE
+
+Belum kita masukkan ke physical ERD core.
+
+Kalau nanti Central SaaS menangani pembayaran:
+
+invoices
+invoice_items
+payments
+payment_transactions
+
+bisa ditambahkan.
+
+Tetapi tidak mengganggu core license architecture.
+
+16. API authentication / integration 🟡 FUTURE
+
+Nanti aplikasi seperti:
+
+APOTEK
+DISTRIBUTOR
+TMS
+
+perlu berkomunikasi dengan Central SaaS.
+
+Maka bisa ditambahkan:
+
+api_clients
+api_keys
+webhook_endpoints
+webhook_logs
+
+Tetapi ini masuk layer integration/security, bukan core product catalog.
+
+17. future module mechanism 🟢 FIX
+
+Ini adalah aturan khusus untuk module baru.
+
+Contoh:
+
+Hari ini:
+
+APOTEK
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+Kemudian developer membuat:
+
+G = Inventory Forecast
+
+Package:
+
+BASIC
+future_module_access = false
+
+PROFESSIONAL
+future_module_access = false
+
+ENTERPRISE
+future_module_access = true
+
+Maka:
+
+Module G dibuat
+       ↓
+Application = APOTEK
+       ↓
+Package Enterprise
+       ↓
+future_module_access = TRUE
+       ↓
+Enterprise subscription mendapatkan G
+       ↓
+G masuk subscription_modules
+       ↓
+G masuk license_modules
+       ↓
+Aplikasi dapat menggunakan G
+
+Tidak perlu customer upgrade package.
+
+B. ERD FINAL
+
+Kalau seluruh tabel inti kita gabungkan:
+
+                         ┌─────────────────┐
+                         │  APPLICATIONS   │
+                         └────────┬────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+                    ▼                           ▼
+             ┌─────────────┐             ┌─────────────┐
+             │   MODULES   │             │  PACKAGES   │
+             └──────┬──────┘             └──────┬──────┘
+                    │                           │
+                    │          ┌────────────────┘
+                    │          │
+                    ▼          ▼
+               ┌────────────────────┐
+               │   PACKAGE_MODULES  │
+               └──────────┬─────────┘
+                          │
+                          ▼
+                   ┌─────────────┐
+                   │  CUSTOMERS  │
+                   └──────┬──────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │ SUBSCRIPTIONS│
+                   └──────┬───────┘
+                          │
+                    ┌─────┴──────────────┐
+                    │                    │
+                    ▼                    ▼
+          ┌───────────────────┐    ┌───────────┐
+          │SUBSCRIPTION_MODULES│    │ LICENSES  │
+          └─────────┬─────────┘    └─────┬─────┘
+                    │                    │
+                    │                    ▼
+                    │            ┌────────────────┐
+                    │            │ LICENSE_MODULES│
+                    │            └────────────────┘
+                    │
+                    │                    │
+                    │                    ▼
+                    │           ┌────────────────────┐
+                    │           │APPLICATION_INSTANCES│
+                    │           └──────────┬─────────┘
+                    │                      │
+                    │                      ▼
+                    │             ┌──────────────────┐
+                    │             │LICENSE_ACTIVATIONS│
+                    │             └──────────────────┘
+                    │
+                    │
+                    └───────────────────────────────┐
+                                                    ▼
+                                           ┌────────────────┐
+                                           │  LICENSE_LOGS  │
+                                           └────────────────┘
+C. Flow Database yang Sebenarnya
+
+Sekarang kita masuk ke alur data sebenarnya, bukan sekadar hubungan tabel.
+
+STEP 1 — Developer membuat aplikasi
+APPLICATION
+    ↓
+APOTEK
+
+Database:
+
+applications
+STEP 2 — Developer membuat module
+APOTEK
+│
+├── A Standard
+├── B Standard
+├── C Standard
+├── D Advanced
+├── E Advanced
+└── F Advanced
+
+Database:
+
+modules
+STEP 3 — Developer membuat package
+APOTEK
+│
+├── BASIC
+├── PROFESSIONAL
+└── ENTERPRISE
+
+Database:
+
+packages
+STEP 4 — Developer menentukan module package
+BASIC
+├── A
+├── B
+└── C
+
+PROFESSIONAL
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+ENTERPRISE
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+Database:
+
+package_modules
+STEP 5 — Customer membeli package
+
+Misalnya:
+
+Customer:
+PT ABC
+
+Application:
+APOTEK
+
+Package:
+PROFESSIONAL
+
+Database:
+
+customers
+      ↓
+subscriptions
+
+Subscription menyimpan:
+
+max_users = 10
+STEP 6 — System membuat entitlement module
+
+Package:
+
+PROFESSIONAL
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+Maka:
+
+subscription_modules
+
+menjadi:
+
+SUB-001
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+Tidak ada toggle.
+
+STEP 7 — Central SaaS menerbitkan License
+SUB-001
+    ↓
+LICENSE-XXXX
+
+Database:
+
+licenses
+STEP 8 — License membawa entitlement module
+
+Snapshot:
+
+LICENSE-XXXX
+├── A
+├── B
+├── C
+├── D
+├── E
+└── F
+
+Database:
+
+license_modules
+STEP 9 — Aplikasi customer melakukan activation
+
+Misalnya:
+
+https://apotek.ptabc.com
+
+Aplikasi menghubungi Central SaaS:
+
+LICENSE
+    ↓
+ACTIVATE
+    ↓
+APPLICATION_INSTANCE
+    ↓
+LICENSE_ACTIVATION
+STEP 10 — Aplikasi mengecek license
+
+Secara periodik:
+
+APOTEK
+   │
+   │ validate license
+   ↓
+CENTRAL SaaS
+   │
+   ├── license valid?
+   ├── expired?
+   ├── suspended?
+   ├── modules?
+   └── max_users?
+
+Central SaaS mengembalikan entitlement.
+
+Contoh:
+
+{
+  "valid": true,
+  "max_users": 10,
+  "modules": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+  ]
+}
+STEP 11 — Aplikasi mengatur user
+
+Ini sepenuhnya dilakukan aplikasi.
+
+Misalnya Central SaaS mengatakan:
+
+max_users = 10
+
+Aplikasi menghitung:
+
+Current Users = 8
+Max Users     = 10
+
+Berarti masih bisa membuat:
+
+2 user
+
+Siapa yang boleh menggunakan module tertentu?
+
+Bukan Central SaaS.
+
+Aplikasi sendiri yang menentukan.
+
+STEP 12 — Customer upgrade
+
+Misalnya:
+
+PROFESSIONAL
+       ↓
+ENTERPRISE
+
+Maka:
+
+subscription
+      ↓
+package_id berubah
+      ↓
+max_users berubah
+      ↓
+entitlement module berubah
+      ↓
+license diperbarui
+
+Misalnya:
+
+10 users
+    ↓
+50 users
+STEP 13 — Customer downgrade
+
+Sebaliknya:
+
+ENTERPRISE
+      ↓
+PROFESSIONAL
+
+Maka entitlement mengikuti package baru.
+
+50 users
+   ↓
+10 users
+
+Dan module yang tidak lagi termasuk package harus ditangani dalam proses perubahan subscription/license.
+
+STEP 14 — Developer menambahkan module baru
+
+Misalnya:
+
+G = AI Forecast
+
+Developer membuat:
+
+modules
+
+dengan:
+
+application_id = APOTEK
+module_type = advanced
+
+Kemudian Central SaaS mengevaluasi package:
+
+BASIC
+future_module_access = false
+
+PROFESSIONAL
+future_module_access = false
+
+ENTERPRISE
+future_module_access = true
+STEP 15 — Enterprise mendapatkan module baru
+
+Untuk subscription Enterprise:
+
+Module G
+   ↓
+subscription_modules
+   ↓
+license_modules
+
+Customer tidak perlu:
+
+upgrade
+
+dan tidak perlu:
+
+membeli addon
+
+sesuai policy Enterprise tersebut.
+
+STEP 16 — Aplikasi menerima module baru
+
+Saat aplikasi melakukan validation/sync:
+
+Central SaaS
+     ↓
+License
+     ↓
+Modules
+     ↓
+Aplikasi Customer
+
+Aplikasi mengetahui:
+
+A
+B
+C
+D
+E
+F
+G
+
+Lalu aplikasi sendiri menentukan implementation dan permission user.
+
+STEP 17 — Audit
+
+Semua aktivitas penting dicatat:
+
+Application
+     ↓
+License
+     ↓
+Activation
+     ↓
+Validation
+     ↓
+Module Check
+     ↓
+License Logs
+
+Sehingga Central SaaS nantinya bisa melihat:
+
+License aktif?
+Instance apa?
+Terakhir online kapan?
+Request berhasil?
+Request gagal?
+Module apa yang diminta?
+D. FLOW BESAR FINAL
+
+Kalau dibuat super ringkas:
+
+                 DEVELOPER
+                     │
+                     ▼
+              ┌─────────────┐
+              │ APPLICATION  │
+              └──────┬──────┘
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+      MODULES                PACKAGES
+          │                     │
+          └──────────┬──────────┘
+                     ▼
+              PACKAGE_MODULES
+                     │
+                     ▼
+                 CUSTOMER
+                     │
+                     ▼
+                SUBSCRIPTION
+                     │
+             ┌───────┴────────┐
+             ▼                ▼
+   SUBSCRIPTION_MODULES     LICENSE
+                              │
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+             LICENSE_MODULES    APPLICATION_INSTANCE
+                                        │
+                                        ▼
+                                LICENSE_ACTIVATION
+                                        │
+                                        ▼
+                                  APPLICATION
+                                        │
+                                        ▼
+                              USER / ROLE / PERMISSION
+                              [URUSAN APLIKASI]
+Prinsip final yang kita pegang
+CENTRAL SaaS
+──────────────────────────────────
+Application
+Module
+Package
+Package Module
+Customer
+Subscription
+Subscription Module
+License
+License Module
+Application Instance
+Activation
+License Audit
+
+Sedangkan:
+
+APPLICATION CUSTOMER
+──────────────────────────────────
+User
+Role
+Permission
+User ↔ Role
+Role ↔ Module
+User ↔ Module
+
+tidak masuk Central SaaS.
+
+Dan yang paling penting:
+
+Central SaaS memberikan hak penggunaan module + batas jumlah user. Aplikasi customer yang menentukan user mana yang boleh menggunakan module tersebut.
+
+Dengan struktur ini, Central SaaS tetap generic dan bisa dipakai untuk APOTEK, Distributor, TMS, ERP, atau aplikasi lain tanpa mengetahui struktur internal masing-masing aplikasi.

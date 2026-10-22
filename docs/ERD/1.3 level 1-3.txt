@@ -1,0 +1,7 @@
+License
+    │
+    ├── Application Instance
+    │
+    ├── License Modules
+    │
+    └── License Activation

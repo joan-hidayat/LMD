@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apotek Maju Jaya — Client App Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --bg: #f0fdfa;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #ccfbf1;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 24px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 20px 24px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(13, 148, 136, 0.05); margin-bottom: 24px; }
+        .logo-box { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #0d9488, #0f766e); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; }
+        .title-text h1 { font-size: 18px; font-weight: 800; color: #134e4a; }
+        .title-text p { font-size: 12px; color: var(--muted); }
+        .license-badge { display: flex; align-items: center; gap: 10px; background: #ccfbf1; border: 1px solid #99f6e4; padding: 8px 16px; border-radius: 30px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); }
+        .dot.invalid { background: var(--danger); }
+        
+        .grid-layout { display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 24px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 24px; }
+        .card-title { font-size: 15px; font-weight: 800; color: #134e4a; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+        .btn-outline:hover { background: #f0fdfa; }
+
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; }
+        .info-label { color: var(--muted); }
+        .info-val { font-weight: 700; color: #0f172a; }
+
+        .module-chip { display: inline-block; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 20px; margin: 3px; }
+        .module-chip.locked { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; text-decoration: line-through; }
+
+        .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+        .medicine-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; text-align: center; }
+        .medicine-name { font-weight: 800; font-size: 14px; color: #1e293b; }
+        .medicine-price { color: var(--primary); font-weight: 800; font-size: 13px; margin: 6px 0; }
+        
+        .code-block { background: #0f172a; color: #38bdf8; padding: 12px; border-radius: 10px; font-size: 11px; font-family: monospace; overflow-x: auto; margin-top: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <header>
+            <div class="logo-box">
+                <div class="logo-icon">💊</div>
+                <div class="title-text">
+                    <h1>Apotek System (Client App Demo)</h1>
+                    <p>Simulasi Interaktif Aplikasi Client yang Terhubung ke Central SaaS</p>
+                </div>
+            </div>
+            <div class="license-badge">
+                <div class="dot" :class="{ invalid: !licenseInfo.valid }"></div>
+                <div style="font-size: 12px; font-weight: 700;">
+                    Status Lisensi: <span :style="{ color: licenseInfo.valid ? '#16a34a' : '#dc2626' }">{{ licenseInfo.valid ? 'LENGKAP & TERVERIFIKASI' : 'TIDAK VALID / KADALUWARSA' }}</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid-layout">
+            <!-- LEFT PANEL: LICENSE & SAAS CONNECTION STATUS -->
+            <div>
+                <div class="card">
+                    <div class="card-title">
+                        <span>🔑 Kredensial Central SaaS</span>
+                        <button class="btn btn-outline" @click="checkValidation" style="font-size: 11px; padding: 5px 10px;">⚡ Heartbeat API</button>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Aplikasi Code:</span>
+                        <span class="info-val">APOTEK</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">License Key:</span>
+                        <span class="info-val" style="font-size: 11px; font-family: monospace;">{{ licenseKey }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Domain Client:</span>
+                        <span class="info-val">{{ domain }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Batas User (Kuota):</span>
+                        <span class="info-val" style="color: #0284c7;">{{ licenseInfo.max_users || 3 }} Users Active</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Terakhir Check:</span>
+                        <span class="info-val" style="font-size: 11px;">{{ lastChecked }}</span>
+                    </div>
+
+                    <div style="margin-top: 16px;">
+                        <label style="font-size: 12px; font-weight: 800; color: #334155; display: block; margin-bottom: 6px;">Fitur Modul Terbuka (Dari Central SaaS):</label>
+                        <div>
+                            <span v-for="m in allModules" :key="m" class="module-chip" :class="{ locked: !activeModules.includes(m) }">
+                                {{ activeModules.includes(m) ? '✓ ' + m : '🔒 ' + m }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <button class="btn" @click="autoRegister" style="width: 100%; margin-top: 20px; justify-content: center;">
+                        ✨ Simulasikan Auto-Register Baru
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📡 Respon Central SaaS Live</div>
+                    <p style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Respon JSON dari <code>POST /api/licenses/validate</code>:</p>
+                    <div class="code-block">{{ lastResponseJson || 'Memuat respon...' }}</div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: APOTEK CLIENT OPERATIONAL DEMO -->
+            <div>
+                <div class="card" style="border-left: 4px solid var(--primary);">
+                    <div class="card-title">
+                        <span>🛒 Modul POS Kasir & Penjualan Obat</span>
+                        <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Modul Aktif</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+                        Fitur Kasir terbuka karena Central SaaS mengizinkan modul <code>POS_KASIR</code> untuk lisensi ini.
+                    </p>
+                    <div class="pos-grid">
+                        <div class="medicine-item">
+                            <div class="medicine-name">Paracetamol 500mg</div>
+                            <div class="medicine-price">Rp 12.500 / strip</div>
+                            <button class="btn" style="font-size: 11px; width: 100%; justify-content: center;" :disabled="!licenseInfo.valid">+ Tambah Kasir</button>
+                        </div>
+                        <div class="medicine-item">
+                            <div class="medicine-name">Amoxicillin 500mg</div>
+                            <div class="medicine-price">Rp 24.000 / strip</div>
+                            <button class="btn" style="font-size: 11px; width: 100%; justify-content: center;" :disabled="!licenseInfo.valid">+ Tambah Kasir</button>
+                        </div>
+                        <div class="medicine-item">
+                            <div class="medicine-name">Vitamin C 1000mg</div>
+                            <div class="medicine-price">Rp 35.000 / botol</div>
+                            <button class="btn" style="font-size: 11px; width: 100%; justify-content: center;" :disabled="!licenseInfo.valid">+ Tambah Kasir</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>📦 Modul Master Obat & Stok Gudang</span>
+                        <span style="font-size: 11px; background: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Manajemen Stok</span>
+                    </div>
+                    <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                                <th style="padding: 8px;">Kode Obat</th>
+                                <th style="padding: 8px;">Nama Obat</th>
+                                <th style="padding: 8px;">Stok Gudang</th>
+                                <th style="padding: 8px;">Status Modul</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 8px; font-weight: 700;">MED-001</td>
+                                <td style="padding: 8px;">Paracetamol 500mg</td>
+                                <td style="padding: 8px; font-weight: 700; color: #16a34a;">450 Strip</td>
+                                <td style="padding: 8px;"><span style="color: #16a34a; font-weight: 800;">✓ Terverifikasi Central SaaS</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 8px; font-weight: 700;">MED-002</td>
+                                <td style="padding: 8px;">Amoxicillin 500mg</td>
+                                <td style="padding: 8px; font-weight: 700; color: #16a34a;">120 Strip</td>
+                                <td style="padding: 8px;"><span style="color: #16a34a; font-weight: 800;">✓ Terverifikasi Central SaaS</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    licenseKey: 'LIC-APO-CRIT558811EE0042AA66B819',
+                    domain: 'apotekmajujaya.com',
+                    instanceKey: 'INST-APO-MJJ-001',
+                    lastChecked: 'Baru Saja',
+                    licenseInfo: {
+                        valid: true,
+                        max_users: 3
+                    },
+                    activeModules: ['DASHBOARD', 'MASTER_OBAT', 'INVENTORY', 'POS_KASIR'],
+                    allModules: ['DASHBOARD', 'MASTER_OBAT', 'INVENTORY', 'POS_KASIR', 'RESEP_DOKTER', 'BPJS_INTEGRATION'],
+                    lastResponseJson: ''
+                };
+            },
+            mounted() {
+                this.checkValidation();
+            },
+            methods: {
+                async checkValidation() {
+                    try {
+                        const res = await fetch('http://localhost:8080/License-Management-Dashboard/api/index.php/licenses/validate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                license_key: this.licenseKey,
+                                instance_key: this.instanceKey,
+                                domain: this.domain
+                            })
+                        });
+                        const data = await res.json();
+                        this.lastResponseJson = JSON.stringify(data, null, 2);
+                        if (data.success && data.data) {
+                            this.licenseInfo.valid = data.data.valid;
+                            this.licenseInfo.max_users = data.data.max_users;
+                            if (data.data.modules) {
+                                this.activeModules = data.data.modules;
+                            }
+                        }
+                        this.lastChecked = new Date().toLocaleTimeString();
+                    } catch (e) {
+                        this.lastResponseJson = 'Error: Tidak dapat menghubungkan ke Central SaaS Server (' + e.message + ')';
+                    }
+                },
+                async autoRegister() {
+                    try {
+                        const randomNum = Math.floor(Math.random() * 899) + 100;
+                        const res = await fetch('http://localhost:8080/License-Management-Dashboard/api/index.php/licenses/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                app_code: 'APOTEK',
+                                package_code: 'APO_BASIC',
+                                customer_name: 'Apotek Sehat Barokah ' + randomNum,
+                                customer_email: 'owner' + randomNum + '@sehatbarokah.com',
+                                customer_phone: '0812' + randomNum + '8899',
+                                instance_key: 'INST-APO-BAROKAH-' + randomNum,
+                                domain: 'barokah' + randomNum + '.com'
+                            })
+                        });
+                        const data = await res.json();
+                        this.lastResponseJson = JSON.stringify(data, null, 2);
+                        if (data.success && data.data.license_key) {
+                            this.licenseKey = data.data.license_key;
+                            this.domain = 'barokah' + randomNum + '.com';
+                            this.instanceKey = 'INST-APO-BAROKAH-' + randomNum;
+                            alert('✨ Auto-Register Lisensi Baru Berhasil!\nLicense Key: ' + this.licenseKey);
+                            this.checkValidation();
+                        }
+                    } catch (e) {
+                        alert('Gagal auto-register: ' + e.message);
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

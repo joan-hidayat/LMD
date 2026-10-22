@@ -1,0 +1,33 @@
+APPLICATION
+    │
+    ├──── 1:N ──── MODULE
+    │
+    └──── 1:N ──── PACKAGE
+                       │
+                       │
+                       N:M
+                       │
+                     MODULE
+
+
+CUSTOMER
+    │
+    └──── 1:N ──── SUBSCRIPTION
+                       │
+                       ├──── N:1 ──── APPLICATION
+                       │
+                       ├──── N:1 ──── PACKAGE
+                       │
+                       └──── 1:N ──── SUBSCRIPTION_MODULE
+
+
+SUBSCRIPTION
+    │
+    └──── 1:N ──── LICENSE
+                       │
+                       ├──── 1:N ──── LICENSE_MODULE
+                       │
+                       └──── 1:N ──── APPLICATION_INSTANCE
+                                          │
+                                          └──── 1:N
+                                               LICENSE_ACTIVATION

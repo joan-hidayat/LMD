@@ -1,0 +1,15 @@
+                         CENTRAL SaaS
+                              │
+              ┌───────────────┴────────────────┐
+              │                                │
+              ▼                                ▼
+       PRODUCT CATALOG                 SUBSCRIPTION SYSTEM
+              │                                │
+              ▼                                ▼
+       Application/Module/Package       Customer/Subscription
+                                               │
+                                               ▼
+                                            License
+                                               │
+                                               ▼
+                                      Application Instance

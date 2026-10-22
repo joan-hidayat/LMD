@@ -1,0 +1,120 @@
+                                    ┌─────────────────────┐
+                                    │    APPLICATIONS     │
+                                    ├─────────────────────┤
+                                    │ PK id               │
+                                    │ code                │
+                                    │ name                │
+                                    │ description         │
+                                    │ status              │
+                                    └──────────┬──────────┘
+                                               │
+                           ┌───────────────────┴──────────────────┐
+                           │                                      │
+                         1:N                                    1:N
+                           │                                      │
+                           ▼                                      ▼
+                ┌─────────────────────┐              ┌─────────────────────┐
+                │      MODULES        │              │      PACKAGES       │
+                ├─────────────────────┤              ├─────────────────────┤
+                │ PK id               │              │ PK id               │
+                │ FK application_id   │              │ FK application_id   │
+                │ code                │              │ code                │
+                │ name                │              │ name                │
+                │ description         │              │ base_price          │
+                │ status              │              │ billing_cycle       │
+                └──────────┬──────────┘              │ max_users           │
+                           │                         │ status              │
+                           │                         └──────────┬──────────┘
+                           │                                    │
+                           │ N:M                                │
+                           │                                    │
+                           │          ┌─────────────────────┐   │
+                           └─────────►│  PACKAGE_MODULES    │◄──┘
+                                      ├─────────────────────┤
+                                      │ PK id               │
+                                      │ FK package_id       │
+                                      │ FK module_id        │
+                                      │ included            │
+                                      │ additional_price    │
+                                      └─────────────────────┘
+
+
+┌─────────────────────┐
+│      CUSTOMERS      │
+├─────────────────────┤
+│ PK id               │
+│ code                │
+│ name                │
+│ email               │
+│ phone               │
+│ status              │
+└──────────┬──────────┘
+           │
+           │ 1:N
+           ▼
+┌─────────────────────┐
+│    SUBSCRIPTIONS    │
+├─────────────────────┤
+│ PK id               │
+│ subscription_no     │
+│ FK customer_id      │
+│ FK application_id   │
+│ FK package_id       │
+│ start_date          │
+│ end_date            │
+│ billing_cycle       │
+│ max_users           │
+│ base_price          │
+│ discount            │
+│ total_price         │
+│ status              │
+└──────────┬──────────┘
+           │
+           ├──────────────────────┐
+           │                      │
+          1:N                    1:N
+           │                      │
+           ▼                      ▼
+┌─────────────────────┐  ┌─────────────────────┐
+│SUBSCRIPTION_MODULES │  │      LICENSES       │
+├─────────────────────┤  ├─────────────────────┤
+│ PK id               │  │ PK id               │
+│ FK subscription_id  │  │ license_key         │
+│ FK module_id        │  │ FK subscription_id  │
+│ enabled             │  │ FK application_id   │
+│ price               │  │ issued_at           │
+│ source              │  │ expires_at          │
+└─────────────────────┘  │ status              │
+                         └──────────┬──────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                        1:N                   1:N
+                         │                     │
+                         ▼                     ▼
+              ┌─────────────────────┐ ┌─────────────────────┐
+              │  LICENSE_MODULES    │ │ APPLICATION_INST.   │
+              ├─────────────────────┤ ├─────────────────────┤
+              │ PK id               │ │ PK id               │
+              │ FK license_id       │ │ FK license_id       │
+              │ FK module_id        │ │ instance_key        │
+              │ enabled             │ │ instance_name       │
+              └─────────────────────┘ │ domain              │
+                                      │ environment         │
+                                      │ last_seen_at        │
+                                      │ status              │
+                                      └──────────┬──────────┘
+                                                 │
+                                                 │ 1:N
+                                                 ▼
+                                      ┌─────────────────────┐
+                                      │ LICENSE_ACTIVATIONS │
+                                      ├─────────────────────┤
+                                      │ PK id               │
+                                      │ FK license_id       │
+                                      │ FK instance_id      │ 
+                                      │ activation_key      │
+                                      │ activated_at        │
+                                      │ last_seen_at        │
+                                      │ status              │
+                                      └─────────────────────┘

@@ -1,0 +1,115 @@
+# ==============================================================================
+# Environment & Sensitive Configuration
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.local.php
+api/config/database.local.php
+api/config/config.local.php
+
+# ==============================================================================
+# Security / Cryptographic Keys & Certificates
+# (Pencegahan kebocoran private/public key, sertifikat, dan token lisensi)
+# ==============================================================================
+*.pem
+*.key
+*.pub
+*.crt
+*.pfx
+*.cert
+
+# ==============================================================================
+# Dependencies & Package Managers
+# ==============================================================================
+/vendor/
+composer.phar
+/node_modules/
+package-lock.json.bak
+
+# ==============================================================================
+# Log Files & Error Logs
+# ==============================================================================
+*.log
+logs/
+error_log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==============================================================================
+# Cache & Temporary Files
+# ==============================================================================
+.cache/
+cache/
+tmp/
+temp/
+*.tmp
+
+# ==============================================================================
+# Database Backups & Local Dumps
+# (database/schema.sql dan database/seed.sql tetap terlacak)
+# ==============================================================================
+*.sql.bak
+*.sql.gz
+*.sql.tar.gz
+*.dump
+/backup/
+/backups/
+/dumps/
+database/backups/
+database/*.local.sql
+
+# ==============================================================================
+# Scratch & Local Testing Outputs
+# ==============================================================================
+scratch/output*
+scratch/*.tmp
+scratch/local_*
+index.txt
+
+# ==============================================================================
+# Testing & Code Coverage
+# ==============================================================================
+.phpunit.result.cache
+/coverage/
+
+# ==============================================================================
+# Generated Exports & Uploads (Excel, CSV, PDF, dsb.)
+# ==============================================================================
+/exports/
+/uploads/
+*.csv.tmp
+*.xlsx.tmp
+
+# ==============================================================================
+# IDE & Code Editor Configurations
+# ==============================================================================
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ==============================================================================
+# Operating System Files
+# ==============================================================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes

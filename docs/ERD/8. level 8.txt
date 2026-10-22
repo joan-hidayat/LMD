@@ -1,0 +1,97 @@
+LEVEL 8 — License
+
+Subscription kemudian menghasilkan:
+
+licenses
+
+LIC-APO-XXXXXXXX
+
+Kemudian:
+
+license_modules
+
+Dashboard
+Master Obat
+Inventory
+Penjualan
+Pembelian
+Kasir
+
+Kemudian aplikasi customer didaftarkan:
+
+application_instances
+
+APO-JKT-001
+
+Dan ketika pertama kali aktivasi:
+
+license_activations
+
+ACT-XXXXXXXX
+Jadi lifecycle final-nya
+             PRODUCT CREATION
+                    │
+                    ▼
+             APPLICATION
+                    │
+                    ▼
+                MODULES
+                    │
+                    ▼
+                PACKAGES
+                    │
+                    ▼
+           PACKAGE + MODULE
+                    │
+                    │
+              PUBLISH PRODUCT
+                    │
+════════════════════╪════════════════════
+                    │
+             CUSTOMER COMES
+                    │
+                    ▼
+                CUSTOMER
+                    │
+                    ▼
+              SUBSCRIPTION
+                    │
+                    ▼
+          SUBSCRIPTION MODULES
+                    │
+                    ▼
+                 LICENSE
+                    │
+                    ▼
+             LICENSE MODULES
+                    │
+                    ▼
+         APPLICATION INSTANCE
+                    │
+                    ▼
+          LICENSE ACTIVATION
+                    │
+                    ▼
+              LICENSE API
+                    │
+                    ▼
+             CUSTOMER APP
+Dan ini prinsip yang akan gue pegang untuk desain selanjutnya
+
+Product Catalog:
+
+Application → Module → Package → Package Module
+
+Commercial:
+
+Customer → Subscription
+
+Provisioning:
+
+Subscription → License → Instance
+
+Runtime:
+
+Application Instance → License API → Feature/Module Access
+
+Dengan pemisahan ini, Central SaaS lu benar-benar bisa menjadi pusat pengelolaan berbagai produk, sementara aplikasi seperti Apotek, Distributor, TMS, dan ERP tidak perlu memiliki mekanisme subscription masing-masing.

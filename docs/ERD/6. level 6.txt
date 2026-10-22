@@ -1,0 +1,55 @@
+LEVEL 6 — Alur Data Nyata
+
+Nah, ini yang paling penting untuk memastikan ERD kita benar.
+
+Tahap 1 — Lu membuat aplikasi
+applications
+
+APOTEK
+
+↓
+
+Tahap 2 — Lu membuat modul
+modules
+
+APOTEK
+├── Dashboard
+├── Master Obat
+├── Inventory
+├── Penjualan
+├── Pembelian
+├── Kasir
+└── Accounting
+
+↓
+
+Tahap 3 — Lu membuat paket
+packages
+
+APOTEK
+├── BASIC
+├── PROFESSIONAL
+└── ENTERPRISE
+
+↓
+
+Tahap 4 — Lu menentukan isi paket
+package_modules
+
+BASIC
+├── Dashboard
+├── Master Obat
+└── Inventory
+
+PROFESSIONAL
+├── Dashboard
+├── Master Obat
+├── Inventory
+├── Penjualan
+├── Pembelian
+└── Kasir
+
+Sampai titik ini:
+
+CUSTOMER = BELUM ADA
+LICENSE  = BELUM ADA

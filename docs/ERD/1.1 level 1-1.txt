@@ -1,0 +1,7 @@
+Application
+    │
+    ├── Modules
+    │
+    └── Packages
+            │
+            └── Package Modules

@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central SaaS - License Management Dashboard</title>
+
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- Chart.js CDN for Modern Analytics Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="./assets/css/style.css">
+</head>
+
+<body>
+<div id="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-logo">CS</div>
+            <div>
+                <div class="brand-title">Central SaaS</div>
+                <span class="brand-subtitle">License Management</span>
+            </div>
+        </div>
+        <nav>
+            <div class="menu-title">Main Menu</div>
+            <a class="nav-item" :class="{ active: activePage === 'dashboard' }" @click="setActivePage('dashboard')">
+                📊 Dashboard
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'applications' }" @click="setActivePage('applications')">
+                📱 Applications & Modules
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'packages' }" @click="setActivePage('packages')">
+                📦 Sales Packages
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'customers' }" @click="setActivePage('customers')">
+                👥 Customers
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'subscriptions' }" @click="setActivePage('subscriptions')">
+                📜 Subscriptions
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'licenses' }" @click="setActivePage('licenses')">
+                🔑 Licenses
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'guide' }" @click="setActivePage('guide')">
+                📚 Buku Panduan
+            </a>
+            <a class="nav-item" :class="{ active: activePage === 'audit' }" @click="setActivePage('audit')">
+                📝 License Audit Logs
+            </a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <h3 style="font-size: 16px; font-weight: 700;">Central SaaS License Dashboard</h3>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a href="client_demo/apotek.html" target="_blank" class="btn btn-sm" style="background: #0d9488; color: white; border: none; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">💊 Demo Client Apotek</a>
+                <button class="btn btn-primary btn-sm" @click="openModal('tester')">⚡ Test License API</button>
+            </div>
+        </header>
+
+        <main class="content">
+
+            <!-- PAGE 1: DASHBOARD -->
+            <div v-if="activePage === 'dashboard'">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">Executive & Operational Analytics</h2>
+                        <p style="color: var(--muted); font-size: 13px;">Dashboard visualisasi pengambil keputusan: radar jatuh tempo, kontribusi revenue, dan adopsi fitur.</p>
+                    </div>
+                    <button class="btn btn-sm" @click="fetchDashboardData">🔄 Segarkan Data</button>
+                </div>
+
+                <!-- EARLY WARNING ALERT BANNER -->
+                <div v-if="analytics.expiring_radar && (analytics.expiring_radar.critical_7d > 0 || analytics.expiring_radar.expired > 0)" class="alert-card critical">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <span style="font-size: 26px;">⚠️</span>
+                        <div>
+                            <div style="font-weight: 800; font-size: 14px; color: #991b1b;">Early Warning: Lisensi Perlu Tindak Lanjut Segera!</div>
+                            <div style="font-size: 12px; color: #7f1d1d; margin-top: 2px;">
+                                Terdeteksi <strong>{{ analytics.expiring_radar.critical_7d }} lisensi kritis (≤ 7 hari)</strong> dan <strong>{{ analytics.expiring_radar.expired }} lisensi kedaluwarsa</strong>. Segera hubungi customer untuk perpanjangan kontrak sebelum akses aplikasi terkunci otomatis di lapangan.
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-danger" @click="scrollToAttentionList">Lihat Daftar Perhatian ↓</button>
+                </div>
+
+                <!-- STAT KPI CARDS -->
+                <div class="stat-grid">
+                    <div class="card">
+                        <div class="stat-title">Total Applications</div>
+                        <div class="stat-value">{{ stats.total_apps }}</div>
+                        <small style="color: var(--muted); font-size: 11px;">Katalog sistem SaaS</small>
+                    </div>
+                    <div class="card">
+                        <div class="stat-title">Active Subscriptions</div>
+                        <div class="stat-value" style="color: var(--primary);">{{ stats.active_subscriptions }}</div>
+                        <small style="color: var(--muted); font-size: 11px;">Kontrak langganan aktif</small>
+                    </div>
+                    <div class="card">
+                        <div class="stat-title">Active Licenses</div>
+                        <div class="stat-value" style="color: var(--success);">{{ stats.active_licenses }}</div>
+                        <small style="color: var(--muted); font-size: 11px;">Tenant sedang operasional</small>
+                    </div>
+                    <div class="card">
+                        <div class="stat-title">Total Revenue</div>
+                        <div class="stat-value" style="font-size: 18px; color: #1e293b;">{{ formatRupiah(stats.total_revenue) }}</div>
+                        <small style="color: var(--muted); font-size: 11px;">Akumulasi nilai kontrak aktif</small>
+                    </div>
+                </div>
+
+                <!-- ANALYTICS TAB SWITCHER -->
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                    <button class="btn btn-sm" :class="{ 'btn-primary': analyticsTab === 'executive' }" @click="setAnalyticsTab('executive')">
+                        📊 Fase 1: Overview Eksekutif & Revenue
+                    </button>
+                    <button class="btn btn-sm" :class="{ 'btn-primary': analyticsTab === 'deep_dive' }" @click="setAnalyticsTab('deep_dive')">
+                        🔬 Fase 2: Analisis Bisnis Lanjutan & Health Ops
+                    </button>
+                </div>
+
+                <!-- TAB 1: FASE 1 CHARTS -->
+                <div v-show="analyticsTab === 'executive'">
+                    <!-- ROW 1: DECISION CORE CHARTS -->
+                    <div class="chart-grid">
+                        <!-- Chart 1: Expiration Radar -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">⏳ Radar Jatuh Tempo Lisensi (Early Warning)</div>
+                                    <div class="chart-desc">Distribusi sisa masa aktif lisensi untuk antisipasi churn rate.</div>
+                                </div>
+                                <span v-if="analytics.expiring_radar" class="badge-pill badge-warning">
+                                    {{ (analytics.expiring_radar.critical_7d || 0) + (analytics.expiring_radar.warning_30d || 0) }} Perlu Perhatian
+                                </span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartExpiringRadar"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Revenue Contribution per Application -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">💰 Kontribusi Revenue per Aplikasi</div>
+                                    <div class="chart-desc">Sebaran omset berulang untuk alokasi resource & pengembangan produk.</div>
+                                </div>
+                                <span class="badge-pill badge-safe">Multi-Product</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartRevenueApp"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 2: GROWTH & PRODUCT INTELLIGENCE CHARTS -->
+                    <div class="chart-grid">
+                        <!-- Chart 3: Monthly Revenue Trend -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">📈 Tren Pertumbuhan Pendapatan (MRR / Recurring)</div>
+                                    <div class="chart-desc">Laju omset dari pelanggan baru & perpanjangan dari waktu ke waktu.</div>
+                                </div>
+                                <span class="badge-pill badge-safe">Growth Trajectory</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartMonthlyTrend"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 4: Module Adoption Popularity -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">🧩 Tingkat Adopsi Modul Fitur (Popularitas)</div>
+                                    <div class="chart-desc">Fitur paling banyak diambil customer untuk evaluasi bundling paket.</div>
+                                </div>
+                                <span class="badge-pill badge-safe">Fitur Terlaris</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartModulePopularity"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: FASE 2 CHARTS (BUSINESS DEEP DIVE & HEALTH OPS) -->
+                <div v-show="analyticsTab === 'deep_dive'">
+                    <!-- ROW 1 FASE 2: CONTRACT MODEL & USER CAPACITY -->
+                    <div class="chart-grid">
+                        <!-- Chart 5: Billing Cycle Distribution -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">🔄 Distribusi Model Pembayaran (Billing Cycle)</div>
+                                    <div class="chart-desc">Perbandingan langganan bulanan vs tahunan untuk stabilitas cash flow.</div>
+                                </div>
+                                <span class="badge-pill badge-safe">Cash Flow Stability</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartBillingCycles"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 6: Max Users Tiering -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">👥 Skala Kuota Pengguna (Max Users Capacity)</div>
+                                    <div class="chart-desc">Distribusi kapasitas seat user tenant (Starter, Medium, Enterprise).</div>
+                                </div>
+                                <span class="badge-pill badge-warning">Tiering Strategy</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartUserTiers"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROW 2 FASE 2: API SECURITY & INSTANCE HEALTH -->
+                    <div class="chart-grid">
+                        <!-- Chart 7: API Validation Health -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">🛡️ Rasio Keberhasilan & Keamanan API Lisensi</div>
+                                    <div class="chart-desc">Tingkat otorisasi sukses vs indikasi request ilegal / lisensi expired.</div>
+                                </div>
+                                <span class="badge-pill badge-safe">SLA & Security</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartApiHealth"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 8: Instance Activity -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">📡 Status Aktivitas Instance Tenant (Heartbeat)</div>
+                                    <div class="chart-desc">Deteksi klien aktif (<24 jam) vs klien dorman yang berisiko churn (>7 hari).</div>
+                                </div>
+                                <span class="badge-pill badge-safe">Client Retention</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chartInstanceActivity"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACTIONABLE ATTENTION TABLE: LISENSI PERLU FOLLOW UP SEGERA -->
+                <div id="attentionSection" v-if="analytics.expiring_list && analytics.expiring_list.length > 0" class="card" style="border-left: 4px solid #f97316;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div>
+                            <h4 style="font-size: 15px; font-weight: 800; color: #9a3412;">🚨 Radar Aksi: Lisensi Jatuh Tempo ≤ 30 Hari & Expired</h4>
+                            <p style="font-size: 12px; color: var(--muted); margin-top: 2px;">Daftar pelanggan yang membutuhkan kontak langsung dari tim sales / customer retention.</p>
+                        </div>
+                        <span class="badge-pill badge-critical">{{ analytics.expiring_list.length }} Klien Perlu Ditindaklanjuti</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Customer & Kontak</th>
+                                    <th>Aplikasi & Paket</th>
+                                    <th>License Key</th>
+                                    <th>Sisa Waktu</th>
+                                    <th>Nilai Kontrak</th>
+                                    <th>Aksi Cepat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in analytics.expiring_list" :key="'attn-' + item.id">
+                                    <td>
+                                        <strong>{{ item.customer_name }}</strong>
+                                        <div style="font-size: 11px; color: var(--muted);">{{ item.customer_email }} &bull; {{ item.customer_phone || '-' }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ item.application_name }}</div>
+                                        <small style="color: var(--muted);">{{ item.package_name }}</small>
+                                    </td>
+                                    <td><code style="font-weight: 700; color: var(--primary);">{{ item.license_key }}</code></td>
+                                    <td>
+                                        <span class="badge-pill" :class="getDaysLeftBadge(item.days_left, item.status).class">
+                                            {{ getDaysLeftBadge(item.days_left, item.status).text }}
+                                        </span>
+                                    </td>
+                                    <td><strong>{{ formatRupiah(item.total_price) }}</strong></td>
+                                    <td>
+                                        <div style="display: flex; gap: 6px;">
+                                            <a v-if="item.customer_phone" :href="'https://wa.me/' + item.customer_phone.replace(/^0/, '62')" target="_blank" class="btn btn-sm btn-primary" style="text-decoration: none; padding: 4px 8px; font-size: 11px;">💬 Hubungi WA</a>
+                                            <button class="btn btn-sm" @click="setActivePage('subscriptions')" style="padding: 4px 8px; font-size: 11px;">Perpanjang</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RECENT LICENSES TABLE -->
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div>
+                            <h4 style="font-size: 15px; font-weight: 700;">Recent Issued Licenses</h4>
+                            <p style="font-size: 12px; color: var(--muted);">Lisensi terbaru yang diterbitkan melalui auto-register atau manual.</p>
+                        </div>
+                        <button class="btn btn-sm" @click="setActivePage('licenses')">Lihat Semua Licenses →</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>License Key</th>
+                                    <th>Application</th>
+                                    <th>Customer</th>
+                                    <th>Max Users</th>
+                                    <th>Expires At</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="lic in licenses" :key="lic.id">
+                                    <td><strong style="font-family: monospace; color: var(--primary);">{{ lic.license_key }}</strong></td>
+                                    <td>{{ lic.application_name }}</td>
+                                    <td>{{ lic.customer_name }}</td>
+                                    <td><strong>{{ lic.max_users }} Users</strong></td>
+                                    <td>{{ formatDate(lic.expires_at) }}</td>
+                                    <td><span class="status" :class="'status-' + lic.status">{{ lic.status }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 2: APPLICATIONS & MODULES -->
+            <div v-if="activePage === 'applications'">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">Applications & Modules</h2>
+                        <p style="color: var(--muted); font-size: 13px;">Kelola master aplikasi dan modul fitur masing-masing produk.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-primary" @click="openModal('app')">+ Tambah Application</button>
+                        <button class="btn" @click="openModal('module')">+ Tambah Module</button>
+                    </div>
+                </div>
+
+                <div class="layout-grid">
+                    <div>
+                        <h4 style="font-size: 13px; color: var(--muted); margin-bottom: 10px; font-weight: 700;">DAFTAR APLIKASI</h4>
+                        <div v-for="app in applications" :key="app.id" class="app-item" :class="{ active: selectedAppId === app.id }" @click="selectApplication(app.id)">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong>{{ app.name }}</strong>
+                                <span class="status status-active">{{ app.code }}</span>
+                            </div>
+                            <small style="color: var(--muted); display: block; margin-top: 4px;">{{ app.modules_count }} Modules | {{ app.packages_count }} Packages</small>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card">
+                            <h4 style="font-size: 16px; font-weight: 700; margin-bottom: 15px;">Modul Fitur Aplikasi</h4>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Description</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="mod in selectedAppModules" :key="mod.id">
+                                            <td><code style="font-weight: 700;">{{ mod.code }}</code></td>
+                                            <td>{{ mod.name }}</td>
+                                            <td>
+                                                <span class="status" :class="mod.module_type === 'standard' ? 'status-active' : 'status-pending'">
+                                                    {{ mod.module_type }}
+                                                </span>
+                                            </td>
+                                            <td>{{ mod.description || '-' }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-danger" @click="deleteModule(mod.id)">Hapus</button>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="selectedAppModules.length === 0">
+                                            <td colspan="5" style="text-align: center; color: var(--muted); padding: 20px;">Belum ada modul untuk aplikasi ini.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 3: PACKAGES -->
+            <div v-if="activePage === 'packages'">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">Sales Packages</h2>
+                        <p style="color: var(--muted); font-size: 13px;">Kelola paket komersial (Basic, Professional, Enterprise).</p>
+                    </div>
+                    <button class="btn btn-primary" @click="openModal('package')">+ Buat Paket Baru</button>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Application</th>
+                                    <th>Package Name</th>
+                                    <th>Code</th>
+                                    <th>Base Price</th>
+                                    <th>Max Users</th>
+                                    <th>Future Module Access</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="pkg in packages" :key="pkg.id">
+                                    <td><strong>{{ pkg.application_name }}</strong></td>
+                                    <td>{{ pkg.name }}</td>
+                                    <td><code>{{ pkg.code }}</code></td>
+                                    <td><strong>{{ formatRupiah(pkg.base_price) }}</strong> / {{ pkg.billing_cycle }}</td>
+                                    <td>{{ pkg.max_users }} Users</td>
+                                    <td>
+                                        <span class="status" :class="pkg.future_module_access ? 'status-active' : 'status-draft'">
+                                            {{ pkg.future_module_access ? 'YES (Auto Add)' : 'NO' }}
+                                        </span>
+                                    </td>
+                                    <td><span class="status status-active">{{ pkg.status }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 4: CUSTOMERS -->
+            <div v-if="activePage === 'customers'">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">Customers Master</h2>
+                        <p style="color: var(--muted); font-size: 13px;">Kelola data pelanggan/perusahaan pembeli.</p>
+                    </div>
+                    <button class="btn btn-primary" @click="openModal('customer')">+ Tambah Customer</button>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Customer Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Active Subscriptions</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="cust in customers" :key="cust.id">
+                                    <td><code>{{ cust.code }}</code></td>
+                                    <td><strong>{{ cust.name }}</strong></td>
+                                    <td>{{ cust.email }}</td>
+                                    <td>{{ cust.phone || '-' }}</td>
+                                    <td>{{ cust.subscriptions_count }} Contract(s)</td>
+                                    <td><span class="status status-active">{{ cust.status }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 5: SUBSCRIPTIONS -->
+            <div v-if="activePage === 'subscriptions'">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">Subscriptions & Contracts</h2>
+                        <p style="color: var(--muted); font-size: 13px;">Kelola kontrak langganan customer & pembuatannya.</p>
+                    </div>
+                    <button class="btn btn-primary" @click="openModal('subscription')">+ Buat Subscription Baru</button>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sub No</th>
+                                    <th>Customer</th>
+                                    <th>Application / Package</th>
+                                    <th>Max Users</th>
+                                    <th>Total Price</th>
+                                    <th>License Key</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="sub in subscriptions" :key="sub.id">
+                                    <td><code>{{ sub.subscription_no }}</code></td>
+                                    <td><strong>{{ sub.customer_name }}</strong></td>
+                                    <td>{{ sub.application_name }} - <span style="color: var(--primary);">{{ sub.package_name }}</span></td>
+                                    <td>{{ sub.max_users }} Users</td>
+                                    <td><strong>{{ formatRupiah(sub.total_price) }}</strong></td>
+                                    <td><code style="color: var(--success);">{{ sub.license_key || 'No License' }}</code></td>
+                                    <td><span class="status status-active">{{ sub.status }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 6: LICENSES -->
+            <div v-if="activePage === 'licenses'">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">License Credentials</h2>
+                        <p style="color: var(--muted); font-size: 13px;">Kelola kredensial lisensi aplikasi client.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>License Key</th>
+                                    <th>Application</th>
+                                    <th>Customer</th>
+                                    <th>Entitled Modules</th>
+                                    <th>Instances</th>
+                                    <th>Expires At</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="lic in licenses" :key="lic.id">
+                                    <td><strong style="font-family: monospace; color: var(--primary); font-size: 13px;">{{ lic.license_key }}</strong></td>
+                                    <td>{{ lic.application_name }}</td>
+                                    <td>{{ lic.customer_name }}</td>
+                                    <td><strong>{{ lic.modules_count }} Modules</strong></td>
+                                    <td>{{ lic.active_instances_count }} Active Instance(s)</td>
+                                    <td>{{ formatDate(lic.expires_at) }}</td>
+                                    <td><span class="status" :class="'status-' + lic.status">{{ lic.status }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 7: AUDIT LOGS -->
+            <div v-if="activePage === 'audit'">
+                <div style="margin-bottom: 20px;">
+                    <h2 style="font-size: 22px; font-weight: 800;">License Audit Logs</h2>
+                    <p style="color: var(--muted); font-size: 13px;">Catatan real-time semua panggilan API lisensi dari aplikasi client.</p>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Action</th>
+                                    <th>Request ID</th>
+                                    <th>IP Address</th>
+                                    <th>Instance Key</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="log in auditLogs" :key="log.id">
+                                    <td>{{ log.created_at }}</td>
+                                    <td><code style="font-weight: 700; color: var(--primary);">{{ log.action }}</code></td>
+                                    <td><small>{{ log.request_id }}</small></td>
+                                    <td>{{ log.ip_address }}</td>
+                                    <td><code>{{ log.instance_key || '-' }}</code></td>
+                                    <td><span class="status" :class="log.result === 'success' ? 'status-active' : 'status-failed'">{{ log.result }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        
+            <!-- PAGE 8: USER GUIDE PAGE -->
+            <div v-if="activePage === 'guide'">
+                <div style="margin-bottom: 20px;">
+                    <h2 style="font-size: 22px; font-weight: 800;">📚 Buku Panduan Pengguna & Integrasi API</h2>
+                    <p style="color: var(--muted); font-size: 13px; margin-top: 4px;">Panduan lengkap pengelolaan Central SaaS, pendaftaran otomatis customer, dan integrasi API Lisensi.</p>
+                </div>
+
+                <!-- CARDS PRINSIP ARSITEKTUR -->
+                <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 20px;">
+                    <div class="card" style="border-left: 4px solid var(--primary); margin-bottom: 0;">
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 8px;">🏢 Tanggung Jawab Central SaaS</h4>
+                        <ul style="font-size: 12px; color: #475569; padding-left: 18px; line-height: 1.6;">
+                            <li>Mengelola Katalog Produk (Aplikasi, Modul, & Paket Harga).</li>
+                            <li>Menyediakan API <strong>Auto-Register Customer & Lisensi</strong> secara otomatis.</li>
+                            <li>Menentukan <strong>Modul Fitur yang Berhak Dibuka</strong> oleh pelanggan.</li>
+                            <li>Menetapkan <strong>Batas Maksimal Kuota Pengguna (max_users)</strong>.</li>
+                            <li>Memvalidasi status lisensi (aktif, terblokir, kedaluwarsa).</li>
+                        </ul>
+                    </div>
+                    <div class="card" style="border-left: 4px solid var(--success); margin-bottom: 0;">
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--success); margin-bottom: 8px;">💻 Tanggung Jawab Aplikasi Client (Apotek, TMS, dll)</h4>
+                        <ul style="font-size: 12px; color: #475569; padding-left: 18px; line-height: 1.6;">
+                            <li>Memanggil API Auto-Register saat instalasi/pembelian paket oleh customer baru.</li>
+                            <li>Pengelolaan User internal (Admin, Kasir, Apoteker, Sales).</li>
+                            <li>Pengelolaan Role & Permission internal aplikasi.</li>
+                            <li>Membatasi user mana yang boleh menggunakan modul tertentu berdasarkan kuota dari Central SaaS.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- DUA METODE PENDAFTARAN -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <h4 style="font-size: 15px; font-weight: 800; margin-bottom: 14px;">🚀 2 Metode Pendaftaran Customer & Lisensi</h4>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                        <div style="background: #f0fdf4; padding: 14px; border-radius: 10px; border: 1px solid #bbf7d0;">
+                            <div style="font-weight: 800; color: var(--success); font-size: 14px; margin-bottom: 6px;">⚡ Mode 1: Auto-Register (Otomatis / Rekomendasi Utama)</div>
+                            <p style="font-size: 12px; color: #166534; line-height: 1.5;">
+                                <strong>Tanpa input manual Superadmin</strong>. Saat customer menginstall aplikasi (misal: <code>Apotek Paket A</code>), aplikasi client memanggil API <code>POST /api/licenses/register</code>. Central SaaS otomatis mendata Customer, Subscription, dan Menerbitkan License Key.
+                            </p>
+                        </div>
+                        <div style="background: #eff6ff; padding: 14px; border-radius: 10px; border: 1px solid #bfdbfe;">
+                            <div style="font-weight: 800; color: var(--primary); font-size: 14px; margin-bottom: 6px;">📝 Mode 2: Manual Input (Kontrak B2B / Custom)</div>
+                            <p style="font-size: 12px; color: #1e40af; line-height: 1.5;">
+                                Digunakan jika ada penanganan khusus B2B. Superadmin menambah Customer di menu <strong>Customers</strong>, lalu membuat <strong>Subscription</strong> manual di dashboard.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOKUMENTASI API AUTO-REGISTER -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <h4 style="font-size: 15px; font-weight: 800; margin-bottom: 10px;">⚡ 1. API Auto-Register Customer & License (Instalasi Aplikasi Client)</h4>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Dipanggil otomatis oleh aplikasi client saat installer/setup dijalankan oleh customer baru:</p>
+                    <div style="margin-bottom: 12px;">
+                        <span style="background: #16a34a; color: white; padding: 3px 7px; border-radius: 4px; font-weight: 800; font-size: 11px;">POST</span>
+                        <code style="font-weight: 700; margin-left: 6px; font-size: 12px;">http://localhost:8080/License-Management-Dashboard/api/licenses/register</code>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Request Payload (JSON):</label>
+                            <pre class="code-box">{
+  "app_code": "APOTEK",
+  "package_code": "APO_BASIC",
+  "customer_name": "Apotek Maju Jaya",
+  "customer_email": "owner@majujaya.com",
+  "customer_phone": "08123456789",
+  "instance_key": "INST-APO-MJJ-001",
+  "domain": "apotekmajujaya.com"
+}</pre>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Response Payload (Otomatis Terbit):</label>
+                            <pre class="code-box">{
+  "success": true,
+  "data": {
+    "auto_registered": true,
+    "customer_name": "Apotek Maju Jaya",
+    "license_key": "LIC-APOTEK-BE597CEBC9...",
+    "max_users": 3,
+    "modules": ["DASHBOARD", "MASTER_OBAT", "INVENTORY", "POS_KASIR"]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOKUMENTASI API VALIDASI -->
+                <div class="card">
+                    <h4 style="font-size: 15px; font-weight: 800; margin-bottom: 10px;">📡 2. API Validasi Lisensi & Heartbeat (Rutinitas Aplikasi Client)</h4>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Dipanggil oleh aplikasi client saat startup/login untuk memverifikasi hak akses modul & kuota user:</p>
+                    <div style="margin-bottom: 12px;">
+                        <span style="background: #2563eb; color: white; padding: 3px 7px; border-radius: 4px; font-weight: 800; font-size: 11px;">POST</span>
+                        <code style="font-weight: 700; margin-left: 6px; font-size: 12px;">http://localhost:8080/License-Management-Dashboard/api/licenses/validate</code>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Request Payload (JSON):</label>
+                            <pre class="code-box">{
+  "license_key": "LIC-APOTEK-BE597CEBC9...",
+  "instance_key": "INST-APO-MJJ-001",
+  "domain": "apotekmajujaya.com"
+}</pre>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Response Payload (JSON):</label>
+                            <pre class="code-box">{
+  "success": true,
+  "data": {
+    "valid": true,
+    "max_users": 3,
+    "modules": ["DASHBOARD", "MASTER_OBAT", "INVENTORY", "POS_KASIR"]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIMULASI ALUR LENGKAP & FLOWCHART DOKUMENTASI -->
+                <div class="card" style="margin-bottom: 20px; border-left: 4px solid var(--success);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 15px; font-weight: 800; color: #15803d;">🔄 3. Simulasi Alur Lengkap: Instalasi Client DMS hingga Dashboard Central SaaS</h4>
+                        <span class="badge-pill badge-safe">Panduan Alur Integrasi</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
+                        Gambaran alur otomatisasi saat tenant baru (contoh: <strong>PT Distribution Logistics Jaya</strong>) menginstall aplikasi client <strong>DMS (Distributor Management System)</strong> sampai datanya muncul di dashboard secara real-time.
+                    </p>
+
+                    <!-- VISUAL STEPS FLOW -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px;">
+                        <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #0369a1;">STEP 1: CLIENT SETUP</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #0c4a6e; margin-top: 4px;">Form Installer Client</div>
+                            <small style="font-size: 11px; color: #0369a1; display: block; margin-top: 2px;">Input nama tenant, email, domain, & paket DIST_PRO.</small>
+                        </div>
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #15803d;">STEP 2: AUTO-REGISTER</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #14532d; margin-top: 4px;">Central SaaS Engine</div>
+                            <small style="font-size: 11px; color: #15803d; display: block; margin-top: 2px;">Otomatis buat Customer, Subskripsi, & License Key.</small>
+                        </div>
+                        <div style="background: #faf5ff; border: 1px solid #e9d5ff; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #7e22ce;">STEP 3: VALIDATE & RUN</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #581c87; margin-top: 4px;">DMS Operasional</div>
+                            <small style="font-size: 11px; color: #7e22ce; display: block; margin-top: 2px;">Client simpan license key & jalankan validasi rutin.</small>
+                        </div>
+                        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #b45309;">STEP 4: DASHBOARD ANALYTICS</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #78350f; margin-top: 4px;">Real-Time Update</div>
+                            <small style="font-size: 11px; color: #b45309; display: block; margin-top: 2px;">Revenue, kuota user, & statistik DMS naik otomatis.</small>
+                        </div>
+                    </div>
+
+                    <!-- PAYLOAD CONKRET -->
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">1. Client DMS Calling Auto-Register API:</label>
+                            <pre class="code-box">POST /api/index.php/licenses/register
+{
+  "app_code": "DISTRIBUTOR",
+  "package_code": "DIST_PRO",
+  "customer_name": "PT Distribution Logistics Jaya",
+  "customer_email": "admin@distribusijaya.co.id",
+  "instance_key": "INST-DIST-LOG-001",
+  "domain": "app.distribusijaya.co.id"
+}</pre>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">2. Response Otomatis Central SaaS (201 Created):</label>
+                            <pre class="code-box">{
+  "success": true,
+  "data": {
+    "customer_name": "PT Distribution Logistics Jaya",
+    "application": "Distributor Management System",
+    "license_key": "LIC-DISTRIBUTOR-4B6EAC49D7...",
+    "max_users": 15,
+    "modules": ["DASHBOARD", "MULTI_WAREHOUSE"]
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOKUMENTASI MODEL ARSITEKTUR DEPLOYMENT (DESKTOP VS WEB APP) -->
+                <div class="card" style="margin-bottom: 20px; border-left: 4px solid #0284c7;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 15px; font-weight: 800; color: #0369a1;">🌐 3.5. Model Arsitektur Deployment Web App vs Desktop App</h4>
+                        <span class="badge-pill badge-active">Arsitektur Universal</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
+                        API Central SaaS bersifat <strong>universal & agnostik</strong>. Baik aplikasi client Anda berbentuk <strong>Desktop (.exe)</strong>, <strong>Web App Cloud</strong>, maupun <strong>Web App On-Premise</strong>, seluruhnya menggunakan API `POST /api/licenses/register` dan `POST /api/licenses/validate` yang sama.
+                    </p>
+
+                    <!-- 3 CARDS COMPARISON -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                        <!-- MODEL A -->
+                        <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #0369a1; text-transform: uppercase;">💻 Model A: Desktop App (.exe)</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #0c4a6e; margin-top: 4px;">Native Windows / Electron</div>
+                            <p style="font-size: 11px; color: #0369a1; line-height: 1.4; margin-top: 6px; margin-bottom: 0;">
+                                • Di-install via `setup.exe` di PC tenant.<br>
+                                • Installer panggil API saat setup pertama.<br>
+                                • License Key disimpan di Registry / Local File PC.
+                            </p>
+                        </div>
+                        <!-- MODEL B -->
+                        <div style="background: #faf5ff; border: 1px solid #e9d5ff; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #7e22ce; text-transform: uppercase;">☁️ Model B: Cloud Web App</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #581c87; margin-top: 4px;">Multi-Tenant (mydms.com)</div>
+                            <p style="font-size: 11px; color: #7e22ce; line-height: 1.4; margin-top: 6px; margin-bottom: 0;">
+                                • <strong>Tanpa instalasi di PC tenant</strong>.<br>
+                                • Customer daftar via `mydms.com/register`.<br>
+                                • Akun aktif instan & login langsung via browser.
+                            </p>
+                        </div>
+                        <!-- MODEL C -->
+                        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 11px; font-weight: 800; color: #b45309; text-transform: uppercase;">🏢 Model C: On-Premise Web App</div>
+                            <div style="font-size: 12px; font-weight: 700; color: #78350f; margin-top: 4px;">Server Lokal Tenant</div>
+                            <p style="font-size: 11px; color: #b45309; line-height: 1.4; margin-top: 6px; margin-bottom: 0;">
+                                • App di-deploy di VPS / Server Lokal Tenant.<br>
+                                • Buka Web Installer (`dms.tenant.co.id/install`).<br>
+                                • License Key disimpan di `.env` server lokal.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- VISUAL FLOWCHART IN APP -->
+                    <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 8px;">🔄 Modern Flow: Bagaimana Central SaaS Melayani 3 Jenis Deployment</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; color: #475569; text-align: center;">
+                            <div style="flex: 1; background: white; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                <strong>Input Client</strong><br>
+                                Form Setup Desktop / Web Portal Sign-up / Web Installer
+                            </div>
+                            <div style="font-weight: 800; color: #0284c7;">➡️ HTTP POST ➡️</div>
+                            <div style="flex: 1; background: #f0fdf4; padding: 8px; border-radius: 6px; border: 1px solid #86efac; color: #166534;">
+                                <strong>Central SaaS Engine</strong><br>
+                                Generates Customer, Subscription, License Key & Modules
+                            </div>
+                            <div style="font-weight: 800; color: #0284c7;">➡️ JSON Response ➡️</div>
+                            <div style="flex: 1; background: white; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                <strong>Client Operational</strong><br>
+                                Desktop, Cloud Browser, or Local Network Browser
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOKUMENTASI EXECUTIVE & OPERATIONAL ANALYTICS (FASE 1 & FASE 2) -->
+                <div class="card" style="margin-bottom: 20px; border-left: 4px solid #6366f1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 15px; font-weight: 800; color: #4338ca;">📊 4. Panduan Dashboard Analitik & Pengambilan Keputusan (Decision Support System)</h4>
+                        <span class="badge-pill badge-safe">Fase 1 & Fase 2 Complete</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
+                        Dashboard Central SaaS dilengkapi <strong>8 visualisasi data interaktif berbasis Chart.js</strong> yang terbagi ke dalam 2 tab utama untuk mendukung keputusan bisnis, efisiensi operasional, dan pencegahan kehilangan pelanggan (<em>churn mitigation</em>).
+                    </p>
+
+                    <!-- FASE 1 TITLE -->
+                    <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">
+                        🌟 Tab 1: Executive & Revenue Overview (Fase 1)
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <div style="font-weight: 700; color: #1e293b; font-size: 12px; margin-bottom: 4px;">⏳ Radar Jatuh Tempo Lisensi</div>
+                            <p style="font-size: 11px; color: #64748b; line-height: 1.5; margin: 0;">
+                                Membagi sisa masa aktif lisensi tenant menjadi 5 kelompok: <em>Expired</em>, <em>Kritis (≤ 7 hari)</em>, <em>Perhatian (8-30 hari)</em>, <em>Aman (31-90 hari)</em>, dan <em>Jangka Panjang (>90 hari)</em>. Membantu tim retention follow-up tepat waktu.
+                            </p>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <div style="font-weight: 700; color: #1e293b; font-size: 12px; margin-bottom: 4px;">💰 Kontribusi Revenue per Aplikasi</div>
+                            <p style="font-size: 11px; color: #64748b; line-height: 1.5; margin: 0;">
+                                Menampilkan porsi total nilai kontrak aktif antar produk (Apotek, Distributor, TMS). Membantu direksi menentukan produk unggulan (<em>cash cow</em>) dan pembagian alokasi pengembangan.
+                            </p>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <div style="font-weight: 700; color: #1e293b; font-size: 12px; margin-bottom: 4px;">📈 Tren Pertumbuhan Pendapatan (MRR)</div>
+                            <p style="font-size: 11px; color: #64748b; line-height: 1.5; margin: 0;">
+                                Kurva omset dari waktu ke waktu memvalidasi laju pertumbuhan bisnis (<em>growth trajectory</em>), mengukur efektivitas kampanye penjualan, dan memproyeksikan arus kas.
+                            </p>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <div style="font-weight: 700; color: #1e293b; font-size: 12px; margin-bottom: 4px;">🧩 Tingkat Adopsi Modul Fitur</div>
+                            <p style="font-size: 11px; color: #64748b; line-height: 1.5; margin: 0;">
+                                Peringkat fitur paling banyak diaktifkan tenant. Digunakan Product Manager untuk mengevaluasi modul mana yang layak dipertahankan, dijadikan fitur dasar, atau dipisah sebagai add-on berbayar.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- FASE 2 TITLE -->
+                    <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">
+                        🔬 Tab 2: Advanced Business & Health Ops (Fase 2)
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
+                        <div style="background: #faf5ff; padding: 12px; border-radius: 8px; border: 1px solid #e9d5ff;">
+                            <div style="font-weight: 700; color: #6b21a8; font-size: 12px; margin-bottom: 4px;">🔄 Distribusi Paket & Siklus Penagihan</div>
+                            <p style="font-size: 11px; color: #7e22ce; line-height: 1.5; margin: 0;">
+                                Membandingkan proporsi penagihan <strong>Bulanan vs Tahunan</strong>. Penagihan tahunan meningkatkan arus kas di awal dan loyalitas tenant, sedangkan bulanan memiliki risiko perputaran tenant (<em>churn rate</em>) lebih tinggi.
+                            </p>
+                        </div>
+                        <div style="background: #faf5ff; padding: 12px; border-radius: 8px; border: 1px solid #e9d5ff;">
+                            <div style="font-weight: 700; color: #6b21a8; font-size: 12px; margin-bottom: 4px;">👥 Segmen Skala Tenant (User Limit)</div>
+                            <p style="font-size: 11px; color: #7e22ce; line-height: 1.5; margin: 0;">
+                                Mengelompokkan tenant ke dalam skala <strong>Starter (1-5 user)</strong>, <strong>Medium (6-15 user)</strong>, dan <strong>Enterprise (>15 user)</strong>. Membantu tim Sales mengidentifikasi kandidat <em>upselling</em> kuota user.
+                            </p>
+                        </div>
+                        <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                            <div style="font-weight: 700; color: #15803d; font-size: 12px; margin-bottom: 4px;">🚨 Health Check Validasi API & Churn Risk</div>
+                            <p style="font-size: 11px; color: #166534; line-height: 1.5; margin: 0;">
+                                Memantau keberhasilan vs kegagalan panggilan API validasi (misal: lisensi tidak ditemukan, domain mismatch, expired). Rasio kegagalan tinggi mendeteksi potensi penyalahgunaan atau kendala teknis installer.
+                            </p>
+                        </div>
+                        <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                            <div style="font-weight: 700; color: #15803d; font-size: 12px; margin-bottom: 4px;">📡 Heartbeat Keaktifan Instance Client</div>
+                            <p style="font-size: 11px; color: #166534; line-height: 1.5; margin: 0;">
+                                Mengukur sinyal <em>last seen / heartbeat</em> aplikasi client (Aktif Hari Ini, 1-7 Hari Lalu, Pasif >7 Hari). Client yang pasif >7 hari menandakan aplikasi tidak lagi dibuka (<em>early warning churn</em>).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="background: #fff7ed; padding: 12px 16px; border-radius: 8px; border: 1px solid #fed7aa; font-size: 12px; color: #9a3412;">
+                        <strong>💡 Fitur Radar Aksi & Kontak WhatsApp Cepat:</strong> Saat sistem mendeteksi lisensi berstatus kritis atau kedaluwarsa pada kedua tab, tabel aksi di bawah grafik otomatis menampilkan kontak penanggung jawab tenant dan menyediakan tombol satu-klik <strong>💬 Hubungi WA</strong> untuk komunikasi langsung.
+                    </div>
+                </div>
+
+                <!-- DOKUMENTASI ARSITEKTUR KEAMANAN SYSTEM -->
+                <div class="card" style="margin-bottom: 20px; border-left: 4px solid #dc2626;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 15px; font-weight: 800; color: #991b1b;">🔒 5. Arsitektur Keamanan & Anti-Pembajakan (Security Architecture)</h4>
+                        <span class="badge-pill badge-expired">7 Layer Protection</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
+                        Central SaaS dilengkapi <strong>7 lapis keamanan terpadu</strong> untuk memastikan data lisensi terlindungi dari pembajakan, penyalahgunaan domain, SQL injection, serta serangan siber:
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🔑 1. API Key & Secret Signature Authentication</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Setiap aplikasi client dibekali `App-Secret`. Request anonim tanpa kredensial sah akan ditolak otomatis oleh API Gateway.</p>
+                        </div>
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🌐 2. Domain & Instance Key Binding (Anti-Clone)</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Lisensi dikunci spesifik ke domain & ID hardware. Jika lisensi dicopy ke domain lain, API membalas `"valid": false` (`domain_mismatch`).</p>
+                        </div>
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🔒 3. Kriptografi SHA-256 License Hash</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">License key dan activation key digenerate secara acak berbasis Hashing SHA-256 yang tidak dapat ditebak (*unpredictable*).</p>
+                        </div>
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🛡️ 4. Prepared Statements PDO (Anti SQLi)</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Seluruh backend PHP menggunakan PDO Parameterized Query, menjamin 100% perlindungan dari serangan SQL Injection.</p>
+                        </div>
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🚨 5. Audit Log & Anomaly Anomaly Alert</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Setiap validasi dicatat di `validation_logs`. Lonjakan kegagalan mendeteksi percobaan peretasan/pembajakan di dashboard.</p>
+                        </div>
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">⚡ 6. Enkripsi Transport TLS/HTTPS & Rate Limit</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Koneksi terenkripsi TLS 1.3 dan pembatasan request per IP/menit mencegah sniffing data serta serangan Brute Force / DoS.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    
+            <!-- MODALS -->
+    <div class="modal" :class="{ show: showModal }">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h4 style="font-size: 16px; font-weight: 700;">{{ modalTitle }}</h4>
+                <button class="close-btn" @click="closeModal">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- App Form -->
+                <form v-if="modalType === 'app'" @submit.prevent="submitApp">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Application Code</label>
+                            <input v-model="appForm.code" class="form-control" placeholder="MISAL: ERP" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Application Name</label>
+                            <input v-model="appForm.name" class="form-control" placeholder="Enterprise Resource System" required>
+                        </div>
+                        <div class="form-group full">
+                            <label>Description</label>
+                            <textarea v-model="appForm.description" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn" @click="closeModal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Application</button>
+                    </div>
+                </form>
+
+                <!-- Module Form -->
+                <form v-if="modalType === 'module'" @submit.prevent="submitModule">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Pilih Application</label>
+                            <select v-model="moduleForm.application_id" class="form-control" required>
+                                <option v-for="app in applications" :key="app.id" :value="app.id">{{ app.name }} ({{ app.code }})</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Module Code</label>
+                            <input v-model="moduleForm.code" class="form-control" placeholder="MISAL: INVENTORY" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Module Name</label>
+                            <input v-model="moduleForm.name" class="form-control" placeholder="Inventory & Stock Management" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Module Type</label>
+                            <select v-model="moduleForm.module_type" class="form-control">
+                                <option value="standard">Standard</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div class="form-group full">
+                            <label>Description</label>
+                            <textarea v-model="moduleForm.description" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn" @click="closeModal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Modul</button>
+                    </div>
+                </form>
+
+                <!-- Package Form -->
+                <form v-if="modalType === 'package'" @submit.prevent="submitPackage">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Application</label>
+                            <select v-model="packageForm.application_id" class="form-control" required>
+                                <option v-for="app in applications" :key="app.id" :value="app.id">{{ app.name }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Package Code</label>
+                            <input v-model="packageForm.code" class="form-control" placeholder="APO_PRO" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Package Name</label>
+                            <input v-model="packageForm.name" class="form-control" placeholder="Professional Plan" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Base Price (Rp)</label>
+                            <input type="number" v-model="packageForm.base_price" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Max Users</label>
+                            <input type="number" v-model="packageForm.max_users" class="form-control" required>
+                        </div>
+                        <div class="form-group full">
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                                <input type="checkbox" v-model="packageForm.future_module_access">
+                                <span><strong>Future Module Access:</strong> Paket ini otomatis mendapat modul baru di masa depan tanpa bayar lagi.</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn" @click="closeModal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Paket</button>
+                    </div>
+                </form>
+
+                <!-- Customer Form -->
+                <form v-if="modalType === 'customer'" @submit.prevent="submitCustomer">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Customer Name</label>
+                            <input v-model="customerForm.name" class="form-control" placeholder="PT Sehat Sentosa" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" v-model="customerForm.email" class="form-control" placeholder="admin@sehatsentosa.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input v-model="customerForm.phone" class="form-control" placeholder="081299887766">
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn" @click="closeModal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Customer</button>
+                    </div>
+                </form>
+
+                <!-- Subscription Form -->
+                <form v-if="modalType === 'subscription'" @submit.prevent="submitSubscription">
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Customer</label>
+                            <select v-model="subForm.customer_id" class="form-control" required>
+                                <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }} ({{ c.code }})</option>
+                            </select>
+                        </div>
+                        <div class="form-group full">
+                            <label>Sales Package</label>
+                            <select v-model="subForm.package_id" class="form-control" required>
+                                <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.application_name }} - {{ p.name }} ({{ formatRupiah(p.base_price) }})</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" v-model="subForm.start_date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" v-model="subForm.end_date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn" @click="closeModal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Buat Subscription & Generate License</button>
+                    </div>
+                </form>
+
+                <!-- License Validation API Tester Modal -->
+                <div v-if="modalType === 'tester'">
+                    <p style="font-size: 13px; color: var(--muted); margin-bottom: 15px;">
+                        Simulasikan pemanggilan API <code>POST /api/licenses/validate</code> yang dilakukan oleh aplikasi client (Apotek, TMS, dll).
+                    </p>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label>License Key</label>
+                        <input v-model="tester.license_key" class="form-control" placeholder="LIC-APO-..." required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label>Instance Key</label>
+                        <input v-model="tester.instance_key" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>Domain</label>
+                        <input v-model="tester.domain" class="form-control">
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%;" @click="testLicenseValidation" :disabled="tester.loading">
+                        {{ tester.loading ? 'Validating...' : '🚀 Execute API Validation Request' }}
+                    </button>
+
+                    <div v-if="tester.result" style="margin-top: 20px;">
+                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 6px;">JSON API Response:</label>
+                        <pre class="code-box">{{ JSON.stringify(tester.result, null, 2) }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="./assets/js/app.js?v=1791567343"></script>
+</body>
+</html>
