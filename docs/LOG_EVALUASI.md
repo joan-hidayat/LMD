@@ -27,10 +27,28 @@ Dokumen terkait: [`EKOSISTEM_CARA_KERJA.md`](EKOSISTEM_CARA_KERJA.md) · [`PANDU
 | T-08 | lmd | `SecurityHelper::generateActivationKey` menghasilkan prefix ganda `ACT-ACT-…`. | Minor | Terbuka |
 | T-09 | semua | Docs memuat path lokal Windows (`c:\xampp\…`, `file:///c:/…`), IP LAN `192.168.0.116`, base URL tidak konsisten (`/api/...` vs `/api/index.php/...`), dan dua bagian bernomor 12 di `PANDUAN_SHOWCASE.md`. | Dokumentasi | Ditunda — tahap pengembangan |
 | T-10 | lmd | Docs menyebut backend "100% siap" untuk n8n (`approve_order`), tidak sesuai kode. Perlu penanda status (✅/🟡/📋) pada klaim di docs. | Dokumentasi | Terbuka |
+| T-11 | lmd | Token CSS `--border` dan `--muted` dipakai di `index.html` (switcher tab analitik, header Buku Panduan, dll.) tetapi tidak didefinisikan di `style.css`; garis/warna jatuh ke default browser. | Minor (UI) | Terbuka |
 
 ---
 
 ## Riwayat
+
+### 2026-10-23 — Tab "Ekosistem Central SaaS" di menu Buku Panduan
+**Jenis:** Perubahan kode (UI dashboard LMD)
+**Repo:** lmd
+
+**Yang diubah**
+- `index.html` — halaman Buku Panduan kini punya 2 tab: **📘 Panduan & Integrasi API** (isi lama, tidak diubah) dan **🧭 Ekosistem Central SaaS** (baru). Isi tab baru = `docs/EKOSISTEM_CARA_KERJA.md`: peta sistem (SVG), model data 4 lapis, Alur A/B/C, tabel status implementasi dengan rujukan ID temuan.
+- `assets/js/app.js` — state `guideTab: 'manual'`.
+- `assets/css/style.css` — kelas `.eco-*` memakai token tema gelap yang sudah ada.
+- Cache-busting aset dinaikkan ke `?v=20261023_v1`.
+
+**Verifikasi**
+- Dirender di Chromium (Playwright): perpindahan tab berfungsi, tidak ada error JS, tampilan dicek per bagian.
+
+**Catatan**
+- Tab switcher baru memakai `var(--border-subtle)`. Switcher analitik lama memakai `var(--border)` yang tidak didefinisikan di `style.css` → dicatat sebagai T-11.
+- Tab Ekosistem harus ikut diperbarui setiap kali `docs/EKOSISTEM_CARA_KERJA.md` berubah.
 
 ### 2026-10-23 — Review awal docs vs kode ketiga repo
 **Jenis:** Analisis (tanpa perubahan kode)

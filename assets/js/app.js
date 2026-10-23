@@ -20,6 +20,7 @@ createApp({
             },
 
             analyticsTab: 'executive',
+            guideTab: 'manual',
 
             // Analytics for Decision-Making Charts
             analytics: {
