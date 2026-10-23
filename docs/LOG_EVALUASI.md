@@ -43,6 +43,14 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-24 — Sinkronisasi lokal setelah PR #2
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd
+
+- PR #2 di-merge ke `main` (`cde354b`). XAMPP lokal ditarik ke commit yang sama oleh AI lokal.
+- `api/.htaccess` lokal (untracked) diganti versi repo; aturan `RewriteRule` identik, hanya beda komentar. File sementara dihapus; `.htaccess` kini ter-track.
+- Verifikasi di PC: modal **Licenses → Detail** menampilkan instance (Apotek Sehat Sentosa, `apotek-sehat.pos.local`, `INST-STORE-21C187A5`); `GET /api/licenses/pending_orders` tanpa `index.php` → 200 JSON. Konfirmasi T-15 berjalan di Apache XAMPP.
+
 ### 2026-10-24 — Rekonsiliasi WIP lokal `License-Management-Dashboard`
 **Jenis:** Analisis + perubahan kode
 **Repo:** lmd
