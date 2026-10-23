@@ -1,0 +1,6 @@
+# Mengizinkan URL tanpa "index.php", misal /api/licenses/validate → /api/index.php/licenses/validate
+# Membutuhkan mod_rewrite dan AllowOverride All (default XAMPP).
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [QSA,L]

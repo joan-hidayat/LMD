@@ -115,6 +115,8 @@ Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin
 | `GET /licenses/order_status?subscription_no=` | Polling Showcase | `is_approved`, `is_rejected`; `license_key` & `app_url` hanya setelah approve |
 | `POST /licenses/approve_order` | Admin/n8n menyetujui pembayaran: subscription & lisensi `active`, instance aktif, activation dibuat | `200` + `license_key`, `expires_at`, `app_url` |
 | `POST /licenses/reject_order` | Menolak: subscription `cancelled`, lisensi `revoked` (subdomain bisa dipakai lagi) | `200` + `is_rejected: true` |
+| `GET /licenses/pending_orders` | Daftar pesanan `pending` untuk otomasi (n8n) | `subscription_no`, customer, paket, `instance_domain`, `total_price` |
+| `GET /licenses/{id}/instances` | Instance yang terhubung ke satu lisensi (dipakai modal **Licenses → Detail**) | `max_users`, `instances[]` |
 
 Kode error: `400` input tidak valid (email, format subdomain), `404` paket/pesanan tidak ada, `409` subdomain sudah dipakai atau pesanan sudah diproses.
 
@@ -182,6 +184,8 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | Wizard Showcase (UI) | ✅ Jalan | 4 langkah + polling |
 | `order`, `order_status`, `approve_order`, `reject_order` | ✅ Jalan | Alur B end-to-end teruji (T-01) |
 | Panel persetujuan pembayaran di dashboard | ✅ Jalan | Banner Dashboard + tabel di Subscriptions |
+| Detail instance per lisensi | ✅ Jalan | Menu Licenses → Detail (diporting dari WIP lokal) |
+| URL API tanpa `index.php` | ✅ Jalan | `api/.htaccess` (butuh `mod_rewrite`, default XAMPP) (T-15) |
 | Penguncian instance + domain | 🟡 Sebagian | Instance dicatat, tidak pernah ditolak |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |

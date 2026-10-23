@@ -306,4 +306,157 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
 3. **Kapan grafik di dashboard diperbarui?**
    - Data grafik diperbarui secara real-time setiap kali halaman dimuat, atau dapat diperbarui manual dengan menekan tombol **"🔄 Segarkan Data"** di pojok kanan atas dashboard.
 4. **Apakah aplikasi aman dari duplikasi lisensi di server lain?**
-   - **Sangat Aman**. Mekanisme *Domain & Instance Key Binding* akan mendeteksi perbedaan domain dan langsung mengunci aplikasi jika dipindahkan tanpa izin.
+   - 🟡 **Belum sepenuhnya.** Saat ini `validate` mencatat setiap instance dan domain yang memakai lisensi (terlihat di menu **Licenses → Detail**), tetapi belum menolak instance atau domain yang tidak dikenal. Penguncian ini direncanakan di temuan **T-02** (`docs/LOG_EVALUASI.md`).
+
+---
+
+## 🛒 7. Berlangganan Mandiri dari Software Showcase (Order & Approval API)
+
+Calon customer dapat berlangganan sendiri dari Software Showcase. Lisensi baru aktif setelah admin (atau otomasi n8n) menyetujui pembayaran.
+
+### 7.1. Alur Tiga Tahap
+1. **Pemesanan (Showcase → LMD)**
+   - Kartu paket di Showcase dimuat dari LMD (`GET /api/packages?app_code=APOTEK`), sehingga harga, kuota user, dan modul selalu sama dengan data LMD.
+   - Customer mengisi data diri, nama toko, dan subdomain, lalu memilih metode bayar (QRIS / transfer).
+   - Showcase memanggil `POST /api/licenses/order`. LMD membuat **Customer**, **Subscription** berstatus `pending`, **License** berstatus `suspended` (ditahan), dan **Application Instance** `{subdomain}.pos.local`.
+2. **Persetujuan (Admin LMD)**
+   - Dashboard menampilkan banner pesanan menunggu. Di menu **Subscriptions → Persetujuan Pembayaran & Aktivasi Domain Klien**, admin mengecek dana masuk lalu menekan **✓ Approve** atau **Tolak**.
+   - Approve: subscription & license menjadi `active`, masa berlaku dihitung **sejak tanggal approve** sesuai siklus tagihan paket, instance diaktifkan, activation dibuat.
+3. **Aktivasi (Showcase → Aplikasi Client)**
+   - Showcase melakukan polling `GET /api/licenses/order_status` tiap 2,5 detik. Begitu `is_approved: true`, tombol **Buka Aplikasi** muncul.
+   - Aplikasi client meminta customer membuat akun admin (lihat bagian 10).
+
+### 7.2. Spesifikasi Endpoint
+
+Semua URL di bawah relatif terhadap `http://localhost:8080/License-Management-Dashboard/api/index.php` (atau `/api/` jika `api/.htaccess` aktif).
+
+#### 1. Katalog paket publik
+`GET /packages?app_code=APOTEK` → daftar paket berstatus aktif & publik beserta modulnya (`code`, `name`, `base_price`, `billing_cycle`, `max_users`, `modules[]`).
+
+#### 2. Buat pesanan
+`POST /licenses/order`
+```json
+{
+  "app_code": "APOTEK",
+  "package_code": "APO_PRO",
+  "customer_name": "Joan",
+  "customer_email": "joan@kedaikopi.com",
+  "customer_phone": "08123456789",
+  "store_name": "Kedai Kopi Joan",
+  "subdomain": "kedaikopijoan",
+  "payment_method": "QRIS"
+}
+```
+Respons `201`:
+```json
+{
+  "success": true,
+  "message": "Order created. Waiting for payment approval.",
+  "data": {
+    "subscription_no": "SUB-2026-4FAAB6",
+    "status": "pending",
+    "package_name": "Apotek Professional",
+    "max_users": 10,
+    "base_price": 750000,
+    "tax_amount": 82500,
+    "total_price": 832500,
+    "instance_domain": "kedaikopijoan.pos.local"
+  }
+}
+```
+Error: `400` input tidak valid (email, format subdomain `a-z 0-9 -`, 3–40 karakter), `404` paket tidak tersedia, `409` subdomain sudah dipakai. License key **tidak** dikirim di tahap ini.
+
+#### 3. Daftar pesanan menunggu
+`GET /licenses/pending_orders` → pesanan berstatus `pending` (untuk otomasi; dashboard memakai data Subscriptions).
+
+#### 4. Polling status
+`GET /licenses/order_status?subscription_no=SUB-2026-4FAAB6` → `status`, `is_approved`, `is_rejected`. `license_key`, `expires_at`, dan `app_url` hanya terisi setelah approve.
+
+#### 5. Approve / Tolak
+`POST /licenses/approve_order` atau `POST /licenses/reject_order` dengan body `{ "subscription_no": "SUB-2026-4FAAB6" }`.
+- Approve → `200` dengan `license_key`, `expires_at`, `app_url`.
+- Tolak → subscription `cancelled`, license `revoked`, subdomain bisa dipakai lagi.
+- Pesanan yang sudah diproses → `409`.
+
+---
+
+## ⏳ 8. Backlog: Otomatisasi Approval via n8n & Payment Webhook
+
+📋 **Rencana.** Saat ini approval dilakukan manual oleh admin. Untuk production, endpoint yang sama dapat dipanggil otomatis:
+
+1. **Trigger:** webhook dari payment gateway (Midtrans / Xendit / Tripay) atau layanan mutasi rekening (Moota / CekMutasi).
+2. **n8n:** validasi status pembayaran (`settlement` / `success`) dan nominal tagihan (`total_price` termasuk PPN 11%), lalu:
+   ```http
+   POST /api/index.php/licenses/approve_order
+   Content-Type: application/json
+
+   { "subscription_no": "{{ $json.order_id }}" }
+   ```
+3. **Notifikasi:** kirim tanda terima dan link aplikasi (`app_url` dari respons approve) ke WhatsApp customer (`customers.phone`).
+
+Sebelum diaktifkan di production, endpoint approve wajib dilindungi autentikasi (temuan T-04).
+
+---
+
+## 🖥️ 9. Application Instances — Perangkat/Server Client per Lisensi
+
+### 9.1. Instance vs User
+| Aspek | Dikelola oleh | Lokasi data |
+|---|---|---|
+| Kuota maksimal user (`max_users`) | Central SaaS LMD | `subscriptions.max_users` |
+| Instalasi aplikasi yang memakai lisensi (instance) | Central SaaS LMD | `application_instances` |
+| Akun staf (admin, kasir) & login | Aplikasi client | Database aplikasi client (Mini POS: `mini_pos.users`) |
+
+Satu **instance** adalah satu instalasi aplikasi client (server toko / domain), bukan satu akun user. Kuota user ditegakkan oleh aplikasi client.
+
+### 9.2. Melihat Instance di Dashboard
+1. Buka menu **🔑 Licenses**.
+2. Kolom **Kuota User** menampilkan `max_users`; kolom **Instances** menampilkan jumlah instance terdaftar.
+3. Klik **🖥️ … instance · Detail** untuk membuka daftar instance: nama, domain, instance key, terakhir aktif, tanggal terdaftar, dan status.
+
+Jika satu lisensi memiliki instance tak dikenal (misalnya domain berupa alamat IP), itu tanda lisensi dipakai dari tempat lain. Penolakan otomatis untuk kasus ini direncanakan di T-02.
+
+### 9.3. Endpoint
+`GET /licenses/{license_id}/instances`
+```json
+{
+  "success": true,
+  "message": "Instances fetched successfully.",
+  "data": {
+    "license_key": "LIC-APOTEK-B5091754A62B7E71390038FF",
+    "customer_name": "Rina",
+    "application_name": "Apotek Management System",
+    "max_users": 3,
+    "status": "active",
+    "expires_at": "2026-11-23 23:59:59",
+    "instances": [
+      {
+        "instance_key": "INST-STORE-390038FF",
+        "instance_name": "Toko Rina",
+        "domain": "tokorina.pos.local",
+        "environment": "production",
+        "status": "active",
+        "last_seen_at": "2026-10-23 17:29:10"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 🛡️ 10. Proteksi Akses Aplikasi Client (Mini POS)
+
+Aplikasi client tidak bisa dibuka tanpa lisensi aktif dan akun login.
+
+| Skenario | Hasil |
+|---|---|
+| Buka `/mini-pos/` tanpa `?tenant=` | Diarahkan ke Showcase (`notice=unauthorized_direct_access`) |
+| `?tenant=` belum pernah diaktifkan | Diarahkan ke Showcase (`notice=tenant_not_activated`) |
+| License key palsu / tidak aktif | Diarahkan ke Showcase (`notice=invalid_license`) |
+| Link resmi dari Showcase (`?tenant=…&lic=…`) | Lisensi divalidasi ke `POST /licenses/validate`, disimpan di database `mini_pos`, license key dihapus dari URL, lalu layar **Buat Akun Admin** |
+| Perangkat kasir lain (`?tenant=…`) | Halaman login; license key tidak diperlukan |
+| Lisensi di-suspend di LMD | Akses ditolak paling lambat 5 menit kemudian (cache validasi per sesi) |
+| LMD tidak terjangkau | Tetap berjalan maksimal 24 jam sejak validasi sukses terakhir |
+
+Detail alur dan komponen ada di `docs/EKOSISTEM_CARA_KERJA.md` bagian 5 (Alur C).

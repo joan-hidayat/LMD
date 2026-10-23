@@ -108,8 +108,12 @@ try {
                 $controller->approveOrder();
             } elseif ($id === 'reject_order' && $method === 'POST') {
                 $controller->rejectOrder();
+            } elseif ($id === 'pending_orders' && $method === 'GET') {
+                $controller->pendingOrders();
             } elseif ($method === 'GET') {
-                if ($id && is_numeric($id)) {
+                if ($id && is_numeric($id) && $action === 'instances') {
+                    $controller->instances($id);
+                } elseif ($id && is_numeric($id)) {
                     $controller->show($id);
                 } else {
                     $controller->index();
