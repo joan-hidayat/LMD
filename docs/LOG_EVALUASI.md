@@ -18,7 +18,7 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | ID | Repo | Temuan | Kategori | Status |
 |---|---|---|---|---|
 | T-01 | lmd, software-showcase | Endpoint `licenses/order`, `licenses/order_status`, `licenses/approve_order` dipanggil Showcase (`assets/js/app.js`) tetapi tidak ada di router LMD (`api/index.php`). Wizard berlangganan berhenti di langkah bayar. | Blocker fungsional | Selesai — lihat Riwayat "T-01 + T-12" |
-| T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. | Blocker desain | Terbuka |
+| T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. Bukti nyata di data lokal: lisensi Budi Santoso tercatat punya 2 instance, salah satunya ber-domain IP `192.168.0.116`. | Blocker desain | Terbuka |
 | T-03 | sample-mini-pos | `max_users` diterima dari LMD tetapi belum ditegakkan (belum ada batas sesi/akun). | Fungsional | Selesai — lihat Riwayat "Login Mini POS" (metode named users) |
 | T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Ditunda — tahap pengembangan |
 | T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Ditunda — tahap pengembangan |
@@ -31,7 +31,7 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-12 | lmd, software-showcase | Paket & harga di wizard Showcase hardcode (Starter 3 user Rp150rb, Pro 15 user Rp350rb, Enterprise 50 user Rp850rb) dan berbeda dengan data LMD `seed.sql` (APO_BASIC 3 user Rp300rb, APO_PRO 10 user Rp750rb, APO_ENT 50 user Rp1,5jt annual). | Fungsional / konsistensi data | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-13 | lmd | `future_module_access` ada di tabel `packages` (ERD level 9 🟢 FIX), tetapi belum ada logika yang menambahkan modul baru ke `subscription_modules`/`license_modules` paket terkait. | Fungsional | Terbuka |
 | T-14 | lmd, software-showcase | Istilah docs tidak sesuai kode: `validation_logs` (seharusnya `license_logs`), "Hashing SHA-256" (kode memakai `random_bytes` hex), "Level 8" di `PANDUAN_SHOWCASE.md` §10 bentrok dengan ERD Level 8. | Dokumentasi | Terbuka |
-| T-15 | lmd, sample-mini-pos, docs | Repo LMD tidak memiliki `.htaccess`, tetapi Mini POS (`app.js`) dan docs memanggil `/api/licenses/...` tanpa `index.php`. Hanya berfungsi jika ada rewrite rule di server lokal. Saat ini panggilan validate Mini POS gagal diam-diam (hanya `console.warn`). Showcase sudah dipindah ke `/api/index.php/...`. | Fungsional / konfigurasi | Sebagian — Showcase & Mini POS sudah memakai `/api/index.php/...`; docs (`PANDUAN_PENGGUNAAN.md`) dan `.htaccess` belum |
+| T-15 | lmd, sample-mini-pos, docs | Repo LMD tidak memiliki `.htaccess`, tetapi Mini POS (`app.js`) dan docs memanggil `/api/licenses/...` tanpa `index.php`. Hanya berfungsi jika ada rewrite rule di server lokal. Saat ini panggilan validate Mini POS gagal diam-diam (hanya `console.warn`). Showcase sudah dipindah ke `/api/index.php/...`. | Fungsional / konfigurasi | Selesai — `api/.htaccess` masuk repo, docs `PANDUAN_PENGGUNAAN.md` dilengkapi (lihat Riwayat "Rekonsiliasi WIP lokal") |
 | T-16 | software-showcase | `style.css` publik tidak punya aturan `.hidden`, sehingga keempat langkah wizard dan layar sukses tampil bersamaan. | Bug UI | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-17 | software-showcase, sample-mini-pos | Wizard meminta "password akun admin" dan menampilkan "kredensial login", tetapi Mini POS tidak punya login dan LMD sengaja tidak menyimpan password. Perlu keputusan: hapus field, atau buat akun admin di aplikasi client. | Desain / UX | Selesai — lihat Riwayat "Login Mini POS" |
 | T-18 | software-showcase | Semua produk Showcase (termasuk Mini POS Express, DineFlow Resto) berlangganan memakai paket `APOTEK`, karena `products.js` belum punya pemetaan ke kode aplikasi LMD. Kode sudah membaca `product.lmdAppCode` (default `APOTEK`). | Fungsional / data | Terbuka |
@@ -42,6 +42,43 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 ---
 
 ## Riwayat
+
+### 2026-10-24 — Rekonsiliasi WIP lokal `License-Management-Dashboard`
+**Jenis:** Analisis + perubahan kode
+**Repo:** lmd
+
+**Latar belakang**
+- Saat sinkronisasi `main` ke XAMPP lokal, AI lokal menemukan 6 file LMD yang dimodifikasi tetapi belum pernah di-commit, plus `api/.htaccess` yang untracked.
+- Backup penuh: `C:\xampp\htdocs\_backup_20261024_0047\` (folder ketiga aplikasi + dump `central_saas.sql`).
+- Perubahan lokal diamankan ke branch `origin/local-wip-20261024` (commit `0154bca`), lalu folder lokal disinkronkan ke `main` (`0310e58`, `5fd9224`, `5d04fe8`). Verifikasi di PC: 5/5 berhasil.
+
+**Hasil perbandingan WIP lokal vs `main`**
+| Fitur di WIP lokal | Status di `main` | Tindakan |
+|---|---|---|
+| `licenses/order`, `order_status`, `approve_order`, panel approval di Dashboard | Sudah ada (implementasi PR #1) | Tidak diporting |
+| `GET licenses/{id}/instances` + modal detail instance + kolom Kuota User | Belum ada | **Diporting**, memakai komponen modal yang sudah ada |
+| `GET licenses/pending_orders` | Belum ada | **Diporting** (`OrderModel::listPending`) |
+| `api/.htaccess` | Belum ada | **Masuk repo** → T-15 selesai |
+| Docs bagian 6–9 `PANDUAN_PENGGUNAAN.md` | Belum ada | **Diporting** sebagai bagian 7–10, disesuaikan dengan kode `main` |
+
+**Masalah di WIP lokal yang sengaja tidak dibawa**
+- Instance dibuat dengan status `'pending'` yang tidak ada di enum `application_instances.status` (gagal di MySQL mode strict).
+- `order_status` dan respons `order` membuka `license_key` sebelum pembayaran di-approve.
+- Approve tanpa transaksi dan tanpa pengecekan pesanan yang sudah diproses; masa aktif tidak dihitung dari tanggal approve.
+- Variabel `$ip` tidak terdefinisi saat mencatat log order.
+- Paket yang tidak ditemukan diam-diam diganti paket pertama; total tagihan tanpa PPN.
+- `instance_key` tidak mengikuti konvensi Mini POS, sehingga `validate` membuat instance baru.
+
+**Perubahan**
+- `api/index.php`, `LicenseController` (`instances()`, `pendingOrders()`), `OrderModel::listPending()`.
+- `index.html` + `assets/js/app.js` + `assets/css/style.css`: kolom Modules/Kuota User/Instances, tombol **Detail**, modal instance.
+- `api/.htaccess`.
+- `docs/PANDUAN_PENGGUNAAN.md`: bagian 7–10 baru (order & approval API, backlog n8n, application instances, proteksi akses aplikasi client); FAQ no. 4 dikoreksi (klaim "Sangat Aman" → 🟡, rujuk T-02).
+- `docs/EKOSISTEM_CARA_KERJA.md` & tab Ekosistem: endpoint dan status baru.
+
+**Verifikasi**
+- `GET licenses/pending_orders` → daftar pesanan pending; `GET licenses/{id}/instances` → data instance; id tidak ada → 404.
+- Browser: menu Licenses → Detail membuka modal instance; tidak ada error JS.
 
 ### 2026-10-23 — Login Mini POS (T-17, T-03, T-06, T-19, T-20)
 **Jenis:** Perubahan kode

@@ -216,6 +216,24 @@ class OrderModel {
         return $result;
     }
 
+    public function listPending() {
+        $stmt = $this->db->prepare("
+            SELECT s.subscription_no, s.total_price, s.created_at,
+                   c.name as customer_name, c.email as customer_email, c.phone as customer_phone,
+                   a.code as app_code, p.code as package_code, p.name as package_name, s.max_users,
+                   (SELECT ai.domain FROM application_instances ai JOIN licenses l ON ai.license_id = l.id
+                    WHERE l.subscription_id = s.id ORDER BY ai.id ASC LIMIT 1) as instance_domain
+            FROM subscriptions s
+            JOIN customers c ON s.customer_id = c.id
+            JOIN applications a ON s.application_id = a.id
+            JOIN packages p ON s.package_id = p.id
+            WHERE s.status = 'pending'
+            ORDER BY s.created_at ASC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     private function findOrderablePackage($appCode, $pkgCode) {
         $stmt = $this->db->prepare("
             SELECT p.* FROM packages p

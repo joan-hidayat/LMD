@@ -53,6 +53,7 @@ createApp({
             // Modal States
             modalType: null,
             modalTitle: '',
+            instanceDetail: { license: null, instances: [], loading: false, error: null },
             showModal: false,
 
             // Form Models
@@ -243,6 +244,24 @@ createApp({
                 this.modalTitle = 'Tester License API Validation';
                 this.tester.license_key = this.licenses[0]?.license_key || '';
                 this.tester.result = null;
+            }
+        },
+
+        async viewInstances(lic) {
+            this.instanceDetail = { license: lic, instances: [], loading: true, error: null };
+            this.modalType = 'instances';
+            this.modalTitle = 'Instance Terhubung';
+            this.showModal = true;
+            try {
+                const res = await fetch(`api/index.php/licenses/${lic.id}/instances`);
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                this.instanceDetail.license = { ...lic, ...json.data };
+                this.instanceDetail.instances = json.data.instances || [];
+            } catch (err) {
+                this.instanceDetail.error = 'Gagal memuat instance: ' + err.message;
+            } finally {
+                this.instanceDetail.loading = false;
             }
         },
 

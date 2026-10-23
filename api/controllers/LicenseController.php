@@ -110,6 +110,32 @@ class LicenseController {
         });
     }
 
+    /**
+     * Daftar pesanan pending (untuk otomasi seperti n8n; dashboard memakai data subscriptions)
+     */
+    public function pendingOrders() {
+        sendJsonResponse($this->orderModel->listPending(), 200, 'Pending orders fetched.');
+    }
+
+    /**
+     * Instance (perangkat/server client) yang terhubung ke satu lisensi
+     */
+    public function instances($licenseId) {
+        $license = $this->licenseModel->getById($licenseId);
+        if (!$license) {
+            sendJsonResponse(null, 404, 'License not found.');
+        }
+        sendJsonResponse([
+            'license_key' => $license['license_key'],
+            'customer_name' => $license['customer_name'],
+            'application_name' => $license['application_name'],
+            'max_users' => (int) $license['max_users'],
+            'status' => $license['status'],
+            'expires_at' => $license['expires_at'],
+            'instances' => $license['instances']
+        ], 200, 'Instances fetched successfully.');
+    }
+
     public function rejectOrder() {
         $this->handleOrderDecision(function ($subscriptionNo, $input) {
             return [$this->orderModel->rejectOrder($subscriptionNo, $input['reason'] ?? null), 'Order rejected.'];
