@@ -143,6 +143,8 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | `order`, `order_status`, `approve_order` | ❌ Belum ada | Penghambat utama Alur B |
 | Penguncian instance + domain | 🟡 Sebagian | Instance dicatat, tidak pernah ditolak |
 | Penegakan `max_users` | 🟡 Sebagian | Dikirim LMD, belum ditegakkan di client |
+| `future_module_access` (modul baru otomatis) | 🟡 Sebagian | Kolom ada, logika penyalinan modul belum ada (T-13) |
+| Paket & harga Showcase sinkron dengan LMD | 🟡 Sebagian | Showcase masih hardcode, angka berbeda (T-12) |
 | API key / auth admin / rate limit | 📋 Rencana | Hardening sebelum production |
 | Password & credential di `.env` | 📋 Rencana | Sengaja hardcode selama pengembangan |
 | n8n + payment gateway | 📋 Rencana | Bergantung pada `approve_order` |
