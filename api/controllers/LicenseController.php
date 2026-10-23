@@ -67,4 +67,68 @@ class LicenseController {
         }
     }
     
+
+    public function createOrder() {
+        $input = getJsonInput();
+        if (empty($input['customer_email']) || empty($input['customer_name'])) {
+            sendJsonResponse(null, 400, 'customer_name and customer_email are required.');
+        }
+
+        try {
+            $order = $this->licenseModel->createPendingOrder($input);
+            sendJsonResponse($order, 201, 'Order created successfully, awaiting payment verification.');
+        } catch (Exception $e) {
+            sendJsonResponse(null, 500, $e->getMessage());
+        }
+    }
+
+    public function getOrderStatus() {
+        $subNo = $_GET['subscription_no'] ?? null;
+        if (empty($subNo)) {
+            sendJsonResponse(null, 400, 'subscription_no query parameter is required.');
+        }
+
+        $res = $this->licenseModel->getOrderStatus($subNo);
+        if (!$res) {
+            sendJsonResponse(null, 404, 'Subscription order not found.');
+        }
+        sendJsonResponse($res, 200, 'Order status retrieved.');
+    }
+
+    public function getPendingOrders() {
+        $orders = $this->licenseModel->getPendingOrders();
+        sendJsonResponse($orders, 200, 'Pending orders fetched.');
+    }
+
+    public function approveOrder() {
+        $input = getJsonInput();
+        $subNo = $input['subscription_no'] ?? null;
+        if (empty($subNo)) {
+            sendJsonResponse(null, 400, 'subscription_no is required.');
+        }
+
+        try {
+            $result = $this->licenseModel->approveOrder($subNo);
+            sendJsonResponse($result, 200, 'Order approved, license and instance successfully provisioned!');
+        } catch (Exception $e) {
+            sendJsonResponse(null, 500, $e->getMessage());
+        }
+    }
+
+    /**
+     * Get Application Instances for a specific license
+     */
+    public function getInstances($licenseId) {
+        $license = $this->licenseModel->getById($licenseId);
+        if (!$license) {
+            sendJsonResponse(null, 404, 'License not found.');
+        }
+        sendJsonResponse([
+            'license_key'  => $license['license_key'],
+            'customer_name'=> $license['customer_name'],
+            'max_users'    => $license['max_users'],
+            'status'       => $license['status'],
+            'instances'    => $license['instances'] ?? []
+        ], 200, 'Instances fetched successfully.');
+    }
 }

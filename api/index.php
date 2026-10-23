@@ -98,8 +98,18 @@ try {
                 $controller->validate();
             } elseif ($id === 'register') {
                 $controller->register();
+            } elseif ($id === 'order') {
+                $controller->createOrder();
+            } elseif ($id === 'order_status') {
+                $controller->getOrderStatus();
+            } elseif ($id === 'pending_orders') {
+                $controller->getPendingOrders();
+            } elseif ($id === 'approve_order') {
+                $controller->approveOrder();
             } elseif ($method === 'GET') {
-                if ($id && is_numeric($id)) {
+                if ($id && is_numeric($id) && $action === 'instances') {
+                    $controller->getInstances($id);
+                } elseif ($id && is_numeric($id)) {
                     $controller->show($id);
                 } else {
                     $controller->index();
@@ -110,6 +120,7 @@ try {
                 }
             }
             break;
+
 
         case 'audit':
         case 'logs':

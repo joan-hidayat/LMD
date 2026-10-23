@@ -70,8 +70,6 @@
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
-                <a href="http://localhost:8080/software-showcase/" target="_blank" class="btn btn-sm" style="background: rgba(99, 102, 241, 0.15); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 700; text-decoration: none;">🚀 Portfolio Showcase</a>
-                <a href="client_demo/apotek.html" target="_blank" class="btn btn-sm" style="background: rgba(13, 148, 136, 0.2); color: #2dd4bf; border: 1px solid rgba(13, 148, 136, 0.4); font-weight: 700; text-decoration: none;">💊 Demo Client Apotek</a>
                 <button class="btn btn-primary btn-sm" @click="openModal('tester')">⚡ Test License API</button>
             </div>
         </header>
@@ -100,6 +98,56 @@
                         </div>
                     </div>
                     <button class="btn btn-sm btn-danger" @click="scrollToAttentionList">Lihat Daftar Perhatian ↓</button>
+                </div>
+
+                <!-- LEVEL 8 COMMERCIAL: PENDING ORDERS APPROVAL PANEL -->
+                <div v-if="pendingOrders && pendingOrders.length > 0" class="card" style="margin-bottom: 24px; border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.04);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 24px;">🔔</span>
+                            <div>
+                                <h4 style="font-size: 15px; font-weight: 800; color: #b45309; margin: 0;">Persetujuan Pembayaran & Aktivasi Domain Klien (Level 8 Commercial)</h4>
+                                <p style="font-size: 12px; color: var(--muted); margin: 2px 0 0;">Terdapat {{ pendingOrders.length }} pesanan baru dari Showcase yang menunggu verifikasi pembayaran.</p>
+                            </div>
+                        </div>
+                        <span class="badge-pill badge-warning" style="font-size: 12px; font-weight: 800; background: #fef3c7; color: #b45309; padding: 4px 10px; border-radius: 6px;">{{ pendingOrders.length }} Menunggu Approval</span>
+                    </div>
+
+                    <div class="table-container" style="background: white; border-radius: 8px; overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>No. Subskripsi</th>
+                                    <th>Nama Klien</th>
+                                    <th>Kontak</th>
+                                    <th>Paket & Aplikasi</th>
+                                    <th>Domain Instans</th>
+                                    <th>Total Tagihan</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="order in pendingOrders" :key="order.sub_id">
+                                    <td><code>{{ order.subscription_no }}</code></td>
+                                    <td><strong>{{ order.customer_name }}</strong></td>
+                                    <td>
+                                        <small>{{ order.customer_email }}<br>{{ order.customer_phone }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge-pill badge-info">{{ order.package_name }}</span>
+                                        <small style="display: block; color: var(--muted); margin-top: 2px;">{{ order.app_name }} ({{ order.max_users }} User)</small>
+                                    </td>
+                                    <td><code style="color: #0284c7; font-weight: 700;">{{ order.domain }}</code></td>
+                                    <td><strong style="color: #10b981;">{{ formatRupiah(order.total_price) }}</strong></td>
+                                    <td>
+                                        <button class="btn btn-sm" style="background: #10b981; color: white; font-weight: 800; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer;" @click="approveOrder(order.subscription_no)">
+                                            ✓ Approve & Aktifkan
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- STAT KPI CARDS -->
@@ -556,24 +604,98 @@
                                     <th>License Key</th>
                                     <th>Application</th>
                                     <th>Customer</th>
-                                    <th>Entitled Modules</th>
-                                    <th>Instances</th>
+                                    <th>Kuota User</th>
+                                    <th>Instances Aktif</th>
                                     <th>Expires At</th>
                                     <th>Status</th>
+                                    <th>Detail</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="lic in licenses" :key="lic.id">
-                                    <td><strong style="font-family: monospace; color: var(--primary); font-size: 13px;">{{ lic.license_key }}</strong></td>
+                                <tr v-for="lic in licenses" :key="lic.id" style="cursor:pointer;" @click="viewInstances(lic)">
+                                    <td><strong style="font-family: monospace; color: var(--primary); font-size: 12px;">{{ lic.license_key }}</strong></td>
                                     <td>{{ lic.application_name }}</td>
-                                    <td>{{ lic.customer_name }}</td>
-                                    <td><strong>{{ lic.modules_count }} Modules</strong></td>
-                                    <td>{{ lic.active_instances_count }} Active Instance(s)</td>
+                                    <td><strong>{{ lic.customer_name }}</strong></td>
+                                    <td>
+                                        <span style="background: rgba(99,102,241,0.15); color:#818cf8; padding: 3px 10px; border-radius:20px; font-weight:700; font-size:12px;">
+                                            👥 {{ lic.max_users }} Users
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span :style="{
+                                            background: lic.active_instances_count > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)',
+                                            color: lic.active_instances_count > 0 ? '#10b981' : '#9ca3af',
+                                            padding: '3px 10px', borderRadius: '20px', fontWeight: '700', fontSize: '12px'
+                                        }">
+                                            🖥️ {{ lic.active_instances_count }} Aktif
+                                        </span>
+                                    </td>
                                     <td>{{ formatDate(lic.expires_at) }}</td>
                                     <td><span class="status" :class="'status-' + lic.status">{{ lic.status }}</span></td>
+                                    <td>
+                                        <button @click.stop="viewInstances(lic)" style="background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid rgba(99,102,241,0.4); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px;">
+                                            🔍 Lihat
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: Instance Detail -->
+            <div v-if="showInstanceModal" @click.self="showInstanceModal=false" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;">
+                <div style="background:#1e2030;border:1px solid rgba(99,102,241,0.4);border-radius:16px;padding:30px;max-width:720px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+                        <div>
+                            <h3 style="margin:0;font-size:18px;font-weight:800;color:#e2e8f0;">🖥️ Application Instances</h3>
+                            <p style="margin:4px 0 0;color:#94a3b8;font-size:13px;">{{ selectedLicense?.customer_name }}</p>
+                        </div>
+                        <button @click="showInstanceModal=false" style="background:rgba(255,255,255,0.1);border:none;color:#94a3b8;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:18px;">✕</button>
+                    </div>
+
+                    <!-- License Info Banner -->
+                    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+                        <div style="font-family:monospace;font-size:12px;color:#818cf8;margin-bottom:6px;">{{ selectedLicense?.license_key }}</div>
+                        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                            <div><span style="color:#94a3b8;font-size:12px;">Paket:</span> <strong style="font-size:13px;color:#e2e8f0;">{{ selectedLicense?.application_name }}</strong></div>
+                            <div><span style="color:#94a3b8;font-size:12px;">Kuota User:</span> <strong style="font-size:13px;color:#818cf8;">👥 {{ selectedLicense?.max_users }} Users</strong></div>
+                            <div><span style="color:#94a3b8;font-size:12px;">Status:</span> <span class="status" :class="'status-' + selectedLicense?.status" style="font-size:11px;">{{ selectedLicense?.status }}</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div v-if="instancesLoading" style="text-align:center;padding:40px;color:#94a3b8;">
+                        <div style="font-size:24px;margin-bottom:10px;">⏳</div>
+                        <p>Memuat data instances...</p>
+                    </div>
+
+                    <!-- No instances -->
+                    <div v-else-if="selectedInstances.length === 0" style="text-align:center;padding:40px;color:#94a3b8;">
+                        <div style="font-size:40px;margin-bottom:10px;">🚫</div>
+                        <p>Belum ada perangkat yang terhubung ke license ini.</p>
+                    </div>
+
+                    <!-- Instances List -->
+                    <div v-else>
+                        <p style="color:#94a3b8;font-size:13px;margin-bottom:14px;">Total <strong style="color:#10b981;">{{ selectedInstances.length }}</strong> perangkat terhubung:</p>
+                        <div v-for="inst in selectedInstances" :key="inst.id" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 18px;margin-bottom:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                <strong style="color:#e2e8f0;font-size:14px;">{{ inst.instance_name }}</strong>
+                                <span :style="{
+                                    background: inst.status === 'active' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                                    color: inst.status === 'active' ? '#10b981' : '#ef4444',
+                                    padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700'
+                                }">{{ inst.status === 'active' ? '🟢 Aktif' : '🔴 ' + inst.status }}</span>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div style="font-size:12px;"><span style="color:#94a3b8;">🌐 Domain:</span> <code style="color:#38bdf8;background:rgba(56,189,248,0.1);padding:2px 6px;border-radius:4px;">{{ inst.domain || '-' }}</code></div>
+                                <div style="font-size:12px;"><span style="color:#94a3b8;">🏭 Environment:</span> <span style="color:#a78bfa;">{{ inst.environment }}</span></div>
+                                <div style="font-size:12px;"><span style="color:#94a3b8;">👁️ Last Seen:</span> <span style="color:#fbbf24;">{{ inst.last_seen_at ? formatDate(inst.last_seen_at) : 'Belum pernah' }}</span></div>
+                                <div style="font-size:12px;"><span style="color:#94a3b8;">📅 Terdaftar:</span> <span style="color:#94a3b8;">{{ formatDate(inst.created_at) }}</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1168,6 +1290,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=20261022_v2"></script>
+<script src="./assets/js/app.js?v=20261023_instances"></script>
 </body>
 </html>

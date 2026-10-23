@@ -19,6 +19,9 @@ createApp({
                 total_revenue: 0
             },
 
+            // Level 8 Commercial: Pending Orders waiting for approval
+            pendingOrders: [],
+
             analyticsTab: 'executive',
 
             // Analytics for Decision-Making Charts
@@ -68,7 +71,13 @@ createApp({
                 domain: 'apotek-demo.com',
                 result: null,
                 loading: false
-            }
+            },
+
+            // Instance Detail Modal
+            showInstanceModal: false,
+            selectedLicense: null,
+            selectedInstances: [],
+            instancesLoading: false
         };
     },
     async mounted() {
@@ -108,8 +117,43 @@ createApp({
                         }
                     });
                 }
+                await this.fetchPendingOrders();
             } catch (err) {
                 console.error('Failed to load dashboard data:', err);
+            }
+        },
+
+        async fetchPendingOrders() {
+            try {
+                const res = await fetch('api/index.php/licenses/pending_orders');
+                const json = await res.json();
+                if (json.success && Array.isArray(json.data)) {
+                    this.pendingOrders = json.data;
+                }
+            } catch (err) {
+                console.error('Failed to load pending orders:', err);
+            }
+        },
+
+        async approveOrder(subNo) {
+            if (!confirm(`Konfirmasi persetujuan pembayaran untuk subskripsi ${subNo}?`)) return;
+            try {
+                const res = await fetch('api/index.php/licenses/approve_order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subscription_no: subNo })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    alert(`🎉 Berhasil! ${json.message}\nInstance Domain: ${json.data.client_domain}`);
+                    await this.fetchPendingOrders();
+                    await this.fetchDashboardData();
+                    await this.fetchAllData();
+                } else {
+                    alert('Gagal approve: ' + json.message);
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi: ' + err.message);
             }
         },
 
@@ -209,6 +253,26 @@ createApp({
                 if (json.success) this.auditLogs = json.data;
             } catch (err) {
                 console.error('Error fetching audit logs:', err);
+            }
+        },
+
+        async viewInstances(lic) {
+            this.selectedLicense = lic;
+            this.selectedInstances = [];
+            this.instancesLoading = true;
+            this.showInstanceModal = true;
+            try {
+                const res = await fetch(`api/index.php/licenses/${lic.id}/instances`);
+                const json = await res.json();
+                if (json.success) {
+                    this.selectedInstances = json.data.instances || [];
+                    // Update max_users from fresh API response
+                    this.selectedLicense = { ...lic, max_users: json.data.max_users };
+                }
+            } catch (err) {
+                console.error('Error fetching instances:', err);
+            } finally {
+                this.instancesLoading = false;
             }
         },
 
