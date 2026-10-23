@@ -43,6 +43,7 @@ class SubscriptionModel {
             $startDate = $data['start_date'] ?? date('Y-m-d');
             $endDate = $data['end_date'] ?? date('Y-m-d', strtotime('+1 year', strtotime($startDate)));
             $maxUsers = $data['max_users'] ?? $package['max_users'];
+            $maxInstances = max(1, (int) ($data['max_instances'] ?? $package['max_instances']));
             $basePrice = $data['base_price'] ?? $package['base_price'];
             $discount = $data['discount_amount'] ?? 0.00;
             $tax = $data['tax_amount'] ?? ($basePrice * 0.11);
@@ -51,9 +52,9 @@ class SubscriptionModel {
             // 1. Insert Subscription
             $subStmt = $this->db->prepare("
                 INSERT INTO subscriptions 
-                (subscription_no, customer_id, application_id, package_id, start_date, end_date, billing_cycle, max_users, base_price, addon_price, discount_amount, tax_amount, total_price, status)
+                (subscription_no, customer_id, application_id, package_id, start_date, end_date, billing_cycle, max_users, max_instances, base_price, addon_price, discount_amount, tax_amount, total_price, status)
                 VALUES 
-                (:sub_no, :customer_id, :application_id, :package_id, :start_date, :end_date, :billing_cycle, :max_users, :base_price, 0.00, :discount_amount, :tax_amount, :total_price, 'active')
+                (:sub_no, :customer_id, :application_id, :package_id, :start_date, :end_date, :billing_cycle, :max_users, :max_instances, :base_price, 0.00, :discount_amount, :tax_amount, :total_price, 'active')
             ");
             $subStmt->execute([
                 'sub_no' => $subNo,
@@ -64,6 +65,7 @@ class SubscriptionModel {
                 'end_date' => $endDate,
                 'billing_cycle' => $data['billing_cycle'] ?? $package['billing_cycle'],
                 'max_users' => $maxUsers,
+                'max_instances' => $maxInstances,
                 'base_price' => $basePrice,
                 'discount_amount' => $discount,
                 'tax_amount' => $tax,

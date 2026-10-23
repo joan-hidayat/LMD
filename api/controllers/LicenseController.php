@@ -130,10 +130,26 @@ class LicenseController {
             'customer_name' => $license['customer_name'],
             'application_name' => $license['application_name'],
             'max_users' => (int) $license['max_users'],
+            'max_instances' => (int) $license['max_instances'],
             'status' => $license['status'],
             'expires_at' => $license['expires_at'],
             'instances' => $license['instances']
         ], 200, 'Instances fetched successfully.');
+    }
+
+    public function updateInstanceStatus($instanceId) {
+        $status = getJsonInput()['status'] ?? '';
+        if (!in_array($status, ['active', 'blocked'], true)) {
+            sendJsonResponse(null, 400, "status must be 'active' or 'blocked'.");
+        }
+        try {
+            $this->licenseModel->setInstanceStatus((int) $instanceId, $status);
+            sendJsonResponse(['id' => (int) $instanceId, 'status' => $status], 200, 'Instance status updated.');
+        } catch (OutOfBoundsException $e) {
+            sendJsonResponse(null, 404, $e->getMessage());
+        } catch (DomainException $e) {
+            sendJsonResponse(null, 409, $e->getMessage());
+        }
     }
 
     public function rejectOrder() {

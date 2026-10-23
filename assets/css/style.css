@@ -868,3 +868,7 @@ td code, .code-pill {
 .instance-meta dd { margin: 0; font-size: 12px; word-break: break-all; }
 .instance-meta code { font-family: var(--font-mono); font-size: 11px; color: #7dd3fc; }
 @media (max-width: 640px) { .instance-meta { grid-template-columns: 1fr; } }
+.instance-btn.over-quota { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+.quota-over { color: #fbbf24; font-weight: 700; }
+.instance-warning { font-size: 12px; color: #fbbf24; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 8px 12px; }
+.instance-actions { display: flex; justify-content: flex-end; margin-top: 10px; }

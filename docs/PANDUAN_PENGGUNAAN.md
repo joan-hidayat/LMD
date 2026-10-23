@@ -276,8 +276,9 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
    - Request tanpa API Key yang sah akan ditolak oleh gateway (`401 Unauthorized`).
 
 2. **🌐 Binding Domain & Instance Key (Anti-Clone / Anti-Piracy)**:
-   - Lisensi dikunci secara spesifik ke gabungan `license_key` + `domain` + `instance_key`.
-   - Jika kredensial lisensi dicuri dan dipasang di domain lain (misal: `hacker-site.com`), API validasi otomatis mengembalikan `"valid": false, "reason": "domain_mismatch"`.
+   - ✅ Setiap instalasi (`instance_key`) dikunci ke domain pertamanya. Domain berbeda → `"valid": false, "reason": "domain_mismatch"`.
+   - ✅ Jumlah instalasi dibatasi kuota paket (`max_instances`); instalasi baru di luar kuota → `"reason": "instance_limit_reached"`. Admin dapat memblokir instalasi (`"reason": "instance_blocked"`).
+   - 🟡 Domain dan instance key masih dikirim oleh client sendiri sehingga dapat dipalsukan oleh pemegang license key; perlindungan penuh membutuhkan request bertanda tangan (T-04 / T-22).
 
 3. **🔒 Kriptografi License Key & Hashing SHA-256**:
    - String License Key (`LIC-DISTRIBUTOR-4B6E...`) dan Activation Key diproduksi menggunakan Hashing SHA-256 acak yang tidak dapat ditebak (*unpredictable key generation*).
@@ -306,7 +307,8 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
 3. **Kapan grafik di dashboard diperbarui?**
    - Data grafik diperbarui secara real-time setiap kali halaman dimuat, atau dapat diperbarui manual dengan menekan tombol **"🔄 Segarkan Data"** di pojok kanan atas dashboard.
 4. **Apakah aplikasi aman dari duplikasi lisensi di server lain?**
-   - 🟡 **Belum sepenuhnya.** Saat ini `validate` mencatat setiap instance dan domain yang memakai lisensi (terlihat di menu **Licenses → Detail**), tetapi belum menolak instance atau domain yang tidak dikenal. Penguncian ini direncanakan di temuan **T-02** (`docs/LOG_EVALUASI.md`).
+   - ✅ **Sebagian besar.** Setiap instalasi terkunci ke domainnya dan jumlah instalasi dibatasi kuota paket (Basic 1, Professional 2, Enterprise 5 lokasi). Instalasi baru di luar kuota ditolak, dan admin dapat memblokir instalasi tidak sah di **Licenses → Detail**.
+   - 🟡 Pihak yang mencuri license key **dan** meniru domain serta instance key aslinya masih bisa lolos, karena data itu dikirim oleh client. Ini ditutup oleh request bertanda tangan (T-22).
 
 ---
 
@@ -414,7 +416,7 @@ Satu **instance** adalah satu instalasi aplikasi client (server toko / domain), 
 2. Kolom **Kuota User** menampilkan `max_users`; kolom **Instances** menampilkan jumlah instance terdaftar.
 3. Klik **🖥️ … instance · Detail** untuk membuka daftar instance: nama, domain, instance key, terakhir aktif, tanggal terdaftar, dan status.
 
-Jika satu lisensi memiliki instance tak dikenal (misalnya domain berupa alamat IP), itu tanda lisensi dipakai dari tempat lain. Penolakan otomatis untuk kasus ini direncanakan di T-02.
+Kolom **Instalasi** menampilkan `aktif / kuota` dan berwarna kuning jika melebihi kuota (data lama sebelum aturan kuota). Di modal detail, admin dapat **Blokir instalasi** atau **Aktifkan kembali** (tetap tunduk pada kuota). Instalasi yang diblokir ditolak saat validasi berikutnya dan tidak dihitung dalam kuota.
 
 ### 9.3. Endpoint
 `GET /licenses/{license_id}/instances`

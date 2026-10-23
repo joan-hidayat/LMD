@@ -23,7 +23,7 @@ class PackageModel {
 
     public function getPublicByAppCode($appCode) {
         $stmt = $this->db->prepare("
-            SELECT p.id, p.code, p.name, p.description, p.base_price, p.billing_cycle, p.max_users, p.future_module_access,
+            SELECT p.id, p.code, p.name, p.description, p.base_price, p.billing_cycle, p.max_users, p.max_instances, p.future_module_access,
                    a.code as application_code, a.name as application_name
             FROM packages p
             JOIN applications a ON p.application_id = a.id
@@ -70,8 +70,8 @@ class PackageModel {
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO packages (application_id, code, name, slug, description, base_price, billing_cycle, max_users, future_module_access, status, is_public, sort_order)
-                VALUES (:application_id, :code, :name, :slug, :description, :base_price, :billing_cycle, :max_users, :future_module_access, :status, :is_public, :sort_order)
+                INSERT INTO packages (application_id, code, name, slug, description, base_price, billing_cycle, max_users, max_instances, future_module_access, status, is_public, sort_order)
+                VALUES (:application_id, :code, :name, :slug, :description, :base_price, :billing_cycle, :max_users, :max_instances, :future_module_access, :status, :is_public, :sort_order)
             ");
             $stmt->execute([
                 'application_id' => $data['application_id'],
@@ -82,6 +82,7 @@ class PackageModel {
                 'base_price' => $data['base_price'] ?? 0.00,
                 'billing_cycle' => $data['billing_cycle'] ?? 'monthly',
                 'max_users' => $data['max_users'] ?? 1,
+                'max_instances' => max(1, (int) ($data['max_instances'] ?? 1)),
                 'future_module_access' => !empty($data['future_module_access']) ? 1 : 0,
                 'status' => $data['status'] ?? 'active',
                 'is_public' => isset($data['is_public']) ? ($data['is_public'] ? 1 : 0) : 1,
