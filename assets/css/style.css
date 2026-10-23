@@ -761,3 +761,93 @@ td code, .code-pill {
     .layout-grid { grid-template-columns: 1fr; }
     .content { padding: 20px; }
 }
+/* ==============================================================================
+   BUKU PANDUAN — TAB EKOSISTEM CENTRAL SAAS
+   Warna per sistem: LMD = primary, Showcase = amber, Client = emerald
+   ============================================================================== */
+.eco { display: flex; flex-direction: column; gap: 20px; }
+.eco .card { margin-bottom: 0; display: flex; flex-direction: column; gap: 12px; }
+.eco code { font-family: var(--font-mono); font-size: 11.5px; color: #7dd3fc; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 1px 5px; }
+.eco-intro h3 { font-size: 20px; font-weight: 800; }
+.eco-intro p, .eco-p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; max-width: 80ch; }
+.eco-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.eco-h { font-size: 16px; font-weight: 800; }
+.eco-note { font-size: 12px; color: var(--text-muted); }
+.eco-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.eco-tag { display: inline-block; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+.eco-t-lmd  { background: rgba(99, 102, 241, 0.16); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.35); }
+.eco-t-shop { background: rgba(245, 158, 11, 0.14); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+.eco-t-app  { background: rgba(16, 185, 129, 0.14); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+.eco-t-bad  { background: rgba(239, 68, 68, 0.14); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+
+/* Diagram */
+.eco-diagram { overflow-x: auto; background: #050811; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px; }
+.eco-diagram svg { display: block; min-width: 680px; width: 100%; height: auto; }
+.eco-diagram text { font-family: var(--font-main); fill: var(--text-primary); }
+.eco-ttl { font-weight: 800; font-size: 15px; }
+.eco-sub { fill: var(--text-secondary) !important; font-size: 12px; }
+.eco-lbl { font-family: var(--font-mono) !important; font-size: 11px; fill: var(--text-muted) !important; }
+.eco-lbl-bad { fill: #f87171 !important; }
+.eco-box-lmd  { fill: rgba(99, 102, 241, 0.12); stroke: var(--primary); stroke-width: 1.5; }
+.eco-box-shop { fill: rgba(245, 158, 11, 0.10); stroke: var(--amber); stroke-width: 1.5; }
+.eco-box-app  { fill: rgba(16, 185, 129, 0.10); stroke: var(--emerald); stroke-width: 1.5; }
+.eco-box-db   { fill: var(--bg-surface); stroke: var(--text-muted); stroke-width: 1.5; }
+.eco-arrow { stroke: var(--text-muted); fill: none; stroke-width: 1.5; }
+.eco-arrow-bad { stroke: var(--danger); fill: none; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.eco-head { fill: var(--text-muted); }
+.eco-head-bad { fill: var(--danger); }
+
+/* Lapisan data */
+.eco-layers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.eco-layer { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.eco-layer .eco-tag { align-self: flex-start; }
+.eco-q { font-size: 12px; color: var(--text-secondary); }
+.eco-layer ul { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-primary); display: flex; flex-direction: column; gap: 3px; }
+.eco-ex { font-size: 11.5px; color: var(--text-muted); border-top: 1px dashed var(--border-subtle); padding-top: 8px; line-height: 1.5; }
+
+.eco-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.eco-box { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.eco-box .eco-tag { align-self: flex-start; }
+.eco-box strong { font-size: 13px; }
+.eco-box p { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+
+.eco-code { white-space: pre; word-break: normal; overflow-x: auto; margin: 0; }
+
+/* Alur langkah bernomor */
+.eco-flow { list-style: none; margin: 0; padding: 0; counter-reset: eco-step; display: flex; flex-direction: column; }
+.eco-flow li { counter-increment: eco-step; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; padding-bottom: 14px; position: relative; }
+.eco-flow li::before { content: counter(eco-step); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; background: var(--bg-surface); border: 1.5px solid var(--border-subtle); color: var(--text-primary); }
+.eco-flow li:not(:last-child)::after { content: ""; position: absolute; left: 13px; top: 28px; bottom: 2px; width: 1.5px; background: var(--border-subtle); }
+.eco-flow li > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; align-items: flex-start; }
+.eco-flow p { font-size: 12.5px; color: var(--text-primary); line-height: 1.55; margin: 0; }
+.eco-flow p.eco-note { color: var(--text-muted); font-size: 11.5px; }
+.eco-flow li.eco-missing::before { border-color: var(--danger); color: #f87171; }
+
+/* Pemeriksaan validate */
+.eco-sublabel { font-size: 13px; font-weight: 700; }
+.eco-checks { display: flex; flex-direction: column; gap: 6px; }
+.eco-check { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 9px 12px; font-size: 12.5px; }
+.eco-r { font-family: var(--font-mono); font-size: 11px; text-align: right; }
+.eco-no { color: #f87171; }
+.eco-yes { color: #34d399; }
+
+.eco-callout { border-left: 3px solid var(--danger); background: rgba(239, 68, 68, 0.07); border-radius: 0 8px 8px 0; padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
+.eco-callout strong { font-size: 13px; }
+.eco-callout p { font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+.eco-callout-info { border-left-color: var(--primary); background: rgba(99, 102, 241, 0.08); }
+
+@media (max-width: 1100px) { .eco-layers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+    .eco-layers, .eco-two { grid-template-columns: 1fr; }
+    .eco-check { grid-template-columns: 1fr; }
+    .eco-r { text-align: left; }
+}
+
+/* Pesanan self-service dari Software Showcase menunggu approve */
+.alert-card.order-pending {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.25);
+    border-left-color: var(--warning);
+}
+.order-approval-card { border-left: 3px solid var(--warning); }

@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=20261022_v2">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261023_v2">
 </head>
 
 <body>
@@ -86,6 +86,20 @@
                         <p style="color: var(--muted); font-size: 13px;">Dashboard visualisasi pengambil keputusan: radar jatuh tempo, kontribusi revenue, dan adopsi fitur.</p>
                     </div>
                     <button class="btn btn-sm" @click="fetchDashboardData">🔄 Segarkan Data</button>
+                </div>
+
+                <!-- PENDING ORDER BANNER (Self-Service Showcase) -->
+                <div v-if="pendingOrders.length > 0" class="alert-card order-pending">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <span style="font-size: 26px;">🧾</span>
+                        <div>
+                            <div style="font-weight: 800; font-size: 14px;">{{ pendingOrders.length }} pesanan menunggu persetujuan pembayaran</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                                Customer dari Software Showcase sedang menunggu di layar aktivasi. Cek dana masuk, lalu approve agar lisensi langsung aktif.
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" @click="setActivePage('subscriptions')">Proses Pesanan →</button>
                 </div>
 
                 <!-- EARLY WARNING ALERT BANNER -->
@@ -509,6 +523,45 @@
                     <button class="btn btn-primary" @click="openModal('subscription')">+ Buat Subscription Baru</button>
                 </div>
 
+                <!-- PERSETUJUAN PEMBAYARAN (ORDER DARI SHOWCASE) -->
+                <div v-if="pendingOrders.length > 0" class="card order-approval-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                        <div>
+                            <h4 style="font-size: 15px; font-weight: 800;">🧾 Persetujuan Pembayaran & Aktivasi Domain Klien</h4>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Pesanan dari Software Showcase. Approve setelah dana masuk; lisensi aktif dan masa berlaku dihitung sejak tanggal approve.</p>
+                        </div>
+                        <span class="badge-pill badge-warning">{{ pendingOrders.length }} menunggu</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pesanan</th>
+                                    <th>Customer</th>
+                                    <th>Paket & Domain</th>
+                                    <th>Total Tagihan</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="sub in pendingOrders" :key="'pending-' + sub.id">
+                                    <td><code>{{ sub.subscription_no }}</code><div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">{{ formatDate(sub.created_at) }}</div></td>
+                                    <td>
+                                        <strong>{{ sub.customer_name }}</strong>
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ sub.customer_email }}<span v-if="sub.customer_phone"> · {{ sub.customer_phone }}</span></div>
+                                    </td>
+                                    <td>{{ sub.package_name }} <span style="font-size: 11px; color: var(--text-muted);">· {{ sub.max_users }} user · {{ sub.billing_cycle }}</span><div style="margin-top: 4px;"><code>{{ sub.instance_domain || '-' }}</code></div></td>
+                                    <td><strong>{{ formatRupiah(sub.total_price) }}</strong><div style="font-size: 11px; color: var(--text-muted);">termasuk PPN 11%</div></td>
+                                    <td style="white-space: nowrap;">
+                                        <button class="btn btn-sm btn-primary" @click="decideOrder(sub, 'approve')">✓ Approve</button>
+                                        <button class="btn btn-sm btn-danger" @click="decideOrder(sub, 'reject')" style="margin-left: 6px;">Tolak</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="table-responsive">
                         <table>
@@ -531,7 +584,7 @@
                                     <td>{{ sub.max_users }} Users</td>
                                     <td><strong>{{ formatRupiah(sub.total_price) }}</strong></td>
                                     <td><code style="color: var(--success);">{{ sub.license_key || 'No License' }}</code></td>
-                                    <td><span class="status status-active">{{ sub.status }}</span></td>
+                                    <td><span class="status" :class="'status-' + subscriptionStatusClass(sub.status)">{{ sub.status }}</span></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -620,6 +673,19 @@
                     <h2 style="font-size: 22px; font-weight: 800;">📚 Buku Panduan Pengguna & Integrasi API</h2>
                     <p style="color: var(--muted); font-size: 13px; margin-top: 4px;">Panduan lengkap pengelolaan Central SaaS, pendaftaran otomatis customer, dan integrasi API Lisensi.</p>
                 </div>
+
+                <!-- GUIDE TAB SWITCHER -->
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+                    <button class="btn btn-sm" :class="{ 'btn-primary': guideTab === 'manual' }" @click="guideTab = 'manual'">
+                        📘 Panduan & Integrasi API
+                    </button>
+                    <button class="btn btn-sm" :class="{ 'btn-primary': guideTab === 'ecosystem' }" @click="guideTab = 'ecosystem'">
+                        🧭 Ekosistem Central SaaS
+                    </button>
+                </div>
+
+                <!-- TAB 1: PANDUAN & INTEGRASI API -->
+                <div v-show="guideTab === 'manual'">
 
                 <!-- CARDS PRINSIP ARSITEKTUR -->
                 <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 20px;">
@@ -975,6 +1041,234 @@
                         </div>
                     </div>
                 </div>
+                </div>  <!-- /TAB 1 -->
+
+                <!-- TAB 2: EKOSISTEM CENTRAL SAAS (lihat docs/EKOSISTEM_CARA_KERJA.md) -->
+                <div v-show="guideTab === 'ecosystem'" class="eco">
+
+                    <div class="card eco-intro">
+                        <span class="eco-eyebrow">Peta sistem · versi pengembangan</span>
+                        <h3>🧭 Cara Kerja Ekosistem Central SaaS LMD</h3>
+                        <p>Tiga aplikasi, masing-masing dengan database sendiri. <strong>LMD</strong> menentukan siapa boleh memakai fitur apa. <strong>Software Showcase</strong> menjual dan menerima pesanan. <strong>Aplikasi Client</strong> (contoh: Mini POS) bertanya ke LMD sebelum membuka fiturnya, lalu mengelola login dan user-nya sendiri.</p>
+                        <div class="eco-legend">
+                            <span class="eco-tag eco-t-lmd">Central SaaS LMD</span>
+                            <span class="eco-tag eco-t-shop">Software Showcase</span>
+                            <span class="eco-tag eco-t-app">Aplikasi Client</span>
+                        </div>
+                    </div>
+
+                    <!-- 1. PETA SISTEM -->
+                    <div class="card">
+                        <span class="eco-eyebrow">1 · Peta sistem</span>
+                        <h4 class="eco-h">Siapa bicara dengan siapa</h4>
+                        <p class="eco-p">Semua komunikasi antar-sistem lewat HTTP JSON ke <code>api/index.php</code>. Setiap aplikasi punya database sendiri: LMD memakai <code>central_saas</code>, Mini POS memakai <code>mini_pos</code> untuk akun user dan salinan lisensinya.</p>
+                        <div class="eco-diagram">
+                            <svg viewBox="0 -44 760 404" role="img" aria-label="Diagram hubungan Showcase, LMD, Mini POS, dan database central_saas">
+                                <defs>
+                                    <marker id="eco-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="eco-head"/></marker>
+                                    <marker id="eco-ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="eco-head-bad"/></marker>
+                                </defs>
+                                <rect x="20" y="30" width="210" height="120" rx="10" class="eco-box-shop"/>
+                                <text x="36" y="58" class="eco-ttl">Software Showcase</text>
+                                <text x="36" y="80" class="eco-sub">Etalase produk + wizard</text>
+                                <text x="36" y="98" class="eco-sub">berlangganan 4 langkah</text>
+                                <text x="36" y="126" class="eco-sub">+ Admin katalog (/admin)</text>
+
+                                <rect x="290" y="30" width="200" height="190" rx="10" class="eco-box-lmd"/>
+                                <text x="306" y="58" class="eco-ttl">Central SaaS LMD</text>
+                                <text x="306" y="80" class="eco-sub">REST API (PHP)</text>
+                                <text x="306" y="106" class="eco-lbl">licenses/register</text>
+                                <text x="306" y="124" class="eco-lbl">licenses/validate</text>
+                                <text x="306" y="142" class="eco-lbl">licenses/order (+status)</text>
+                                <text x="306" y="160" class="eco-lbl">dashboard (analitik)</text>
+                                <text x="306" y="194" class="eco-sub">+ Dashboard admin</text>
+                                <text x="306" y="210" class="eco-sub">(halaman ini)</text>
+
+                                <rect x="550" y="30" width="190" height="120" rx="10" class="eco-box-app"/>
+                                <text x="566" y="58" class="eco-ttl">Aplikasi Client</text>
+                                <text x="566" y="80" class="eco-sub">Mini POS / Apotek / DMS</text>
+                                <text x="566" y="98" class="eco-sub">Login, user, kuota sendiri</text>
+                                <text x="566" y="126" class="eco-sub">Fitur dibuka sesuai lisensi</text>
+
+                                <ellipse cx="390" cy="280" rx="80" ry="14" class="eco-box-db"/>
+                                <path d="M310,280 v48 a80,14 0 0 0 160,0 v-48" class="eco-box-db"/>
+                                <text x="390" y="314" text-anchor="middle" class="eco-ttl" style="font-size:14px">central_saas</text>
+                                <text x="390" y="332" text-anchor="middle" class="eco-sub">MySQL · 12 tabel</text>
+
+                                <path d="M230,70 L288,70" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <text x="236" y="62" class="eco-lbl">order</text>
+                                <path d="M230,120 L288,120" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <text x="236" y="112" class="eco-lbl">polling</text>
+                                <path d="M550,80 L492,80" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <text x="500" y="72" class="eco-lbl">validate</text>
+                                <path d="M125,30 L125,-14 L645,-14 L645,28" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <text x="390" y="-22" text-anchor="middle" class="eco-lbl">"Buka Aplikasi" → /mini-pos/?tenant=…&amp;lic=…</text>
+                                <path d="M390,220 L390,264" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <ellipse cx="645" cy="280" rx="80" ry="14" class="eco-box-db"/>
+                                <path d="M565,280 v48 a80,14 0 0 0 160,0 v-48" class="eco-box-db"/>
+                                <text x="645" y="314" text-anchor="middle" class="eco-ttl" style="font-size:14px">mini_pos</text>
+                                <text x="645" y="332" text-anchor="middle" class="eco-sub">tenants · users</text>
+                                <path d="M645,150 L645,264" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <text x="655" y="210" class="eco-lbl">login &amp;</text>
+                                <text x="655" y="224" class="eco-lbl">salinan lisensi</text>
+                            </svg>
+                        </div>
+                        <p class="eco-note">Showcase mengambil paket dari <code>GET packages?app_code</code>, mengirim pesanan, lalu polling status sampai admin approve.</p>
+                    </div>
+
+                    <!-- 2. MODEL DATA -->
+                    <div class="card">
+                        <span class="eco-eyebrow">2 · Model data</span>
+                        <h4 class="eco-h">Empat lapisan, dari katalog sampai runtime</h4>
+                        <p class="eco-p">Setiap lapisan menjawab satu pertanyaan. Daftar modul disalin turun dari paket ke subscription lalu ke lisensi, jadi lisensi yang sudah terbit tidak berubah walau isi paket diedit nanti.</p>
+                        <div class="eco-layers">
+                            <div class="eco-layer">
+                                <span class="eco-tag eco-t-lmd">Katalog</span>
+                                <span class="eco-q">Apa yang dijual?</span>
+                                <ul><li>applications</li><li>modules</li><li>packages</li><li>package_modules</li></ul>
+                                <span class="eco-ex">APOTEK → paket APO_BASIC berisi DASHBOARD, INVENTORY, MASTER_OBAT, POS_KASIR, maks 3 user</span>
+                            </div>
+                            <div class="eco-layer">
+                                <span class="eco-tag eco-t-lmd">Komersial</span>
+                                <span class="eco-q">Siapa membeli apa?</span>
+                                <ul><li>customers</li><li>subscriptions</li><li>subscription_modules</li></ul>
+                                <span class="eco-ex">Apotek Maju Jaya, SUB-2026-xxxxx, 1 tahun, harga dikunci saat beli</span>
+                            </div>
+                            <div class="eco-layer">
+                                <span class="eco-tag eco-t-lmd">Provisioning</span>
+                                <span class="eco-q">Kunci apa yang diterbitkan?</span>
+                                <ul><li>licenses</li><li>license_modules</li><li>application_instances</li><li>license_activations</li></ul>
+                                <span class="eco-ex">LIC-APOTEK-BE59… terikat ke INST-APO-MJJ-001 di apotekmajujaya.com</span>
+                            </div>
+                            <div class="eco-layer">
+                                <span class="eco-tag eco-t-lmd">Runtime</span>
+                                <span class="eco-q">Apa yang terjadi saat dipakai?</span>
+                                <ul><li>license_logs</li><li>last_seen_at</li></ul>
+                                <span class="eco-ex">Setiap validate tercatat sukses/gagal. Ini sumber grafik API Health dan Heartbeat.</span>
+                            </div>
+                        </div>
+                        <div class="eco-two">
+                            <div class="eco-box">
+                                <strong>Tiga kunci, tiga fungsi</strong>
+                                <p><code>license_key</code> membuktikan hak pakai. <code>instance_key</code> menandai satu instalasi (satu server/toko). <code>activation_key</code> mencatat aktivasi pertama instance itu.</p>
+                            </div>
+                            <div class="eco-box">
+                                <strong>Yang tidak diurus LMD</strong>
+                                <p>User, role, dan permission di dalam aplikasi client. LMD hanya mengirim daftar <code>modules</code> dan angka <code>max_users</code>; aplikasi client yang wajib menegakkannya.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. ALUR A -->
+                    <div class="card">
+                        <span class="eco-eyebrow">3 · Alur A: installer client</span>
+                        <h4 class="eco-h">Auto-register: satu request, satu transaksi</h4>
+                        <p class="eco-p">Dipakai saat aplikasi client di-install di server customer (desktop, on-premise, atau portal cloud). LMD membuat semuanya dalam satu transaksi database; kalau satu langkah gagal, semua dibatalkan.</p>
+                        <pre class="code-box eco-code">POST /api/licenses/register
+{ "app_code":"APOTEK", "package_code":"APO_BASIC",
+  "customer_name":"Apotek Maju Jaya", "customer_email":"owner@apotekmajujaya.com",
+  "instance_key":"INST-APO-MJJ-001", "domain":"apotekmajujaya.com" }</pre>
+                        <ol class="eco-flow">
+                            <li><div><span class="eco-tag eco-t-lmd">LMD</span><p>Cari aplikasi dan paket berdasarkan kode. Tidak ketemu, transaksi dibatalkan.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">LMD</span><p>Cari customer berdasarkan email. Belum ada, buat baru dengan kode <code>CUST-xxxxxx</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">LMD</span><p>Buat subscription berlaku 1 tahun, salin <code>max_users</code>, harga, dan billing cycle dari paket.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">LMD</span><p>Salin modul paket ke <code>subscription_modules</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">LMD</span><p>Terbitkan <code>license_key</code> acak dan salin modul ke <code>license_modules</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">LMD</span><p>Daftarkan instance (instance_key + domain), lalu buat activation.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Client</span><p>Terima <code>license_key</code>, <code>activation_key</code>, <code>max_users</code>, dan <code>modules</code>. Simpan di <code>.env</code> atau database lokal.</p>
+                                <p class="eco-note">Dashboard langsung ikut berubah karena grafiknya dihitung dari tabel yang sama setiap kali halaman dimuat.</p></div></li>
+                        </ol>
+                    </div>
+
+                    <!-- 4. ALUR B -->
+                    <div class="card">
+                        <span class="eco-eyebrow">4 · Alur B: calon customer lewat Showcase</span>
+                        <h4 class="eco-h">Berlangganan, bayar, tunggu approve, buka aplikasi</h4>
+                        <p class="eco-p">Alur self-service untuk aplikasi yang di-host oleh provider. Bedanya dengan Alur A: subscription dibuat berstatus <em>pending</em> dulu dan baru aktif setelah admin menyetujui pembayaran.</p>
+                        <ol class="eco-flow">
+                            <li><div><span class="eco-tag eco-t-shop">Showcase → LMD</span><p>Kartu paket dimuat dari <code>GET /api/packages?app_code=APOTEK</code>: nama, harga, kuota user, dan modul sama persis dengan data LMD.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Isi nama, email, WhatsApp, nama toko, subdomain (contoh <code>tokoberkah.pos.local</code>), dan password admin.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Tampil tagihan + PPN 11%, QRIS atau transfer. Customer klik “Saya Sudah Bayar”.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase → LMD</span><p><code>POST /api/licenses/order</code> membuat customer, subscription <em>pending</em>, lisensi (ditahan), dan instance <code>{subdomain}.pos.local</code>. Mengembalikan <code>subscription_no</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Browser polling tiap 2,5 detik ke <code>GET /api/licenses/order_status?subscription_no=…</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">Admin LMD</span><p>Banner muncul di Dashboard. Di <strong>Subscriptions → Persetujuan Pembayaran</strong>, admin cek uang masuk lalu klik <strong>Approve</strong> (atau Tolak). Lisensi aktif, masa berlaku dihitung sejak tanggal approve. Endpoint <code>approve_order</code> yang sama siap dipanggil n8n.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Polling melihat <code>is_approved: true</code>, menampilkan license key dan tombol “Buka Aplikasi” ke <code>/mini-pos/?tenant=…&amp;lic=…</code>. Jika ditolak, tampil pesan pesanan ditolak.</p></div></li>
+                        </ol>
+                        <div class="eco-callout eco-callout-info">
+                            <strong>Catatan desain</strong>
+                            <p>Selama pending, lisensi berstatus <code>suspended</code> karena status lisensi tidak punya nilai <em>pending</em> (dipilih agar database yang sudah terpasang tidak perlu migrasi). Status pesanan dibaca dari subscription. Wizard tidak meminta password; akun admin dibuat di aplikasi client.</p>
+                        </div>
+                    </div>
+
+                    <!-- 5. ALUR C -->
+                    <div class="card">
+                        <span class="eco-eyebrow">5 · Alur C: aktivasi, login, dan validasi di aplikasi client</span>
+                        <h4 class="eco-h">Pemilik membuat akun admin, kasir login dari perangkat mana pun</h4>
+                        <p class="eco-p">Mini POS memvalidasi lisensi dari server ke API LMD, menyimpan salinannya di database <code>mini_pos</code>, lalu mengurus login dan user sendiri. LMD hanya memberi kuota <code>max_users</code>.</p>
+                        <ol class="eco-flow">
+                            <li><div><span class="eco-tag eco-t-app">Mini POS → LMD</span><p>Pemilik membuka link dari Showcase (<code>?tenant=…&amp;lic=…</code>). Mini POS memanggil <code>POST /licenses/validate</code> dan menerima kuota, modul, nama toko, serta email pemesan.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Tenant dan license key disimpan di database <code>mini_pos</code>. License key dihapus dari alamat browser.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Layar <strong>Buat Akun Admin</strong> muncul sekali. Email harus sama dengan email pemesan di LMD sebagai bukti kepemilikan.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Admin menambah kasir di <strong>Kelola User</strong>. Jumlah user aktif dibatasi <code>max_users</code> dari lisensi.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Kasir</span><p>Perangkat lain cukup membuka <code>/mini-pos/?tenant=…</code> lalu login, tanpa license key. Lisensi dicek ulang ke LMD tiap 5 menit per sesi; jika LMD tidak terjangkau, aplikasi tetap jalan maksimal 24 jam.</p></div></li>
+                        </ol>
+                        <div class="eco-two">
+                            <div class="eco-box">
+                                <span class="eco-tag eco-t-app">Keamanan login</span>
+                                <p>Password di-hash (bcrypt), token CSRF di semua form, sesi terikat ke satu tenant, akun dikunci 5 menit setelah 5 kali gagal login.</p>
+                            </div>
+                            <div class="eco-box">
+                                <span class="eco-tag eco-t-app">Kuota turun (downgrade)</span>
+                                <p>Jika user aktif melebihi kuota baru, hanya admin yang bisa masuk sampai jumlah user aktif dirapikan.</p>
+                            </div>
+                        </div>
+                        <div class="eco-sublabel">Urutan pemeriksaan di <code>validate</code></div>
+                        <div class="eco-checks">
+                            <div class="eco-check"><span>License key ada di database?</span><span class="eco-r eco-no">tidak → 403, dicatat gagal</span></div>
+                            <div class="eco-check"><span>Status lisensi = active?</span><span class="eco-r eco-no">tidak → 403 “status is suspended”</span></div>
+                            <div class="eco-check"><span>Belum lewat <code>expires_at</code>?</span><span class="eco-r eco-no">lewat → status jadi expired, 403</span></div>
+                            <div class="eco-check"><span>Instance key sudah terdaftar?</span><span class="eco-r eco-yes">tidak → dibuat baru otomatis; ya → update last_seen + domain</span></div>
+                            <div class="eco-check"><span>Hasil</span><span class="eco-r eco-yes">200 · valid, modules, max_users, expires_at · dicatat sukses</span></div>
+                        </div>
+                        <div class="eco-callout">
+                            <strong>Catatan desain untuk pemeriksaan ke-4</strong>
+                            <p>Karena instance baru dibuat otomatis dan domain ditimpa, satu license key saat ini bisa dipakai dari instance dan domain mana pun. Untuk pengembangan ini memudahkan testing; sebelum production perlu menolak instance/domain yang tidak cocok atau membatasi jumlah instance per lisensi.</p>
+                        </div>
+                    </div>
+
+                    <!-- 6. STATUS IMPLEMENTASI -->
+                    <div class="card">
+                        <span class="eco-eyebrow">6 · Status implementasi</span>
+                        <h4 class="eco-h">Yang sudah jalan dan yang masih rencana</h4>
+                        <p class="eco-p">Dibandingkan langsung antara docs dan kode. Riwayat lengkap temuan ada di <code>docs/LOG_EVALUASI.md</code>.</p>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Bagian</th><th>Status</th><th>Keterangan</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Katalog, customer, subscription (CRUD)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Controller + model lengkap, PDO prepared statements</td></tr>
+                                    <tr><td>Auto-register (Alur A)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Satu transaksi atomik</td></tr>
+                                    <tr><td>Validasi + log</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Cek ada/status/expired, tulis <code>license_logs</code></td></tr>
+                                    <tr><td>Dashboard 8 grafik + Radar Aksi</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dihitung dari tabel saat halaman dimuat</td></tr>
+                                    <tr><td>Wizard Showcase (UI)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>4 langkah + polling</td></tr>
+                                    <tr><td>Order, order_status, approve/reject order</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Alur B end-to-end teruji (T-01)</td></tr>
+                                    <tr><td>Panel persetujuan pembayaran</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Banner Dashboard + tabel di Subscriptions</td></tr>
+                                    <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Instance dicatat, tidak pernah ditolak (T-02)</td></tr>
+                                    <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
+                                    <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
+                                    <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Kolom ada, logika penyalinan modul belum ada (T-13)</td></tr>
+                                    <tr><td>Paket &amp; harga Showcase sinkron dengan LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dibaca dari <code>GET packages?app_code</code> (T-12)</td></tr>
+                                    <tr><td>API key / auth admin / rate limit</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Hardening sebelum production (T-04, T-05)</td></tr>
+                                    <tr><td>Password + credential di <code>.env</code></td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Sengaja hardcode selama pengembangan</td></tr>
+                                    <tr><td>n8n + payment gateway</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Endpoint <code>approve_order</code> sudah siap</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="eco-callout eco-callout-info">
+                            <strong>Urutan kerja yang disarankan</strong>
+                            <p>1) Aturan penguncian instance/domain di validate (T-02). 2) Future module dan pemetaan produk Showcase (T-13, T-18). 3) Perbaikan kecil kode &amp; docs. 4) Hardening keamanan sebelum production.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -1168,6 +1462,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=20261022_v2"></script>
+<script src="./assets/js/app.js?v=20261023_v2"></script>
 </body>
 </html>

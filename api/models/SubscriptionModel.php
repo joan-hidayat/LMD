@@ -11,10 +11,11 @@ class SubscriptionModel {
 
     public function getAll() {
         $stmt = $this->db->prepare("
-            SELECT s.*, c.name as customer_name, c.email as customer_email,
+            SELECT s.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone,
                    a.name as application_name, a.code as application_code,
                    p.name as package_name, p.code as package_code,
-                   l.license_key, l.status as license_status
+                   l.license_key, l.status as license_status,
+                   (SELECT ai.domain FROM application_instances ai WHERE ai.license_id = l.id ORDER BY ai.id ASC LIMIT 1) as instance_domain
             FROM subscriptions s
             JOIN customers c ON s.customer_id = c.id
             JOIN applications a ON s.application_id = a.id

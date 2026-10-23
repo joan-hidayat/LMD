@@ -14,6 +14,14 @@ class PackageController {
         sendJsonResponse($packages, 200, 'Packages fetched successfully.');
     }
 
+    /**
+     * Katalog paket publik untuk Software Showcase (sumber tunggal harga & kuota)
+     */
+    public function publicCatalog($appCode) {
+        $packages = $this->packageModel->getPublicByAppCode($appCode);
+        sendJsonResponse($packages, 200, 'Public packages fetched successfully.');
+    }
+
     public function show($id) {
         $package = $this->packageModel->getById($id);
         if (!$package) {

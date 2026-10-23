@@ -21,6 +21,32 @@ class PackageModel {
         return $stmt->fetchAll();
     }
 
+    public function getPublicByAppCode($appCode) {
+        $stmt = $this->db->prepare("
+            SELECT p.id, p.code, p.name, p.description, p.base_price, p.billing_cycle, p.max_users, p.future_module_access,
+                   a.code as application_code, a.name as application_name
+            FROM packages p
+            JOIN applications a ON p.application_id = a.id
+            WHERE a.code = :app_code AND a.deleted_at IS NULL AND p.deleted_at IS NULL
+              AND a.status = 'active' AND p.status = 'active' AND p.is_public = 1
+            ORDER BY p.sort_order ASC, p.base_price ASC
+        ");
+        $stmt->execute(['app_code' => strtoupper(trim($appCode))]);
+        $packages = $stmt->fetchAll();
+
+        $modStmt = $this->db->prepare("
+            SELECT m.code, m.name FROM package_modules pm
+            JOIN modules m ON pm.module_id = m.id
+            WHERE pm.package_id = :package_id AND m.deleted_at IS NULL
+            ORDER BY m.sort_order ASC
+        ");
+        foreach ($packages as &$package) {
+            $modStmt->execute(['package_id' => $package['id']]);
+            $package['modules'] = $modStmt->fetchAll();
+        }
+        return $packages;
+    }
+
     public function getById($id) {
         $stmt = $this->db->prepare("SELECT * FROM packages WHERE id = :id AND deleted_at IS NULL");
         $stmt->execute(['id' => $id]);

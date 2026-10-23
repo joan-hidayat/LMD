@@ -82,10 +82,12 @@ class LicenseModel {
 
         // 1. Fetch License
         $stmt = $this->db->prepare("
-            SELECT l.*, s.max_users, s.status as sub_status, a.code as app_code, a.name as app_name
+            SELECT l.*, s.max_users, s.status as sub_status, a.code as app_code, a.name as app_name,
+                   c.name as customer_name, c.email as customer_email
             FROM licenses l
             JOIN subscriptions s ON l.subscription_id = s.id
             JOIN applications a ON l.application_id = a.id
+            JOIN customers c ON s.customer_id = c.id
             WHERE l.license_key = :license_key
         ");
         $stmt->execute(['license_key' => $licenseKey]);
@@ -120,15 +122,17 @@ class LicenseModel {
                 INSERT INTO application_instances (license_id, instance_key, instance_name, domain, environment, last_seen_at, status)
                 VALUES (:license_id, :instance_key, :instance_name, :domain, 'production', NOW(), 'active')
             ");
+            $instanceName = "Instance (" . ($domain ?? $ip) . ")";
             $regStmt->execute([
                 'license_id' => $license['id'],
                 'instance_key' => $instanceKey,
-                'instance_name' => "Instance (" . ($domain ?? $ip) . ")",
+                'instance_name' => $instanceName,
                 'domain' => $domain
             ]);
             $instanceId = $this->db->lastInsertId();
         } else {
             $instanceId = $instance['id'];
+            $instanceName = $instance['instance_name'];
             // Update last seen & domain
             $upInst = $this->db->prepare("UPDATE application_instances SET last_seen_at = NOW(), domain = COALESCE(:domain, domain) WHERE id = :id");
             $upInst->execute(['domain' => $domain, 'id' => $instanceId]);
@@ -157,7 +161,13 @@ class LicenseModel {
             'app_code' => $license['app_code'],
             'expires_at' => $license['expires_at'],
             'max_users' => (int) $license['max_users'],
-            'modules' => $moduleCodes
+            'modules' => $moduleCodes,
+            // Identitas pemilik lisensi & nama instans, dipakai client untuk aktivasi akun admin pertama
+            'licensee' => [
+                'name' => $license['customer_name'],
+                'email' => $license['customer_email']
+            ],
+            'instance_name' => $instanceName
         ];
 
         // 4. Log Success Audit
