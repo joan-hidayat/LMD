@@ -1049,7 +1049,7 @@
                     <div class="card eco-intro">
                         <span class="eco-eyebrow">Peta sistem · versi pengembangan</span>
                         <h3>🧭 Cara Kerja Ekosistem Central SaaS LMD</h3>
-                        <p>Tiga aplikasi, satu database. <strong>LMD</strong> menentukan siapa boleh memakai fitur apa. <strong>Software Showcase</strong> menjual dan menerima pesanan. <strong>Aplikasi Client</strong> (contoh: Mini POS) bertanya ke LMD sebelum membuka fiturnya.</p>
+                        <p>Tiga aplikasi, masing-masing dengan database sendiri. <strong>LMD</strong> menentukan siapa boleh memakai fitur apa. <strong>Software Showcase</strong> menjual dan menerima pesanan. <strong>Aplikasi Client</strong> (contoh: Mini POS) bertanya ke LMD sebelum membuka fiturnya, lalu mengelola login dan user-nya sendiri.</p>
                         <div class="eco-legend">
                             <span class="eco-tag eco-t-lmd">Central SaaS LMD</span>
                             <span class="eco-tag eco-t-shop">Software Showcase</span>
@@ -1061,7 +1061,7 @@
                     <div class="card">
                         <span class="eco-eyebrow">1 · Peta sistem</span>
                         <h4 class="eco-h">Siapa bicara dengan siapa</h4>
-                        <p class="eco-p">Semua komunikasi lewat HTTP JSON ke <code>api/index.php</code>. Pengecualiannya: <code>mini-pos/index.php</code> membaca database <code>central_saas</code> secara langsung, karena saat ini semuanya berjalan di satu XAMPP.</p>
+                        <p class="eco-p">Semua komunikasi antar-sistem lewat HTTP JSON ke <code>api/index.php</code>. Setiap aplikasi punya database sendiri: LMD memakai <code>central_saas</code>, Mini POS memakai <code>mini_pos</code> untuk akun user dan salinan lisensinya.</p>
                         <div class="eco-diagram">
                             <svg viewBox="0 -44 760 404" role="img" aria-label="Diagram hubungan Showcase, LMD, Mini POS, dan database central_saas">
                                 <defs>
@@ -1087,7 +1087,7 @@
                                 <rect x="550" y="30" width="190" height="120" rx="10" class="eco-box-app"/>
                                 <text x="566" y="58" class="eco-ttl">Aplikasi Client</text>
                                 <text x="566" y="80" class="eco-sub">Mini POS / Apotek / DMS</text>
-                                <text x="566" y="98" class="eco-sub">Kasir, user, role sendiri</text>
+                                <text x="566" y="98" class="eco-sub">Login, user, kuota sendiri</text>
                                 <text x="566" y="126" class="eco-sub">Fitur dibuka sesuai lisensi</text>
 
                                 <ellipse cx="390" cy="280" rx="80" ry="14" class="eco-box-db"/>
@@ -1104,9 +1104,13 @@
                                 <path d="M125,30 L125,-14 L645,-14 L645,28" class="eco-arrow" marker-end="url(#eco-ah)"/>
                                 <text x="390" y="-22" text-anchor="middle" class="eco-lbl">"Buka Aplikasi" → /mini-pos/?tenant=…&amp;lic=…</text>
                                 <path d="M390,220 L390,264" class="eco-arrow" marker-end="url(#eco-ah)"/>
-                                <path d="M640,150 C640,250 520,290 472,292" class="eco-arrow" marker-end="url(#eco-ah)"/>
-                                <text x="560" y="250" class="eco-lbl">baca langsung</text>
-                                <text x="560" y="264" class="eco-lbl">(index.php, PDO)</text>
+                                <ellipse cx="645" cy="280" rx="80" ry="14" class="eco-box-db"/>
+                                <path d="M565,280 v48 a80,14 0 0 0 160,0 v-48" class="eco-box-db"/>
+                                <text x="645" y="314" text-anchor="middle" class="eco-ttl" style="font-size:14px">mini_pos</text>
+                                <text x="645" y="332" text-anchor="middle" class="eco-sub">tenants · users</text>
+                                <path d="M645,150 L645,264" class="eco-arrow" marker-end="url(#eco-ah)"/>
+                                <text x="655" y="210" class="eco-lbl">login &amp;</text>
+                                <text x="655" y="224" class="eco-lbl">salinan lisensi</text>
                             </svg>
                         </div>
                         <p class="eco-note">Showcase mengambil paket dari <code>GET packages?app_code</code>, mengirim pesanan, lalu polling status sampai admin approve.</p>
@@ -1192,23 +1196,30 @@
                         </ol>
                         <div class="eco-callout eco-callout-info">
                             <strong>Catatan desain</strong>
-                            <p>Selama pending, lisensi berstatus <code>suspended</code> karena status lisensi tidak punya nilai <em>pending</em> (dipilih agar database yang sudah terpasang tidak perlu migrasi). Status pesanan dibaca dari subscription. Password admin yang diisi di Showcase tidak disimpan.</p>
+                            <p>Selama pending, lisensi berstatus <code>suspended</code> karena status lisensi tidak punya nilai <em>pending</em> (dipilih agar database yang sudah terpasang tidak perlu migrasi). Status pesanan dibaca dari subscription. Wizard tidak meminta password; akun admin dibuat di aplikasi client.</p>
                         </div>
                     </div>
 
                     <!-- 5. ALUR C -->
                     <div class="card">
-                        <span class="eco-eyebrow">5 · Alur C: setiap kali aplikasi dibuka</span>
-                        <h4 class="eco-h">Validasi lisensi dan heartbeat</h4>
-                        <p class="eco-p">Mini POS memeriksa lisensi dua kali: di server (PHP) sebelum halaman dikirim, lalu di browser (JS) lewat API LMD. Tombol heartbeat memanggil endpoint validasi yang sama.</p>
+                        <span class="eco-eyebrow">5 · Alur C: aktivasi, login, dan validasi di aplikasi client</span>
+                        <h4 class="eco-h">Pemilik membuat akun admin, kasir login dari perangkat mana pun</h4>
+                        <p class="eco-p">Mini POS memvalidasi lisensi dari server ke API LMD, menyimpan salinannya di database <code>mini_pos</code>, lalu mengurus login dan user sendiri. LMD hanya memberi kuota <code>max_users</code>.</p>
+                        <ol class="eco-flow">
+                            <li><div><span class="eco-tag eco-t-app">Mini POS → LMD</span><p>Pemilik membuka link dari Showcase (<code>?tenant=…&amp;lic=…</code>). Mini POS memanggil <code>POST /licenses/validate</code> dan menerima kuota, modul, nama toko, serta email pemesan.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Tenant dan license key disimpan di database <code>mini_pos</code>. License key dihapus dari alamat browser.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Layar <strong>Buat Akun Admin</strong> muncul sekali. Email harus sama dengan email pemesan di LMD sebagai bukti kepemilikan.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Admin menambah kasir di <strong>Kelola User</strong>. Jumlah user aktif dibatasi <code>max_users</code> dari lisensi.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Kasir</span><p>Perangkat lain cukup membuka <code>/mini-pos/?tenant=…</code> lalu login, tanpa license key. Lisensi dicek ulang ke LMD tiap 5 menit per sesi; jika LMD tidak terjangkau, aplikasi tetap jalan maksimal 24 jam.</p></div></li>
+                        </ol>
                         <div class="eco-two">
                             <div class="eco-box">
-                                <span class="eco-tag eco-t-app">Mini POS · index.php</span>
-                                <p>Tanpa <code>?tenant</code> dan <code>?lic</code> di URL, langsung dialihkan ke Showcase. Kalau ada, query langsung ke database <code>central_saas</code>: lisensi harus ada, status lisensi dan subscription harus <em>active</em>.</p>
+                                <span class="eco-tag eco-t-app">Keamanan login</span>
+                                <p>Password di-hash (bcrypt), token CSRF di semua form, sesi terikat ke satu tenant, akun dikunci 5 menit setelah 5 kali gagal login.</p>
                             </div>
                             <div class="eco-box">
-                                <span class="eco-tag eco-t-app">Mini POS · app.js</span>
-                                <p>Simpan data lisensi di <code>localStorage</code> (<code>minipos_license_data</code>), lalu panggil <code>POST /licenses/validate</code>. Jika tidak valid, tampil peringatan dan dialihkan ke Showcase.</p>
+                                <span class="eco-tag eco-t-app">Kuota turun (downgrade)</span>
+                                <p>Jika user aktif melebihi kuota baru, hanya admin yang bisa masuk sampai jumlah user aktif dirapikan.</p>
                             </div>
                         </div>
                         <div class="eco-sublabel">Urutan pemeriksaan di <code>validate</code></div>
@@ -1242,7 +1253,8 @@
                                     <tr><td>Order, order_status, approve/reject order</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Alur B end-to-end teruji (T-01)</td></tr>
                                     <tr><td>Panel persetujuan pembayaran</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Banner Dashboard + tabel di Subscriptions</td></tr>
                                     <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Instance dicatat, tidak pernah ditolak (T-02)</td></tr>
-                                    <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Dikirim LMD, belum ditegakkan di client (T-03)</td></tr>
+                                    <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
+                                    <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
                                     <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Kolom ada, logika penyalinan modul belum ada (T-13)</td></tr>
                                     <tr><td>Paket &amp; harga Showcase sinkron dengan LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dibaca dari <code>GET packages?app_code</code> (T-12)</td></tr>
                                     <tr><td>API key / auth admin / rate limit</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Hardening sebelum production (T-04, T-05)</td></tr>
@@ -1253,7 +1265,7 @@
                         </div>
                         <div class="eco-callout eco-callout-info">
                             <strong>Urutan kerja yang disarankan</strong>
-                            <p>1) Aturan penguncian instance/domain di validate (T-02). 2) Penegakan max_users dan future module (T-03, T-13). 3) Perbaikan kecil kode &amp; docs. 4) Hardening keamanan sebelum production.</p>
+                            <p>1) Aturan penguncian instance/domain di validate (T-02). 2) Future module dan pemetaan produk Showcase (T-13, T-18). 3) Perbaikan kecil kode &amp; docs. 4) Hardening keamanan sebelum production.</p>
                         </div>
                     </div>
                 </div>

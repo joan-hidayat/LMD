@@ -19,10 +19,10 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 |---|---|---|---|---|
 | T-01 | lmd, software-showcase | Endpoint `licenses/order`, `licenses/order_status`, `licenses/approve_order` dipanggil Showcase (`assets/js/app.js`) tetapi tidak ada di router LMD (`api/index.php`). Wizard berlangganan berhenti di langkah bayar. | Blocker fungsional | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. | Blocker desain | Terbuka |
-| T-03 | sample-mini-pos | `max_users` diterima dari LMD tetapi belum ditegakkan (belum ada batas sesi/akun). | Fungsional | Terbuka |
+| T-03 | sample-mini-pos | `max_users` diterima dari LMD tetapi belum ditegakkan (belum ada batas sesi/akun). | Fungsional | Selesai — lihat Riwayat "Login Mini POS" (metode named users) |
 | T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Ditunda — tahap pengembangan |
 | T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Ditunda — tahap pengembangan |
-| T-06 | sample-mini-pos | Lisensi dikirim lewat query string (`?tenant=&lic=`) dan disimpan di `localStorage`; validasi JS mudah dilewati. `index.php` membaca DB `central_saas` langsung (coupling ke DB LMD). | Arsitektur | Terbuka |
+| T-06 | sample-mini-pos | Lisensi dikirim lewat query string (`?tenant=&lic=`) dan disimpan di `localStorage`; validasi JS mudah dilewati. `index.php` membaca DB `central_saas` langsung (coupling ke DB LMD). | Arsitektur | Selesai — lihat Riwayat "Login Mini POS" |
 | T-07 | software-showcase | Password admin hardcode di `admin/admin.js` (`nexus2024`) dan dicek di browser. | Hardening (pra-production) | Ditunda — sengaja selama pengembangan |
 | T-08 | lmd | `SecurityHelper::generateActivationKey` menghasilkan prefix ganda `ACT-ACT-…`. | Minor | Terbuka |
 | T-09 | semua | Docs memuat path lokal Windows (`c:\xampp\…`, `file:///c:/…`), IP LAN `192.168.0.116`, base URL tidak konsisten (`/api/...` vs `/api/index.php/...`), dan dua bagian bernomor 12 di `PANDUAN_SHOWCASE.md`. | Dokumentasi | Ditunda — tahap pengembangan |
@@ -31,15 +31,52 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-12 | lmd, software-showcase | Paket & harga di wizard Showcase hardcode (Starter 3 user Rp150rb, Pro 15 user Rp350rb, Enterprise 50 user Rp850rb) dan berbeda dengan data LMD `seed.sql` (APO_BASIC 3 user Rp300rb, APO_PRO 10 user Rp750rb, APO_ENT 50 user Rp1,5jt annual). | Fungsional / konsistensi data | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-13 | lmd | `future_module_access` ada di tabel `packages` (ERD level 9 🟢 FIX), tetapi belum ada logika yang menambahkan modul baru ke `subscription_modules`/`license_modules` paket terkait. | Fungsional | Terbuka |
 | T-14 | lmd, software-showcase | Istilah docs tidak sesuai kode: `validation_logs` (seharusnya `license_logs`), "Hashing SHA-256" (kode memakai `random_bytes` hex), "Level 8" di `PANDUAN_SHOWCASE.md` §10 bentrok dengan ERD Level 8. | Dokumentasi | Terbuka |
-| T-15 | lmd, sample-mini-pos, docs | Repo LMD tidak memiliki `.htaccess`, tetapi Mini POS (`app.js`) dan docs memanggil `/api/licenses/...` tanpa `index.php`. Hanya berfungsi jika ada rewrite rule di server lokal. Saat ini panggilan validate Mini POS gagal diam-diam (hanya `console.warn`). Showcase sudah dipindah ke `/api/index.php/...`. | Fungsional / konfigurasi | Terbuka |
+| T-15 | lmd, sample-mini-pos, docs | Repo LMD tidak memiliki `.htaccess`, tetapi Mini POS (`app.js`) dan docs memanggil `/api/licenses/...` tanpa `index.php`. Hanya berfungsi jika ada rewrite rule di server lokal. Saat ini panggilan validate Mini POS gagal diam-diam (hanya `console.warn`). Showcase sudah dipindah ke `/api/index.php/...`. | Fungsional / konfigurasi | Sebagian — Showcase & Mini POS sudah memakai `/api/index.php/...`; docs (`PANDUAN_PENGGUNAAN.md`) dan `.htaccess` belum |
 | T-16 | software-showcase | `style.css` publik tidak punya aturan `.hidden`, sehingga keempat langkah wizard dan layar sukses tampil bersamaan. | Bug UI | Selesai — lihat Riwayat "T-01 + T-12" |
-| T-17 | software-showcase, sample-mini-pos | Wizard meminta "password akun admin" dan menampilkan "kredensial login", tetapi Mini POS tidak punya login dan LMD sengaja tidak menyimpan password. Perlu keputusan: hapus field, atau buat akun admin di aplikasi client. | Desain / UX | Terbuka |
+| T-17 | software-showcase, sample-mini-pos | Wizard meminta "password akun admin" dan menampilkan "kredensial login", tetapi Mini POS tidak punya login dan LMD sengaja tidak menyimpan password. Perlu keputusan: hapus field, atau buat akun admin di aplikasi client. | Desain / UX | Selesai — lihat Riwayat "Login Mini POS" |
 | T-18 | software-showcase | Semua produk Showcase (termasuk Mini POS Express, DineFlow Resto) berlangganan memakai paket `APOTEK`, karena `products.js` belum punya pemetaan ke kode aplikasi LMD. Kode sudah membaca `product.lmdAppCode` (default `APOTEK`). | Fungsional / data | Terbuka |
-| T-19 | sample-mini-pos | Judul toko di Mini POS memakai nama customer (`Budi Santoso — Mini POS Express`), bukan nama toko yang diisi di wizard (tersimpan di `application_instances.instance_name`). | Minor | Terbuka |
+| T-19 | sample-mini-pos | Judul toko di Mini POS memakai nama customer (`Budi Santoso — Mini POS Express`), bukan nama toko yang diisi di wizard (tersimpan di `application_instances.instance_name`). | Minor | Selesai — lihat Riwayat "Login Mini POS" |
+| T-20 | sample-mini-pos | `app.js` tersimpan dengan encoding ganda (UTF-8 dibaca sebagai Windows-1252), sehingga emoji produk tampil rusak (`ðŸ¥`, `â˜•`). | Bug UI | Selesai — lihat Riwayat "Login Mini POS" |
+| T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Terbuka |
 
 ---
 
 ## Riwayat
+
+### 2026-10-23 — Login Mini POS (T-17, T-03, T-06, T-19, T-20)
+**Jenis:** Perubahan kode
+**Repo:** sample-mini-pos, lmd, software-showcase
+
+**Keputusan pemilik proyek**
+- Akun admin dibuat **saat pertama membuka aplikasi** (bukan di wizard Showcase), sesuai ERD: user adalah tanggung jawab aplikasi client.
+- Admin boleh menambah user lain dengan batas `max_users` dari lisensi.
+
+**Mini POS**
+- Database sendiri `mini_pos` (`database/schema.sql`: `tenants`, `users`), dibuat otomatis saat pertama dibuka.
+- `lib/LicenseGate.php`: aktivasi tenant dari link Showcase; license key disimpan di DB lalu dihapus dari URL; validasi server-ke-server ke `POST licenses/validate` (cache 5 menit/sesi); mode tenggang 24 jam jika LMD tidak terjangkau. **Tidak lagi membaca database `central_saas`** → T-06.
+- `lib/UserRepository.php`: bcrypt, peran Admin/Kasir, kuota user aktif ≤ `max_users` (dengan row lock), kunci 5 menit setelah 5 kali gagal, waktu respons sama untuk email terdaftar/tidak → T-03.
+- Halaman baru: `setup.php` (buat admin pertama; email wajib = email pemesan di LMD), `login.php`, `logout.php` (POST + CSRF), `users.php` (tambah, nonaktifkan/aktifkan, ganti password). View di `views/`.
+- `index.php` jadi controller tipis; HTML kasir dipindah ke `views/pos.php` dengan header baru (menu Kasir/Kelola User, nama user, tombol Keluar).
+- `config.php` + dukungan `config.local.php` (sudah di-ignore git) untuk kredensial DB & URL LMD.
+- `app.js`: hapus pemeriksaan lisensi di browser dan penyimpanan lisensi di `localStorage`; heartbeat memakai `/api/index.php/...` (T-15 untuk Mini POS); perbaikan encoding emoji → T-20.
+- Nama toko diambil dari `instance_name` di LMD → T-19.
+
+**LMD**
+- `validate` kini mengembalikan `licensee` (nama & email pemesan) dan `instance_name`.
+
+**Showcase**
+- Field password admin dihapus dari wizard; diganti catatan bahwa akun admin dibuat di aplikasi. Layar sukses menampilkan email admin dan langkah berikutnya.
+
+**Verifikasi** (MariaDB + PHP built-in server dengan 4 worker agar Mini POS bisa memanggil LMD di host yang sama)
+- Link aktivasi → setup (license key hilang dari URL); email salah → ditolak; password < 8 → ditolak; setup sukses → kasir; setup tidak bisa diulang.
+- Tambah 2 kasir → kuota 3/3 → form tambah disembunyikan; nonaktifkan → 2/3.
+- Perangkat lain tanpa license key → halaman login; user nonaktif ditolak; kasir masuk tanpa menu Kelola User; kasir membuka `users.php` → ditolak.
+- 5 kali password salah → akun dikunci; password benar saat terkunci tetap ditolak.
+- Tanpa tenant → Showcase `unauthorized_direct_access`; tenant asing → `tenant_not_activated`; license palsu → `invalid_license`; POST tanpa CSRF → 419; lisensi di-suspend di LMD → perangkat baru diarahkan ke Showcase.
+- Password tersimpan sebagai hash bcrypt; tidak ada password di `license_logs` LMD.
+- Alur penuh Showcase → approve → Mini POS berakhir di "Buat Akun Admin — {nama toko}". Heartbeat ke LMD berhasil. Tidak ada error JS.
+
+**Temuan baru:** T-20 (selesai), T-21.
 
 ### 2026-10-23 — T-01 + T-12: alur berlangganan Showcase berjalan end-to-end
 **Jenis:** Perubahan kode

@@ -20,17 +20,18 @@ Tiga aplikasi, satu database:
 flowchart LR
     SC["🛒 Software Showcase<br>wizard + admin katalog"]
     LMD["☁️ Central SaaS LMD<br>api/index.php<br>register · validate · order · CRUD · dashboard"]
-    APP["💻 Mini POS / Apotek / DMS"]
+    APP["💻 Mini POS / Apotek / DMS<br>login + user sendiri"]
     DB[("central_saas<br>MySQL · 12 tabel")]
+    ADB[("mini_pos<br>tenants · users")]
 
     SC -- "GET packages?app_code · POST licenses/order · GET licenses/order_status" --> LMD
     SC -- "Buka Aplikasi ?tenant=…&lic=…" --> APP
     APP -- "POST licenses/validate" --> LMD
     LMD --> DB
-    APP -- "index.php baca langsung (PDO)" --> DB
+    APP --> ADB
 ```
 
-Semua komunikasi lewat HTTP JSON ke `LMD/api/index.php`, **kecuali** `mini-pos/index.php` yang membaca database `central_saas` langsung (karena saat ini semuanya berjalan di satu XAMPP).
+Semua komunikasi antar-sistem lewat HTTP JSON ke `LMD/api/index.php`. Setiap aplikasi punya database sendiri: LMD memakai `central_saas`, Mini POS memakai `mini_pos` (akun user & salinan lisensi). Mini POS tidak lagi membaca database LMD secara langsung.
 
 ---
 
@@ -120,19 +121,41 @@ Kode error: `400` input tidak valid (email, format subdomain), `404` paket/pesan
 **Catatan desain**
 - Selama pending, lisensi berstatus `suspended` karena enum `licenses.status` tidak punya `pending` (dipilih agar schema DB yang sudah terpasang tidak perlu migrasi). Status pesanan dibaca dari `subscriptions.status`. Validate menolak lisensi ini sampai di-approve.
 - `instance_key` mengikuti konvensi Mini POS: `INST-STORE-{8 karakter terakhir license key}`.
-- `admin_password` dari Showcase **tidak disimpan maupun dicatat** di log (lihat T-17).
+- Wizard Showcase tidak lagi meminta password. Akun admin dibuat di aplikasi client saat pertama dibuka (lihat Alur C).
 - Admin melihat pesanan di **Dashboard** (banner) dan **Subscriptions → Persetujuan Pembayaran & Aktivasi Domain Klien** (tombol Approve / Tolak). Endpoint `approve_order` yang sama siap dipanggil n8n.
 
 ---
 
-## 5. Alur C — Validasi Saat Aplikasi Dibuka
+## 5. Alur C — Aktivasi, Login, dan Validasi di Aplikasi Client (Mini POS)
 
-Mini POS mengecek lisensi dua kali:
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Pemilik toko
+    actor K as Kasir (perangkat lain)
+    participant M as Mini POS (server)
+    participant L as LMD
+    O->>M: Buka link dari Showcase ?tenant=…&lic=…
+    M->>L: POST licenses/validate
+    L-->>M: valid, max_users, modules, licensee (nama & email), instance_name
+    M->>M: Simpan tenant + license key di DB mini_pos, hapus lic dari URL
+    M->>O: Layar "Buat Akun Admin" (email harus = email pemesan)
+    O->>M: Buat akun admin → masuk
+    O->>M: Kelola User: tambah kasir (dibatasi max_users)
+    K->>M: Buka ?tenant=… (tanpa license key) → Login
+    M->>L: Validasi ulang tiap 5 menit per sesi
+```
 
-| Lokasi | Perilaku |
+| Komponen Mini POS | Peran |
 |---|---|
-| `mini-pos/index.php` | Tanpa `?tenant` & `?lic` → redirect ke Showcase. Jika ada → query langsung ke `central_saas`: lisensi harus ada dan status lisensi + subscription harus `active`. |
-| `mini-pos/app.js` | Simpan data lisensi di `localStorage` (`minipos_license_data`), panggil `POST licenses/validate`. Tidak valid → alert + redirect ke Showcase. Tombol heartbeat memakai endpoint yang sama. |
+| `lib/LicenseGate.php` | Aktivasi tenant, validasi ke LMD (server-ke-server), cache 5 menit di sesi, mode tenggang 24 jam jika LMD tidak terjangkau. Lisensi tidak valid → redirect ke Showcase. |
+| `lib/UserRepository.php` | Akun per tenant (bcrypt), peran Admin/Kasir, kuota user aktif ≤ `max_users`, kunci 5 menit setelah 5 kali login gagal. |
+| `setup.php` | Buat akun admin pertama (sekali, hanya jika tenant belum punya user). |
+| `login.php` / `logout.php` | Masuk/keluar; token CSRF di semua form; sesi terikat ke satu tenant. |
+| `users.php` | Khusus admin: tambah user, nonaktifkan/aktifkan, ganti password. |
+| `config.php` | Koneksi DB `mini_pos`, URL LMD, TTL cache, masa tenggang. Override lokal lewat `config.local.php` (di-ignore git). |
+
+**Penegakan kuota (`max_users`):** metode *named users*. Jumlah akun **aktif** tidak boleh melebihi kuota. Jika kuota turun (downgrade), hanya admin yang bisa masuk sampai jumlah user aktif dirapikan. Metode *concurrent sessions* belum dipakai.
 
 Urutan pemeriksaan di `LicenseModel::validateLicense`:
 
@@ -142,7 +165,7 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | 2 | Status lisensi = `active`? | 403 "License status is …" |
 | 3 | Belum lewat `expires_at`? | Status diubah ke `expired`, 403 |
 | 4 | Instance key terdaftar? | **Tidak ditolak** — instance baru dibuat otomatis; jika ada, update `last_seen_at` + domain ditimpa |
-| 5 | Lolos | 200: `valid`, `modules`, `max_users`, `expires_at`, dicatat sukses |
+| 5 | Lolos | 200: `valid`, `modules`, `max_users`, `expires_at`, `licensee` (nama & email pemesan), `instance_name`; dicatat sukses |
 
 > Catatan desain: karena langkah 4 tidak pernah menolak, satu license key saat ini bisa dipakai dari instance/domain mana pun. Memudahkan testing; perlu diperketat sebelum production.
 
@@ -160,11 +183,12 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | `order`, `order_status`, `approve_order`, `reject_order` | ✅ Jalan | Alur B end-to-end teruji (T-01) |
 | Panel persetujuan pembayaran di dashboard | ✅ Jalan | Banner Dashboard + tabel di Subscriptions |
 | Penguncian instance + domain | 🟡 Sebagian | Instance dicatat, tidak pernah ditolak |
-| Penegakan `max_users` | 🟡 Sebagian | Dikirim LMD, belum ditegakkan di client |
+| Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
+| Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |
 | `future_module_access` (modul baru otomatis) | 🟡 Sebagian | Kolom ada, logika penyalinan modul belum ada (T-13) |
 | Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |
 | API key / auth admin / rate limit | 📋 Rencana | Hardening sebelum production |
 | Password & credential di `.env` | 📋 Rencana | Sengaja hardcode selama pengembangan |
 | n8n + payment gateway | 📋 Rencana | Endpoint `approve_order` sudah siap dipanggil |
 
-**Urutan kerja yang disarankan:** (1) aturan penguncian instance/domain (T-02) → (2) penegakan `max_users` di client & future module (T-03, T-13) → (3) perbaikan kecil kode & docs → (4) hardening keamanan sebelum production.
+**Urutan kerja yang disarankan:** (1) aturan penguncian instance/domain (T-02) → (2) future module (T-13) & pemetaan produk Showcase (T-18) → (3) perbaikan kecil kode & docs → (4) hardening keamanan sebelum production.
