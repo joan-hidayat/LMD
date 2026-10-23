@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=20261024_v1">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261024_v2">
 </head>
 
 <body>
@@ -451,6 +451,7 @@
                                     <th>Code</th>
                                     <th>Base Price</th>
                                     <th>Max Users</th>
+                                    <th>Max Instalasi</th>
                                     <th>Future Module Access</th>
                                     <th>Status</th>
                                 </tr>
@@ -462,6 +463,7 @@
                                     <td><code>{{ pkg.code }}</code></td>
                                     <td><strong>{{ formatRupiah(pkg.base_price) }}</strong> / {{ pkg.billing_cycle }}</td>
                                     <td>{{ pkg.max_users }} Users</td>
+                                    <td>{{ pkg.max_instances }} lokasi</td>
                                     <td>
                                         <span class="status" :class="pkg.future_module_access ? 'status-active' : 'status-draft'">
                                             {{ pkg.future_module_access ? 'YES (Auto Add)' : 'NO' }}
@@ -611,7 +613,7 @@
                                     <th>Customer</th>
                                     <th>Modules</th>
                                     <th>Kuota User</th>
-                                    <th>Instances</th>
+                                    <th>Instalasi</th>
                                     <th>Expires At</th>
                                     <th>Status</th>
                                 </tr>
@@ -624,8 +626,8 @@
                                     <td>{{ lic.modules_count }} modul</td>
                                     <td>{{ lic.max_users }} user</td>
                                     <td>
-                                        <button class="btn btn-sm instance-btn" @click="viewInstances(lic)" :title="'Lihat instance ' + lic.license_key">
-                                            🖥️ {{ lic.active_instances_count }} instance · Detail
+                                        <button class="btn btn-sm instance-btn" :class="{ 'over-quota': Number(lic.active_instances_count) > Number(lic.max_instances) }" @click="viewInstances(lic)" :title="'Lihat instalasi ' + lic.license_key">
+                                            🖥️ {{ lic.active_instances_count }} / {{ lic.max_instances }} · Detail
                                         </button>
                                     </td>
                                     <td>{{ formatDate(lic.expires_at) }}</td>
@@ -1233,12 +1235,14 @@
                             <div class="eco-check"><span>License key ada di database?</span><span class="eco-r eco-no">tidak → 403, dicatat gagal</span></div>
                             <div class="eco-check"><span>Status lisensi = active?</span><span class="eco-r eco-no">tidak → 403 “status is suspended”</span></div>
                             <div class="eco-check"><span>Belum lewat <code>expires_at</code>?</span><span class="eco-r eco-no">lewat → status jadi expired, 403</span></div>
-                            <div class="eco-check"><span>Instance key sudah terdaftar?</span><span class="eco-r eco-yes">tidak → dibuat baru otomatis; ya → update last_seen + domain</span></div>
+                            <div class="eco-check"><span>Instance diblokir admin / milik lisensi lain?</span><span class="eco-r eco-no">403 instance_blocked / instance_key_conflict</span></div>
+                            <div class="eco-check"><span>Domain sama dengan domain terkunci?</span><span class="eco-r eco-no">beda → 403 domain_mismatch</span></div>
+                            <div class="eco-check"><span>Instance baru: kuota instalasi masih ada?</span><span class="eco-r eco-no">penuh → 403 instance_limit_reached</span></div>
                             <div class="eco-check"><span>Hasil</span><span class="eco-r eco-yes">200 · valid, modules, max_users, expires_at · dicatat sukses</span></div>
                         </div>
                         <div class="eco-callout">
-                            <strong>Catatan desain untuk pemeriksaan ke-4</strong>
-                            <p>Karena instance baru dibuat otomatis dan domain ditimpa, satu license key saat ini bisa dipakai dari instance dan domain mana pun. Untuk pengembangan ini memudahkan testing; sebelum production perlu menolak instance/domain yang tidak cocok atau membatasi jumlah instance per lisensi.</p>
+                            <strong>Kuota instalasi & batasannya</strong>
+                            <p>Setiap paket punya kuota lokasi (Basic 1, Professional 2, Enterprise 5). Admin bisa memblokir instalasi tidak sah di <strong>Licenses → Detail</strong>. Karena domain dan instance key masih dikirim oleh aplikasi client sendiri, penguncian penuh baru tercapai setelah request bertanda tangan (T-22).</p>
                         </div>
                     </div>
 
@@ -1259,7 +1263,7 @@
                                     <tr><td>Order, order_status, approve/reject order</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Alur B end-to-end teruji (T-01)</td></tr>
                                     <tr><td>Panel persetujuan pembayaran</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Banner Dashboard + tabel di Subscriptions</td></tr>
                                     <tr><td>Detail instance per lisensi</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Menu Licenses → Detail</td></tr>
-                                    <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Instance dicatat, tidak pernah ditolak (T-02)</td></tr>
+                                    <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kuota lokasi per paket, domain terkunci, blokir admin (T-02)</td></tr>
                                     <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
                                     <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Kolom ada, logika penyalinan modul belum ada (T-13)</td></tr>
@@ -1298,6 +1302,7 @@
                             <span><strong>{{ instanceDetail.license.customer_name }}</strong></span>
                             <span>{{ instanceDetail.license.application_name }}</span>
                             <span>Kuota {{ instanceDetail.license.max_users }} user</span>
+                            <span :class="{ 'quota-over': activeInstanceCount > instanceDetail.license.max_instances }">Instalasi {{ activeInstanceCount }} / {{ instanceDetail.license.max_instances }}</span>
                             <span class="status" :class="'status-' + instanceDetail.license.status">{{ instanceDetail.license.status }}</span>
                         </div>
                     </div>
@@ -1305,18 +1310,25 @@
                     <p v-else-if="instanceDetail.error" class="instance-empty instance-error">{{ instanceDetail.error }}</p>
                     <p v-else-if="instanceDetail.instances.length === 0" class="instance-empty">Belum ada perangkat atau server yang terhubung ke lisensi ini.</p>
                     <template v-else>
-                        <p class="instance-count">{{ instanceDetail.instances.length }} instance terdaftar. Setiap instance adalah satu instalasi aplikasi client (server toko / domain), bukan akun user.</p>
+                        <p class="instance-count">{{ instanceDetail.instances.length }} instalasi tercatat. Setiap instalasi adalah satu server toko / domain aplikasi client, bukan akun user. Instalasi yang diblokir tidak dihitung dalam kuota.</p>
+                        <p v-if="activeInstanceCount > instanceDetail.license.max_instances" class="instance-warning">
+                            Jumlah instalasi aktif melebihi kuota paket. Instalasi yang sudah terdaftar tetap berjalan; blokir yang tidak sah agar kuota sesuai.
+                        </p>
                         <div v-for="inst in instanceDetail.instances" :key="inst.id" class="instance-card">
                             <div class="instance-card-head">
                                 <strong>{{ inst.instance_name }}</strong>
                                 <span class="status" :class="'status-' + (inst.status === 'active' ? 'active' : inst.status === 'inactive' ? 'pending' : 'expired')">{{ inst.status }}</span>
                             </div>
                             <dl class="instance-meta">
-                                <div><dt>Domain</dt><dd><code>{{ inst.domain || '-' }}</code></dd></div>
+                                <div><dt>Domain terkunci</dt><dd><code>{{ inst.domain || '-' }}</code></dd></div>
                                 <div><dt>Instance key</dt><dd><code>{{ inst.instance_key }}</code></dd></div>
                                 <div><dt>Terakhir aktif</dt><dd>{{ inst.last_seen_at ? formatDate(inst.last_seen_at) : 'Belum pernah' }}</dd></div>
                                 <div><dt>Terdaftar</dt><dd>{{ formatDate(inst.created_at) }}</dd></div>
                             </dl>
+                            <div class="instance-actions">
+                                <button v-if="inst.status !== 'blocked'" type="button" class="btn btn-sm btn-danger" @click="setInstanceStatus(inst, 'blocked')">Blokir instalasi</button>
+                                <button v-else type="button" class="btn btn-sm" @click="setInstanceStatus(inst, 'active')">Aktifkan kembali</button>
+                            </div>
                         </div>
                     </template>
                     <div class="modal-footer" style="margin-top: 16px;">
@@ -1405,6 +1417,10 @@
                         <div class="form-group">
                             <label>Max Users</label>
                             <input type="number" v-model="packageForm.max_users" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Max Instalasi (lokasi/cabang)</label>
+                            <input type="number" min="1" v-model="packageForm.max_instances" class="form-control" required>
                         </div>
                         <div class="form-group full">
                             <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
@@ -1503,6 +1519,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=20261024_v1"></script>
+<script src="./assets/js/app.js?v=20261024_v3"></script>
 </body>
 </html>

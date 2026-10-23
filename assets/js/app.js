@@ -59,7 +59,7 @@ createApp({
             // Form Models
             appForm: { code: '', name: '', description: '', status: 'active' },
             moduleForm: { application_id: '', code: '', name: '', module_type: 'standard', description: '', sort_order: 0 },
-            packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, future_module_access: false, is_public: true, module_ids: [] },
+            packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] },
             customerForm: { code: '', name: '', email: '', phone: '', status: 'active' },
             subForm: { customer_id: '', package_id: '', start_date: '', end_date: '', max_users: 5, base_price: 0, discount_amount: 0 },
 
@@ -76,6 +76,9 @@ createApp({
     computed: {
         pendingOrders() {
             return this.subscriptions.filter(sub => sub.status === 'pending');
+        },
+        activeInstanceCount() {
+            return this.instanceDetail.instances.filter(inst => inst.status !== 'blocked').length;
         }
     },
     async mounted() {
@@ -231,7 +234,7 @@ createApp({
                 this.moduleForm = { application_id: this.selectedAppId || (this.applications[0]?.id || ''), code: '', name: '', module_type: 'standard', description: '', sort_order: 0 };
             } else if (type === 'package') {
                 this.modalTitle = 'Tambah Paket Penjualan';
-                this.packageForm = { application_id: this.applications[0]?.id || '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, future_module_access: false, is_public: true, module_ids: [] };
+                this.packageForm = { application_id: this.applications[0]?.id || '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] };
             } else if (type === 'customer') {
                 this.modalTitle = 'Tambah Customer Baru';
                 this.customerForm = { code: '', name: '', email: '', phone: '', status: 'active' };
@@ -262,6 +265,29 @@ createApp({
                 this.instanceDetail.error = 'Gagal memuat instance: ' + err.message;
             } finally {
                 this.instanceDetail.loading = false;
+            }
+        },
+
+        async setInstanceStatus(inst, status) {
+            const question = status === 'blocked'
+                ? `Blokir instalasi "${inst.instance_name}" (${inst.domain || inst.instance_key})?\nAplikasi di lokasi ini akan ditolak saat validasi lisensi berikutnya.`
+                : `Aktifkan kembali instalasi "${inst.instance_name}"?`;
+            if (!confirm(question)) return;
+            try {
+                const res = await fetch(`api/index.php/instances/${inst.id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    alert('Gagal: ' + json.message);
+                    return;
+                }
+                inst.status = status;
+                await this.fetchLicenses();
+            } catch (err) {
+                alert('Error mengubah status instalasi.');
             }
         },
 

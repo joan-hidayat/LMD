@@ -70,7 +70,7 @@ Dieksekusi dalam **satu transaksi** (`LicenseModel::registerAutoLicense`); satu 
 
 1. Cari aplikasi & paket berdasarkan kode (tidak ketemu → batal).
 2. Cari customer berdasarkan email; belum ada → buat `CUST-xxxxxx`.
-3. Buat subscription 1 tahun, salin `max_users`, harga, billing cycle dari paket.
+3. Buat subscription 1 tahun, salin `max_users`, `max_instances`, harga, billing cycle dari paket.
 4. Salin modul paket ke `subscription_modules`.
 5. Terbitkan `license_key` acak (`random_bytes`), salin modul ke `license_modules`.
 6. Daftarkan instance (instance_key + domain).
@@ -116,7 +116,8 @@ Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin
 | `POST /licenses/approve_order` | Admin/n8n menyetujui pembayaran: subscription & lisensi `active`, instance aktif, activation dibuat | `200` + `license_key`, `expires_at`, `app_url` |
 | `POST /licenses/reject_order` | Menolak: subscription `cancelled`, lisensi `revoked` (subdomain bisa dipakai lagi) | `200` + `is_rejected: true` |
 | `GET /licenses/pending_orders` | Daftar pesanan `pending` untuk otomasi (n8n) | `subscription_no`, customer, paket, `instance_domain`, `total_price` |
-| `GET /licenses/{id}/instances` | Instance yang terhubung ke satu lisensi (dipakai modal **Licenses → Detail**) | `max_users`, `instances[]` |
+| `GET /licenses/{id}/instances` | Instance yang terhubung ke satu lisensi (dipakai modal **Licenses → Detail**) | `max_users`, `max_instances`, `instances[]` |
+| `POST /instances/{id}/status` | Admin memblokir / mengaktifkan instalasi (`{"status":"blocked"\|"active"}`) | `200`; `409` jika kuota penuh saat mengaktifkan |
 
 Kode error: `400` input tidak valid (email, format subdomain), `404` paket/pesanan tidak ada, `409` subdomain sudah dipakai atau pesanan sudah diproses.
 
@@ -166,10 +167,15 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | 1 | License key ada? | 403, dicatat gagal di `license_logs` |
 | 2 | Status lisensi = `active`? | 403 "License status is …" |
 | 3 | Belum lewat `expires_at`? | Status diubah ke `expired`, 403 |
-| 4 | Instance key terdaftar? | **Tidak ditolak** — instance baru dibuat otomatis; jika ada, update `last_seen_at` + domain ditimpa |
+| 4a | Instance key milik lisensi lain? | 403 `instance_key_conflict` |
+| 4b | Instance terdaftar tetapi diblokir admin? | 403 `instance_blocked` |
+| 4c | Instance terdaftar, domain berbeda dari domain terkunci? | 403 `domain_mismatch` (domain diisi sekali saat pertama terikat, tidak pernah ditimpa) |
+| 4d | Instance baru, kuota `max_instances` sudah penuh? | 403 `instance_limit_reached` (instance berstatus `blocked` tidak dihitung) |
 | 5 | Lolos | 200: `valid`, `modules`, `max_users`, `expires_at`, `licensee` (nama & email pemesan), `instance_name`; dicatat sukses |
 
-> Catatan desain: karena langkah 4 tidak pernah menolak, satu license key saat ini bisa dipakai dari instance/domain mana pun. Memudahkan testing; perlu diperketat sebelum production.
+> **Kuota instalasi (T-02):** setiap paket punya `max_instances` (seed: Basic 1, Professional 2, Enterprise 5) yang disalin ke subscription. Admin dapat memblokir / mengaktifkan instalasi di **Licenses → Detail** (`POST /instances/{id}/status`); mengaktifkan kembali tetap tunduk pada kuota. Instalasi lama yang melebihi kuota tidak diblokir otomatis.
+>
+> **Batasan:** `instance_key` dan `domain` dikirim oleh aplikasi client sendiri, sehingga masih bisa dipalsukan oleh pihak yang memegang license key. Penguncian penuh membutuhkan request bertanda tangan (T-04 / T-22).
 
 ---
 
@@ -186,7 +192,7 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | Panel persetujuan pembayaran di dashboard | ✅ Jalan | Banner Dashboard + tabel di Subscriptions |
 | Detail instance per lisensi | ✅ Jalan | Menu Licenses → Detail (diporting dari WIP lokal) |
 | URL API tanpa `index.php` | ✅ Jalan | `api/.htaccess` (butuh `mod_rewrite`, default XAMPP) (T-15) |
-| Penguncian instance + domain | 🟡 Sebagian | Instance dicatat, tidak pernah ditolak |
+| Penguncian instance + domain | ✅ Jalan | Kuota `max_instances` per paket, domain terkunci, blokir oleh admin (T-02). Belum anti-pemalsuan (T-22) |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |
 | `future_module_access` (modul baru otomatis) | 🟡 Sebagian | Kolom ada, logika penyalinan modul belum ada (T-13) |

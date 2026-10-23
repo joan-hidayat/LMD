@@ -69,8 +69,8 @@ class OrderModel {
             $subNo = 'SUB-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
             $inSub = $this->db->prepare("
-                INSERT INTO subscriptions (subscription_no, customer_id, application_id, package_id, start_date, end_date, billing_cycle, max_users, base_price, tax_amount, total_price, status)
-                VALUES (:sub_no, :customer_id, :app_id, :package_id, CURDATE(), NULL, :billing_cycle, :max_users, :base_price, :tax_amount, :total_price, 'pending')
+                INSERT INTO subscriptions (subscription_no, customer_id, application_id, package_id, start_date, end_date, billing_cycle, max_users, max_instances, base_price, tax_amount, total_price, status)
+                VALUES (:sub_no, :customer_id, :app_id, :package_id, CURDATE(), NULL, :billing_cycle, :max_users, :max_instances, :base_price, :tax_amount, :total_price, 'pending')
             ");
             $inSub->execute([
                 'sub_no' => $subNo,
@@ -79,6 +79,7 @@ class OrderModel {
                 'package_id' => $package['id'],
                 'billing_cycle' => $package['billing_cycle'],
                 'max_users' => $package['max_users'],
+                'max_instances' => $package['max_instances'],
                 'base_price' => $basePrice,
                 'tax_amount' => $taxAmount,
                 'total_price' => $totalPrice
@@ -125,6 +126,7 @@ class OrderModel {
             'package_code' => $package['code'],
             'package_name' => $package['name'],
             'max_users' => (int) $package['max_users'],
+            'max_instances' => (int) $package['max_instances'],
             'billing_cycle' => $package['billing_cycle'],
             'base_price' => $basePrice,
             'tax_amount' => $taxAmount,

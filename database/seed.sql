@@ -1,4 +1,6 @@
 -- Central SaaS Seed Data
+-- ⚠️ PERINGATAN: file ini MENGOSONGKAN (TRUNCATE) seluruh tabel central_saas sebelum mengisi data demo.
+-- Jangan jalankan pada database yang sudah berisi data nyata. Untuk memperbarui struktur, pakai: php database/migrate.php
 USE `central_saas`;
 
 -- Disable Foreign Key Checks during truncate & seed
@@ -103,3 +105,7 @@ INSERT INTO `license_activations` (`id`, `license_id`, `instance_id`, `activatio
 INSERT INTO `license_logs` (`id`, `license_id`, `instance_id`, `action`, `request_id`, `ip_address`, `request_data`, `response_data`, `result`, `created_at`) VALUES
 (1, 1, 1, 'validate', 'REQ-20261009-001', '180.252.112.45', '{"instance_key":"INST-APO-JKT-001","domain":"apotek-jkt.sehatsentosa.co.id"}', '{"valid":true,"max_users":10,"modules":["DASHBOARD","MASTER_OBAT","INVENTORY","POS_KASIR","PURCHASING","ACCOUNTING"]}', 'success', '2026-10-09 22:00:00'),
 (2, 2, 3, 'heartbeat', 'REQ-20261009-002', '36.85.201.12', '{"instance_key":"INST-APO-KIM-001"}', '{"status":"ok"}', 'success', '2026-10-09 21:30:00');
+
+-- Kuota instalasi per paket (T-02) & salinannya di subscription
+UPDATE `packages` SET `max_instances` = CASE `code` WHEN 'APO_PRO' THEN 2 WHEN 'APO_ENT' THEN 5 ELSE 1 END;
+UPDATE `subscriptions` s JOIN `packages` p ON s.`package_id` = p.`id` SET s.`max_instances` = p.`max_instances`;

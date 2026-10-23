@@ -18,7 +18,7 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | ID | Repo | Temuan | Kategori | Status |
 |---|---|---|---|---|
 | T-01 | lmd, software-showcase | Endpoint `licenses/order`, `licenses/order_status`, `licenses/approve_order` dipanggil Showcase (`assets/js/app.js`) tetapi tidak ada di router LMD (`api/index.php`). Wizard berlangganan berhenti di langkah bayar. | Blocker fungsional | Selesai — lihat Riwayat "T-01 + T-12" |
-| T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. Bukti nyata di data lokal: lisensi Budi Santoso tercatat punya 2 instance, salah satunya ber-domain IP `192.168.0.116`. | Blocker desain | Terbuka |
+| T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. Bukti nyata di data lokal: lisensi Budi Santoso tercatat punya 2 instance, salah satunya ber-domain IP `192.168.0.116`. | Blocker desain | Selesai — lihat Riwayat "T-02" (batasan pemalsuan dilanjutkan di T-22) |
 | T-03 | sample-mini-pos | `max_users` diterima dari LMD tetapi belum ditegakkan (belum ada batas sesi/akun). | Fungsional | Selesai — lihat Riwayat "Login Mini POS" (metode named users) |
 | T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Ditunda — tahap pengembangan |
 | T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Ditunda — tahap pengembangan |
@@ -38,10 +38,42 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-19 | sample-mini-pos | Judul toko di Mini POS memakai nama customer (`Budi Santoso — Mini POS Express`), bukan nama toko yang diisi di wizard (tersimpan di `application_instances.instance_name`). | Minor | Selesai — lihat Riwayat "Login Mini POS" |
 | T-20 | sample-mini-pos | `app.js` tersimpan dengan encoding ganda (UTF-8 dibaca sebagai Windows-1252), sehingga emoji produk tampil rusak (`ðŸ¥`, `â˜•`). | Bug UI | Selesai — lihat Riwayat "Login Mini POS" |
 | T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Terbuka |
+| T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Terbuka |
+| T-23 | lmd | `database/seed.sql` men-`TRUNCATE` semua tabel `central_saas` tanpa peringatan; berbahaya jika dijalankan pada data nyata. Peringatan ditambahkan di kepala file, dan pembaruan struktur kini lewat `database/migrate.php`. | Operasional | Selesai — lihat Riwayat "T-02" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-24 — T-02: kuota instalasi per paket & penguncian domain
+**Jenis:** Perubahan kode + migrasi database
+**Repo:** lmd, software-showcase, sample-mini-pos
+
+**Keputusan pemilik proyek**
+- Kuota instalasi per paket (bukan 1 lisensi = 1 instalasi).
+- Instance lama yang melebihi kuota diputuskan admin secara manual (tidak diblokir otomatis).
+
+**Database** (perlu migrasi pada DB yang sudah ada)
+- Kolom baru `packages.max_instances` dan `subscriptions.max_instances` (default 1; seed: APO_BASIC 1, APO_PRO 2, APO_ENT 5). Subscription menyalin nilai paket saat dibuat, seperti `max_users`.
+- `database/migrate.php`: migrasi idempoten (cek `INFORMATION_SCHEMA`), dijalankan via CLI. `schema.sql` & `seed.sql` diperbarui untuk instalasi baru.
+
+**LMD**
+- `validate` (`LicenseModel::validateLicense`): `instance_key_conflict`, `instance_blocked`, `domain_mismatch` (domain diisi sekali, tidak lagi ditimpa), `instance_limit_reached` (instance `blocked` tidak dihitung). Respons gagal kini membawa `reason`; respons sukses membawa `max_instances`.
+- `POST /instances/{id}/status` (`active` / `blocked`), mengaktifkan kembali tunduk pada kuota (409); tercatat di `license_logs`.
+- Ketiga jalur pembuatan subscription (order Showcase, auto-register, subscription manual) menyalin `max_instances`. Form & tabel paket punya **Max Instalasi**.
+- Dashboard: kolom **Instalasi** `aktif / kuota` (kuning jika melebihi), modal detail dengan **Blokir instalasi / Aktifkan kembali**.
+- Docs: `EKOSISTEM_CARA_KERJA.md`, `PANDUAN_PENGGUNAAN.md` (lapis keamanan 2, FAQ 4, bagian 9), tab Ekosistem.
+
+**Showcase:** kartu paket menampilkan kuota lokasi ("1 lokasi toko", "Hingga 5 lokasi / cabang").
+
+**Mini POS:** penolakan instalasi (`domain_mismatch`, `instance_limit_reached`, `instance_blocked`, `instance_key_conflict`) menampilkan halaman "Instalasi Tidak Diizinkan" dengan penjelasan, bukan dilempar ke Showcase.
+
+**Verifikasi** (MariaDB + PHP server)
+- Migrasi: run 1 "DITERAPKAN", run 2 "sudah terpasang"; subscription lama terisi kuota sesuai paket. Instalasi baru dari `schema.sql` + `seed.sql` benar.
+- API: instance resmi → valid; domain lain → `domain_mismatch`; instalasi baru di Basic → `instance_limit_reached`; Pro: instalasi ke-2 valid, ke-3 ditolak; blokir cabang-2 → `instance_blocked`, slot terbuka untuk cabang-3; aktifkan cabang-2 saat penuh → 409; instance key lisensi lain → `instance_key_conflict`; status tidak valid → 400; instance tidak ada → 404. Semua tercatat di `license_logs`.
+- Browser: kartu Showcase menampilkan kuota lokasi; Mini POS dari domain lain → "Instalasi Tidak Diizinkan"; tabel paket & lisensi menampilkan kuota; modal blokir/aktifkan berfungsi. Tidak ada error JS.
+
+**Temuan baru:** T-22, T-23 (selesai).
 
 ### 2026-10-24 — Sinkronisasi lokal setelah PR #2
 **Jenis:** Verifikasi (tanpa perubahan kode)

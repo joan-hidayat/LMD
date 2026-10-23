@@ -125,6 +125,15 @@ try {
             }
             break;
 
+        case 'instances':
+            $controller = new LicenseController();
+            if ($method === 'POST' && $id && is_numeric($id) && $action === 'status') {
+                $controller->updateInstanceStatus($id);
+            } else {
+                sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
+            }
+            break;
+
         case 'audit':
         case 'logs':
             $controller = new AuditController();
