@@ -19,11 +19,11 @@ Tiga aplikasi, satu database:
 ```mermaid
 flowchart LR
     SC["🛒 Software Showcase<br>wizard + admin katalog"]
-    LMD["☁️ Central SaaS LMD<br>api/index.php<br>register · validate · CRUD · dashboard"]
+    LMD["☁️ Central SaaS LMD<br>api/index.php<br>register · validate · order · CRUD · dashboard"]
     APP["💻 Mini POS / Apotek / DMS"]
     DB[("central_saas<br>MySQL · 12 tabel")]
 
-    SC -. "order / order_status ✗ (belum ada)" .-> LMD
+    SC -- "GET packages?app_code · POST licenses/order · GET licenses/order_status" --> LMD
     SC -- "Buka Aplikasi ?tenant=…&lic=…" --> APP
     APP -- "POST licenses/validate" --> LMD
     LMD --> DB
@@ -89,22 +89,39 @@ sequenceDiagram
     participant S as Showcase
     participant L as LMD
     actor A as Admin LMD
-    C->>S: Pilih paket (Starter 3 / Pro 15 / Enterprise 50 user)
-    C->>S: Isi data diri, subdomain, password admin
+    S->>L: GET packages?app_code=APOTEK
+    L-->>S: Paket publik + harga + kuota + modul
+    C->>S: Pilih paket, isi data diri & subdomain
     C->>S: Bayar (QRIS/transfer), klik "Saya Sudah Bayar"
-    S->>L: POST licenses/order  ✗ belum ada
+    S->>L: POST licenses/order
     L-->>S: subscription_no (status pending)
     loop tiap 2,5 detik
-        S->>L: GET licenses/order_status  ✗ belum ada
+        S->>L: GET licenses/order_status
     end
-    A->>L: Approve (approve_order)  ✗ belum ada
-    L-->>S: is_approved: true + license_key
+    A->>L: Approve di menu Subscriptions (POST licenses/approve_order)
+    L-->>S: is_approved: true + license_key + app_url
     S->>C: Tombol "Buka Aplikasi" → /mini-pos/?tenant=…&lic=…
 ```
 
-Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin menyetujui pembayaran. Ke depan, approve bisa diotomatisasi lewat n8n + payment gateway.
+Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin menyetujui pembayaran. Masa aktif dihitung **sejak tanggal approve**, bukan tanggal pesan.
 
-**Status:** UI wizard di Showcase lengkap (`assets/js/app.js`), tetapi router LMD hanya mengenal `licenses/register` dan `licenses/validate`. Wizard berhenti di langkah bayar.
+**Endpoint (`LicenseController` + `OrderModel`)**
+
+| Endpoint | Fungsi | Respons penting |
+|---|---|---|
+| `GET /packages?app_code=APOTEK` | Katalog paket publik (status `active`, `is_public = 1`) beserta modul | `code`, `name`, `base_price`, `billing_cycle`, `max_users`, `modules[]` |
+| `POST /licenses/order` | Buat pesanan: customer (dicari via email), subscription `pending`, modul, lisensi `suspended`, instance `{subdomain}.pos.local` | `201` + `subscription_no`, `total_price` (PPN 11%), `instance_domain` |
+| `GET /licenses/order_status?subscription_no=` | Polling Showcase | `is_approved`, `is_rejected`; `license_key` & `app_url` hanya setelah approve |
+| `POST /licenses/approve_order` | Admin/n8n menyetujui pembayaran: subscription & lisensi `active`, instance aktif, activation dibuat | `200` + `license_key`, `expires_at`, `app_url` |
+| `POST /licenses/reject_order` | Menolak: subscription `cancelled`, lisensi `revoked` (subdomain bisa dipakai lagi) | `200` + `is_rejected: true` |
+
+Kode error: `400` input tidak valid (email, format subdomain), `404` paket/pesanan tidak ada, `409` subdomain sudah dipakai atau pesanan sudah diproses.
+
+**Catatan desain**
+- Selama pending, lisensi berstatus `suspended` karena enum `licenses.status` tidak punya `pending` (dipilih agar schema DB yang sudah terpasang tidak perlu migrasi). Status pesanan dibaca dari `subscriptions.status`. Validate menolak lisensi ini sampai di-approve.
+- `instance_key` mengikuti konvensi Mini POS: `INST-STORE-{8 karakter terakhir license key}`.
+- `admin_password` dari Showcase **tidak disimpan maupun dicatat** di log (lihat T-17).
+- Admin melihat pesanan di **Dashboard** (banner) dan **Subscriptions → Persetujuan Pembayaran & Aktivasi Domain Klien** (tombol Approve / Tolak). Endpoint `approve_order` yang sama siap dipanggil n8n.
 
 ---
 
@@ -131,7 +148,7 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 
 ---
 
-## 6. Ringkasan Status Implementasi (2026-10-23)
+## 6. Ringkasan Status Implementasi (diperbarui 2026-10-23)
 
 | Bagian | Status | Keterangan |
 |---|---|---|
@@ -140,13 +157,14 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | Validasi + log | ✅ Jalan | ada / status / expired, tulis `license_logs` |
 | Dashboard 8 grafik + Radar Aksi | ✅ Jalan | Dihitung saat halaman dimuat |
 | Wizard Showcase (UI) | ✅ Jalan | 4 langkah + polling |
-| `order`, `order_status`, `approve_order` | ❌ Belum ada | Penghambat utama Alur B |
+| `order`, `order_status`, `approve_order`, `reject_order` | ✅ Jalan | Alur B end-to-end teruji (T-01) |
+| Panel persetujuan pembayaran di dashboard | ✅ Jalan | Banner Dashboard + tabel di Subscriptions |
 | Penguncian instance + domain | 🟡 Sebagian | Instance dicatat, tidak pernah ditolak |
 | Penegakan `max_users` | 🟡 Sebagian | Dikirim LMD, belum ditegakkan di client |
 | `future_module_access` (modul baru otomatis) | 🟡 Sebagian | Kolom ada, logika penyalinan modul belum ada (T-13) |
-| Paket & harga Showcase sinkron dengan LMD | 🟡 Sebagian | Showcase masih hardcode, angka berbeda (T-12) |
+| Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |
 | API key / auth admin / rate limit | 📋 Rencana | Hardening sebelum production |
 | Password & credential di `.env` | 📋 Rencana | Sengaja hardcode selama pengembangan |
-| n8n + payment gateway | 📋 Rencana | Bergantung pada `approve_order` |
+| n8n + payment gateway | 📋 Rencana | Endpoint `approve_order` sudah siap dipanggil |
 
-**Urutan kerja yang disarankan:** (1) endpoint order/approve → (2) aturan penguncian instance/domain → (3) penegakan `max_users` di client → (4) hardening keamanan sebelum production.
+**Urutan kerja yang disarankan:** (1) aturan penguncian instance/domain (T-02) → (2) penegakan `max_users` di client & future module (T-03, T-13) → (3) perbaikan kecil kode & docs → (4) hardening keamanan sebelum production.

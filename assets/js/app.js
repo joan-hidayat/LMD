@@ -72,6 +72,11 @@ createApp({
             }
         };
     },
+    computed: {
+        pendingOrders() {
+            return this.subscriptions.filter(sub => sub.status === 'pending');
+        }
+    },
     async mounted() {
         console.log('Central SaaS Dashboard Mounted. Loading data...');
         await this.fetchDashboardData();
@@ -354,6 +359,35 @@ createApp({
             }
         },
 
+        async decideOrder(sub, decision) {
+            const isApprove = decision === 'approve';
+            const question = isApprove
+                ? `Approve pembayaran ${sub.subscription_no} (${sub.customer_name}) sebesar ${this.formatRupiah(sub.total_price)}?\nLisensi akan langsung aktif.`
+                : `Tolak pesanan ${sub.subscription_no} (${sub.customer_name})?\nSubscription dibatalkan dan lisensi dicabut.`;
+            if (!confirm(question)) return;
+
+            try {
+                const res = await fetch(`api/index.php/licenses/${isApprove ? 'approve_order' : 'reject_order'}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subscription_no: sub.subscription_no })
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    alert('Gagal: ' + json.message);
+                    return;
+                }
+                await this.fetchSubscriptions();
+                await this.fetchLicenses();
+                await this.fetchDashboardData();
+                alert(isApprove
+                    ? `Pesanan disetujui.\nLicense Key: ${json.data.license_key}\nAktif sampai: ${json.data.expires_at || '-'}`
+                    : 'Pesanan ditolak.');
+            } catch (err) {
+                alert('Error memproses pesanan.');
+            }
+        },
+
         async testLicenseValidation() {
             this.tester.loading = true;
             this.tester.result = null;
@@ -379,6 +413,12 @@ createApp({
         },
 
         // Helper Formatters
+        subscriptionStatusClass(status) {
+            if (status === 'active') return 'active';
+            if (status === 'pending') return 'pending';
+            return 'expired';
+        },
+
         formatRupiah(val) {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0);
         },

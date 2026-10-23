@@ -843,3 +843,11 @@ td code, .code-pill {
     .eco-check { grid-template-columns: 1fr; }
     .eco-r { text-align: left; }
 }
+
+/* Pesanan self-service dari Software Showcase menunggu approve */
+.alert-card.order-pending {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.25);
+    border-left-color: var(--warning);
+}
+.order-approval-card { border-left: 3px solid var(--warning); }

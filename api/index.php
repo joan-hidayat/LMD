@@ -66,6 +66,8 @@ try {
             if ($method === 'GET') {
                 if ($id && is_numeric($id)) {
                     $controller->show($id);
+                } elseif (!empty($_GET['app_code'])) {
+                    $controller->publicCatalog($_GET['app_code']);
                 } else {
                     $controller->index();
                 }
@@ -98,6 +100,14 @@ try {
                 $controller->validate();
             } elseif ($id === 'register') {
                 $controller->register();
+            } elseif ($id === 'order' && $method === 'POST') {
+                $controller->order();
+            } elseif ($id === 'order_status' && $method === 'GET') {
+                $controller->orderStatus();
+            } elseif ($id === 'approve_order' && $method === 'POST') {
+                $controller->approveOrder();
+            } elseif ($id === 'reject_order' && $method === 'POST') {
+                $controller->rejectOrder();
             } elseif ($method === 'GET') {
                 if ($id && is_numeric($id)) {
                     $controller->show($id);
