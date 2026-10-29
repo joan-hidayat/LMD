@@ -40,10 +40,18 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Terbuka |
 | T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Terbuka |
 | T-23 | lmd | `database/seed.sql` men-`TRUNCATE` semua tabel `central_saas` tanpa peringatan; berbahaya jika dijalankan pada data nyata. Peringatan ditambahkan di kepala file, dan pembaruan struktur kini lewat `database/migrate.php`. | Operasional | Selesai — lihat Riwayat "T-02" |
+| T-24 | lmd, sample-mini-pos, software-showcase | Mini POS belum terdaftar sebagai aplikasi sendiri di LMD (seed hanya APOTEK, DISTRIBUTOR, TMS); ia memakai paket `APOTEK`. Selain itu `LicenseGate` Mini POS tidak memeriksa `app_code` di respons `validate`, sehingga license key aplikasi lain (misal TMS) juga diterima. Perlu: aplikasi `MINIPOS` + modul + paket di LMD, `lmdAppCode` per produk di Showcase (T-18), dan pengecekan `app_code` di client. | Fungsional / keamanan | Terbuka |
 
 ---
 
 ## Riwayat
+
+### 2026-10-29 — Analisis: cara mendaftarkan aplikasi client ke LMD
+**Jenis:** Analisis (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos, software-showcase
+
+- Menjawab pertanyaan pemilik proyek tentang langkah mendaftarkan aplikasi eksternal (contoh Mini POS) ke LMD: (1) daftar aplikasi & modul, (2) buat paket, (3) integrasi `validate` di client, (4) pilih jalur penerbitan lisensi (Showcase order / auto-register / manual), (5) tampilkan di Showcase.
+- Temuan: Mini POS belum punya aplikasi sendiri di LMD dan client tidak memverifikasi `app_code` → **T-24**.
 
 ### 2026-10-24 — T-02: kuota instalasi per paket & penguncian domain
 **Jenis:** Perubahan kode + migrasi database
