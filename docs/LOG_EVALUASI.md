@@ -47,6 +47,14 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Verifikasi lokal T-25 (PR LMD #6)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd
+
+- XAMPP lokal di `929c9fe`; backup `_backup_20261030_2259_central_saas.sql` (63.936 byte).
+- `migrate.php` run 1: `2026_10_31_cleanup_deleted_package_modules` **DITERAPKAN** (sisa `TEST_FUTURE` dibersihkan); run 2: semua "sudah terpasang".
+- SQL: paket `MPOS_BISNIS` → `isi_paket = 4`, `modul_terhapus = 0`. T-25 terkonfirmasi selesai di lingkungan lokal.
+
 ### 2026-10-31 — T-25: modul terhapus keluar dari isi paket
 **Jenis:** Perubahan kode + pembersihan data
 **Repo:** lmd
