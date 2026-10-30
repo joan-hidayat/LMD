@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=20261024_v2">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261030_v1">
 </head>
 
 <body>
@@ -390,6 +390,9 @@
                                 <span class="status status-active">{{ app.code }}</span>
                             </div>
                             <small style="color: var(--muted); display: block; margin-top: 4px;">{{ app.modules_count }} Modules | {{ app.packages_count }} Packages</small>
+                            <small class="app-launch" :title="app.launch_url || 'Tanpa URL hosted: customer memasukkan license key saat instalasi'">
+                                {{ app.launch_url ? '🌐 Hosted · ' + app.launch_url : '💾 On-premise (tanpa URL hosted)' }}
+                            </small>
                         </div>
                     </div>
                     <div>
@@ -1263,6 +1266,7 @@
                                     <tr><td>Order, order_status, approve/reject order</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Alur B end-to-end teruji (T-01)</td></tr>
                                     <tr><td>Panel persetujuan pembayaran</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Banner Dashboard + tabel di Subscriptions</td></tr>
                                     <tr><td>Detail instance per lisensi</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Menu Licenses → Detail</td></tr>
+                                    <tr><td>Standar Integrasi v1</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>app_code sama di LMD, Showcase, client; Mini POS = MINIPOS (docs/STANDAR_INTEGRASI.md)</td></tr>
                                     <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kuota lokasi per paket, domain terkunci, blokir admin (T-02)</td></tr>
                                     <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
@@ -1350,6 +1354,11 @@
                         <div class="form-group full">
                             <label>Description</label>
                             <textarea v-model="appForm.description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label>Launch URL (opsional)</label>
+                            <input v-model="appForm.launch_url" class="form-control" placeholder="/nama-app/?tenant={tenant}&lic={license_key}">
+                            <small style="color: var(--muted);">Alamat aplikasi hosted yang dibuka customer setelah pembayaran disetujui. Kosongkan untuk aplikasi on-premise. Lihat docs/STANDAR_INTEGRASI.md.</small>
                         </div>
                     </div>
                     <div class="modal-footer" style="margin-top: 20px;">
@@ -1519,6 +1528,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=20261024_v3"></script>
+<script src="./assets/js/app.js?v=20261030_v1"></script>
 </body>
 </html>

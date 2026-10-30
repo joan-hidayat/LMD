@@ -150,11 +150,14 @@ class OrderModel {
             'status' => $order['subscription_status'],
             'is_approved' => $isApproved,
             'is_rejected' => $order['subscription_status'] === 'cancelled',
+            'app_code' => $order['app_code'],
+            'app_name' => $order['app_name'],
             'package_name' => $order['package_name'],
             'instance_domain' => $order['domain'],
             'license_key' => $isApproved ? $order['license_key'] : null,
             'expires_at' => $isApproved ? $order['expires_at'] : null,
-            'app_url' => $isApproved ? $this->buildAppUrl($order['domain'], $order['license_key']) : null
+            // null = aplikasi on-premise: customer memasukkan license key saat instalasi
+            'app_url' => $isApproved ? $this->buildAppUrl($order['launch_url'], $order['domain'], $order['license_key']) : null
         ];
     }
 
@@ -269,11 +272,12 @@ class OrderModel {
     private function findOrder($subscriptionNo, $forUpdate = false) {
         $stmt = $this->db->prepare("
             SELECT s.id as subscription_id, s.subscription_no, s.status as subscription_status, s.billing_cycle,
-                   p.name as package_name,
+                   p.name as package_name, a.code as app_code, a.name as app_name, a.launch_url,
                    l.id as license_id, l.license_key, l.status as license_status, l.expires_at,
                    ai.id as instance_id, ai.domain
             FROM subscriptions s
             JOIN packages p ON s.package_id = p.id
+            JOIN applications a ON s.application_id = a.id
             JOIN licenses l ON l.subscription_id = s.id
             LEFT JOIN application_instances ai ON ai.license_id = l.id
             WHERE s.subscription_no = :sub_no
@@ -294,11 +298,20 @@ class OrderModel {
         return isset($intervals[$billingCycle]) ? date('Y-m-d', strtotime($intervals[$billingCycle])) : null;
     }
 
-    private function buildAppUrl($domain, $licenseKey) {
-        // Semua aplikasi masih berjalan di host yang sama dengan LMD (XAMPP), lihat EKOSISTEM_CARA_KERJA.md
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
-        return "{$scheme}://{$host}/mini-pos/?" . http_build_query(['tenant' => $domain, 'lic' => $licenseKey]);
+    /**
+     * URL aplikasi dari template applications.launch_url (lihat docs/STANDAR_INTEGRASI.md).
+     * Placeholder: {tenant}, {license_key}. Template berawalan "/" memakai host yang sama dengan LMD.
+     */
+    private function buildAppUrl($template, $domain, $licenseKey) {
+        if (empty($template)) {
+            return null;
+        }
+        $url = strtr($template, ['{tenant}' => rawurlencode((string) $domain), '{license_key}' => rawurlencode($licenseKey)]);
+        if ($url[0] === '/') {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8080') . $url;
+        }
+        return $url;
     }
 
     private function log($licenseId, $instanceId, $action, $request, $response) {

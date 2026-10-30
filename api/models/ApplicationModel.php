@@ -30,14 +30,15 @@ class ApplicationModel {
 
     public function create($data) {
         $stmt = $this->db->prepare("
-            INSERT INTO applications (code, name, slug, description, status) 
-            VALUES (:code, :name, :slug, :description, :status)
+            INSERT INTO applications (code, name, slug, description, launch_url, status) 
+            VALUES (:code, :name, :slug, :description, :launch_url, :status)
         ");
         $stmt->execute([
             'code' => strtoupper(trim($data['code'])),
             'name' => trim($data['name']),
             'slug' => strtolower(trim($data['slug'] ?? str_replace(' ', '-', $data['name']))),
             'description' => $data['description'] ?? null,
+            'launch_url' => trim($data['launch_url'] ?? '') ?: null,
             'status' => $data['status'] ?? 'active'
         ]);
         return $this->db->lastInsertId();
@@ -46,7 +47,7 @@ class ApplicationModel {
     public function update($id, $data) {
         $stmt = $this->db->prepare("
             UPDATE applications 
-            SET code = :code, name = :name, slug = :slug, description = :description, status = :status, updated_at = NOW()
+            SET code = :code, name = :name, slug = :slug, description = :description, launch_url = :launch_url, status = :status, updated_at = NOW()
             WHERE id = :id AND deleted_at IS NULL
         ");
         return $stmt->execute([
@@ -55,6 +56,7 @@ class ApplicationModel {
             'name' => trim($data['name']),
             'slug' => strtolower(trim($data['slug'])),
             'description' => $data['description'] ?? null,
+            'launch_url' => trim($data['launch_url'] ?? '') ?: null,
             'status' => $data['status'] ?? 'active'
         ]);
     }

@@ -34,16 +34,55 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-15 | lmd, sample-mini-pos, docs | Repo LMD tidak memiliki `.htaccess`, tetapi Mini POS (`app.js`) dan docs memanggil `/api/licenses/...` tanpa `index.php`. Hanya berfungsi jika ada rewrite rule di server lokal. Saat ini panggilan validate Mini POS gagal diam-diam (hanya `console.warn`). Showcase sudah dipindah ke `/api/index.php/...`. | Fungsional / konfigurasi | Selesai — `api/.htaccess` masuk repo, docs `PANDUAN_PENGGUNAAN.md` dilengkapi (lihat Riwayat "Rekonsiliasi WIP lokal") |
 | T-16 | software-showcase | `style.css` publik tidak punya aturan `.hidden`, sehingga keempat langkah wizard dan layar sukses tampil bersamaan. | Bug UI | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-17 | software-showcase, sample-mini-pos | Wizard meminta "password akun admin" dan menampilkan "kredensial login", tetapi Mini POS tidak punya login dan LMD sengaja tidak menyimpan password. Perlu keputusan: hapus field, atau buat akun admin di aplikasi client. | Desain / UX | Selesai — lihat Riwayat "Login Mini POS" |
-| T-18 | software-showcase | Semua produk Showcase (termasuk Mini POS Express, DineFlow Resto) berlangganan memakai paket `APOTEK`, karena `products.js` belum punya pemetaan ke kode aplikasi LMD. Kode sudah membaca `product.lmdAppCode` (default `APOTEK`). | Fungsional / data | Terbuka |
+| T-18 | software-showcase | Semua produk Showcase (termasuk Mini POS Express, DineFlow Resto) berlangganan memakai paket `APOTEK`, karena `products.js` belum punya pemetaan ke kode aplikasi LMD. Kode sudah membaca `product.lmdAppCode` (default `APOTEK`). | Fungsional / data | Selesai — lihat Riwayat "Standar Integrasi v1" |
 | T-19 | sample-mini-pos | Judul toko di Mini POS memakai nama customer (`Budi Santoso — Mini POS Express`), bukan nama toko yang diisi di wizard (tersimpan di `application_instances.instance_name`). | Minor | Selesai — lihat Riwayat "Login Mini POS" |
 | T-20 | sample-mini-pos | `app.js` tersimpan dengan encoding ganda (UTF-8 dibaca sebagai Windows-1252), sehingga emoji produk tampil rusak (`ðŸ¥`, `â˜•`). | Bug UI | Selesai — lihat Riwayat "Login Mini POS" |
 | T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Terbuka |
 | T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Terbuka |
 | T-23 | lmd | `database/seed.sql` men-`TRUNCATE` semua tabel `central_saas` tanpa peringatan; berbahaya jika dijalankan pada data nyata. Peringatan ditambahkan di kepala file, dan pembaruan struktur kini lewat `database/migrate.php`. | Operasional | Selesai — lihat Riwayat "T-02" |
+| T-24 | lmd, sample-mini-pos, software-showcase | Mini POS belum terdaftar sebagai aplikasi sendiri di LMD (seed hanya APOTEK, DISTRIBUTOR, TMS); ia memakai paket `APOTEK`. Selain itu `LicenseGate` Mini POS tidak memeriksa `app_code` di respons `validate`, sehingga license key aplikasi lain (misal TMS) juga diterima. Perlu: aplikasi `MINIPOS` + modul + paket di LMD, `lmdAppCode` per produk di Showcase (T-18), dan pengecekan `app_code` di client. | Fungsional / keamanan | Selesai — lihat Riwayat "Standar Integrasi v1" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-30 — Standar Integrasi v1 (LMD ↔ Showcase ↔ aplikasi client)
+**Jenis:** Perubahan kode + migrasi database + dokumen standar
+**Repo:** lmd, software-showcase, sample-mini-pos
+
+**Keputusan pemilik proyek**
+- Menerapkan standar integrasi untuk ketiga sisi.
+- Paket Mini POS memakai usulan: `MPOS_STARTER` Rp150.000/bln (2 user, 1 lokasi, KASIR+LAPORAN), `MPOS_PRO` Rp350.000/bln (5 user, 2 lokasi, +STOK), `MPOS_BISNIS` Rp3.500.000/thn (15 user, 5 lokasi, +MULTI_OUTLET, fitur baru otomatis).
+- Produk Showcase yang dipetakan: Mini POS → `MINIPOS`, Apotek → `APOTEK`. Produk lain "Segera hadir".
+
+**Temuan saat analisis:** URL "Buka Aplikasi" setelah approve di-hardcode ke `/mini-pos/` (`OrderModel::buildAppUrl`), sehingga produk lain akan membuka Mini POS. Diselesaikan dengan `launch_url` per aplikasi.
+
+**LMD**
+- Kolom `applications.launch_url` (template `{tenant}`, `{license_key}`; NULL = on-premise). Form & daftar aplikasi menampilkan/menyimpan field ini.
+- `migrate.php`: `2026_10_30_application_launch_url`, `2026_10_30_register_minipos` (fungsi `registerApplication`, idempoten berdasarkan kode; tidak mengubah data yang sudah ada).
+- `order_status` / `approve_order` mengembalikan `app_code`, `app_name`, dan `app_url` dari `launch_url` (null untuk on-premise).
+- Dokumen baru `docs/STANDAR_INTEGRASI.md` (kontrak v1, tabel `reason`, checklist aplikasi baru). `CLAUDE.md` ketiga repo merujuk standar ini.
+
+**Showcase**
+- `products.js`: `lmdAppCode` untuk `mini-pos-express` (MINIPOS) dan `apotek-smart-pos` (APOTEK). Tanpa default `APOTEK` lagi → T-18.
+- Produk tanpa `lmdAppCode`: tombol "Segera hadir" nonaktif; modal pemesanan menolak.
+- Layar sukses tanpa `app_url`: menampilkan license key + petunjuk instalasi on-premise.
+- Admin Showcase: field *Kode Aplikasi di LMD* ikut tersimpan & terekspor.
+
+**Mini POS**
+- `lmd-client.php` (app_code `MINIPOS`, `lmd_api_url`, `instance_key_prefix`; override `lmd-client.local.php`). `lmd_api_url` dipindah dari `config.php`.
+- `LicenseGate` menolak lisensi aktif dengan `app_code` lain (`app_mismatch`) dan menampilkan penjelasan → T-24.
+
+**⚠️ Dampak pada data lokal:** tenant Mini POS yang dulu diaktifkan dengan lisensi APOTEK (mis. Apotek Sehat Sentosa) akan ditolak (`app_mismatch`). Untuk menguji ulang, pesan paket Mini POS baru dari Showcase.
+
+### 2026-10-29 — Analisis: cara mendaftarkan aplikasi client ke LMD
+**Jenis:** Analisis (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos, software-showcase
+
+- Menjawab pertanyaan pemilik proyek tentang langkah mendaftarkan aplikasi eksternal (contoh Mini POS) ke LMD: (1) daftar aplikasi & modul, (2) buat paket, (3) integrasi `validate` di client, (4) pilih jalur penerbitan lisensi (Showcase order / auto-register / manual), (5) tampilkan di Showcase.
+- Temuan: Mini POS belum punya aplikasi sendiri di LMD dan client tidak memverifikasi `app_code` → **T-24**.
+- Pertanyaan lanjutan "apakah aplikasi client butuh file khusus": tidak ada file wajib saat ini; LMD mengenali aplikasi dari license key. Diusulkan standar `lmd-client.php` (📋 rencana), yang akan membawa App ID + secret saat T-04/T-22.
+- Diagram alur (4 tahap, setup, 3 jalur lisensi, pohon keputusan validasi) ditambahkan ke `EKOSISTEM_CARA_KERJA.md` bagian 5b; versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk.
 
 ### 2026-10-24 — T-02: kuota instalasi per paket & penguncian domain
 **Jenis:** Perubahan kode + migrasi database

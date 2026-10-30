@@ -1,6 +1,8 @@
 -- Central SaaS Seed Data
 -- ⚠️ PERINGATAN: file ini MENGOSONGKAN (TRUNCATE) seluruh tabel central_saas sebelum mengisi data demo.
 -- Jangan jalankan pada database yang sudah berisi data nyata. Untuk memperbarui struktur, pakai: php database/migrate.php
+-- Instalasi baru: schema.sql → seed.sql (opsional, data demo) → php database/migrate.php
+--   (migrate.php juga mendaftarkan aplikasi bawaan seperti MINIPOS, lihat docs/STANDAR_INTEGRASI.md)
 USE `central_saas`;
 
 -- Disable Foreign Key Checks during truncate & seed

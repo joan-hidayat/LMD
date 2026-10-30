@@ -179,6 +179,89 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 
 ---
 
+## 5b. Mendaftarkan Aplikasi Client Baru ke LMD
+
+> Kontrak resminya: **[`STANDAR_INTEGRASI.md`](STANDAR_INTEGRASI.md)** (v1). Bagian ini adalah ringkasan visualnya.
+
+LMD **tidak membaca file** di dalam aplikasi client. LMD mengenali aplikasi dari **license key** yang dikirim client saat memanggil `validate`: license key sudah membawa customer, aplikasi (`app_code`), paket, dan modul; `instance_key` + `domain` menunjukkan lokasi instalasinya.
+
+### Empat tahap
+
+```mermaid
+flowchart LR
+    S1["1 · Admin LMD<br>Aplikasi → Modul → Paket"] --> S2["2 · Developer<br>Integrasi client<br>(konfigurasi + kode validate)"]
+    S2 --> S3["3 · Customer<br>Lisensi terbit<br>(Showcase / installer / manual)"]
+    S3 --> S4["4 · Runtime<br>Validasi setiap aplikasi dibuka"]
+```
+
+### Tahap 1 — Setup di LMD dan Showcase
+
+```mermaid
+flowchart TD
+    A["Applications & Modules<br>Buat aplikasi: code = MINIPOS"] --> B["Tambah modul<br>KASIR · LAPORAN · MULTI_OUTLET"]
+    B --> C["Sales Packages<br>harga · max_users · max_instances · modul · public"]
+    C --> D["Admin Showcase<br>produk dengan lmdAppCode = MINIPOS"]
+    D --> E["Kartu paket Showcase otomatis<br>membaca GET /packages?app_code=MINIPOS"]
+```
+
+> ✅ Mini POS terdaftar sebagai `MINIPOS` (3 paket: Starter, Pro, Bisnis) dan produk Showcase-nya memakai `lmdAppCode: "MINIPOS"`. Apotek memakai `APOTEK` tanpa `launch_url` (on-premise). Produk tanpa `lmdAppCode` tampil "Segera hadir".
+
+### Tahap 2 — Yang wajib dimiliki aplikasi client
+
+| # | Kebutuhan | Contoh di Mini POS |
+|---|---|---|
+| 1 | Identitas & koneksi: `app_code` + URL API LMD | `lmd-client.php` |
+| 2 | Penyimpanan license key setelah aktivasi | Database `mini_pos`, tabel `tenants` |
+| 3 | Kode pemanggil `POST /licenses/validate` dari server, mematuhi hasilnya | `lib/LicenseGate.php` |
+
+✅ Standar: satu file `lmd-client.php` di setiap aplikasi client:
+
+```php
+<?php
+return [
+    'app_code'            => 'MINIPOS',
+    'lmd_api_url'         => 'https://license.domainanda.com/api',
+    'instance_key_prefix' => 'INST-STORE-',
+    // Production (T-04 / T-22): App ID + secret diterbitkan LMD per aplikasi
+    // 'app_id'     => 'app_7f3c...',
+    // 'app_secret' => getenv('LMD_APP_SECRET'),
+];
+```
+
+### Tahap 3 — Tiga jalur penerbitan lisensi
+
+```mermaid
+flowchart TD
+    A["A · Showcase<br>POST /licenses/order → admin approve"] --> R
+    B["B · Installer client<br>POST /licenses/register (langsung aktif)"] --> R
+    C["C · Manual admin<br>Customers → Subscriptions"] --> R
+    R["Customer + Subscription + License + Instance tercatat di LMD"] --> K["License key disimpan aplikasi client<br>(DB / .env / registry)"]
+```
+
+### Tahap 4 — Keputusan saat validasi
+
+```mermaid
+flowchart TD
+    V["Client: POST /licenses/validate<br>license_key · instance_key · domain"] --> Q1{"License key terdaftar?"}
+    Q1 -- tidak --> X1["403 lisensi tidak dikenal"]
+    Q1 -- ya --> Q2{"Status active &<br>belum expired?"}
+    Q2 -- tidak --> X2["403 suspended / expired"]
+    Q2 -- ya --> Q3{"Instance milik lisensi ini<br>& tidak diblokir?"}
+    Q3 -- tidak --> X3["403 instance_key_conflict /<br>instance_blocked"]
+    Q3 -- ya / baru --> Q4{"Domain = domain terkunci?"}
+    Q4 -- tidak --> X4["403 domain_mismatch"]
+    Q4 -- ya --> Q5{"Instalasi baru:<br>kuota max_instances ada?"}
+    Q5 -- penuh --> X5["403 instance_limit_reached"]
+    Q5 -- ya --> OK["200 valid<br>modules · max_users · max_instances · licensee"]
+    OK --> Q6{"Client: app_code =<br>kode aplikasi sendiri?"}
+    Q6 -- tidak --> X6["Tolak di client<br>(app_mismatch)"]
+    Q6 -- ya --> RUN["Aplikasi berjalan:<br>fitur sesuai modules, akun ≤ max_users"]
+```
+
+Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
+
+---
+
 ## 6. Ringkasan Status Implementasi (diperbarui 2026-10-23)
 
 | Bagian | Status | Keterangan |
@@ -192,6 +275,7 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 | Panel persetujuan pembayaran di dashboard | ✅ Jalan | Banner Dashboard + tabel di Subscriptions |
 | Detail instance per lisensi | ✅ Jalan | Menu Licenses → Detail (diporting dari WIP lokal) |
 | URL API tanpa `index.php` | ✅ Jalan | `api/.htaccess` (butuh `mod_rewrite`, default XAMPP) (T-15) |
+| Standar Integrasi v1 (`app_code` di LMD, Showcase, client) | ✅ Jalan | `STANDAR_INTEGRASI.md`; Mini POS = `MINIPOS`, `launch_url` per aplikasi (T-18, T-24) |
 | Penguncian instance + domain | ✅ Jalan | Kuota `max_instances` per paket, domain terkunci, blokir oleh admin (T-02). Belum anti-pemalsuan (T-22) |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |

@@ -9,3 +9,6 @@ Setiap perubahan kode **dan** setiap analisis/temuan di repo mana pun dalam ekos
 - `docs/EKOSISTEM_CARA_KERJA.md` — perbarui jika alur, endpoint, model data, atau status implementasi berubah.
 
 Klaim di docs harus sesuai kode. Tandai fitur yang belum ada sebagai 🟡 sebagian / 📋 rencana, bukan seolah sudah jalan.
+
+## Standar integrasi (wajib)
+Integrasi LMD ↔ Showcase ↔ aplikasi client mengikuti `docs/STANDAR_INTEGRASI.md` (v1): satu `app_code` yang sama di registry LMD, `lmdAppCode` produk Showcase, dan `lmd-client.php` aplikasi client. Aplikasi baru wajib melewati checklist di bagian 6 dokumen itu.
