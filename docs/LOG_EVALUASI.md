@@ -46,10 +46,22 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Selesai — lihat Riwayat "T-28" |
 | T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Terbuka |
+| T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-30: Kelola Produk di Mini POS
+**Jenis:** Perubahan kode + docs
+**Repo:** sample-mini-pos (commit `8da3bac`), lmd (docs)
+
+- Halaman baru `produk.php` (menu **Produk**, khusus admin, bagian dari modul KASIR): tambah produk, ubah nama/kategori/ikon emoji/harga, nonaktifkan/aktifkan. Produk tidak dihapus permanen karena dirujuk transaksi; produk nonaktif hilang dari kasir dan checkout-nya ditolak.
+- Validasi di `ProductRepository`: nama 2–150 karakter dan **unik per toko** (tanpa beda huruf besar/kecil; laporan produk terlaris dikelompokkan per nama), harga 1 – 100.000.000, ikon maks 8 code point.
+- Stok awal hanya diisi bila toko punya modul STOK; tanpa modul itu produk baru berstok 0 dan diatur di halaman Stok setelah upgrade.
+- Mengubah nama/harga tidak mengubah transaksi lama (`sale_items` menyimpan salinan nama & harga).
+
+Verifikasi (lokal): Starter tambah "Roti Bakar Keju" Rp 15.000 → tampil di kasir, checkout 2 × = Rp 33.300; ubah nama & harga → `sale_items` lama tetap "Roti Bakar Keju" Rp 15.000; nama duplikat (beda huruf besar/kecil), nama 1 karakter, harga 0 → ditolak dan isian form dipertahankan; ganti nama ke produk yang sudah ada → ditolak; nonaktif → hilang dari kasir, checkout 422; ubah produk milik toko lain → "Produk tidak ditemukan"; Pro tambah produk dengan stok awal 7 → tersimpan 7; role kasir membuka `produk.php` → dialihkan ke Kasir, menu Produk tidak tampil.
 
 ### 2026-10-31 — Verifikasi lokal T-28 (PR Mini POS #6, LMD #9)
 **Jenis:** Verifikasi (tanpa perubahan kode)
