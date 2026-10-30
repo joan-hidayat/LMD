@@ -44,10 +44,20 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-25 | lmd | Modul yang dihapus (soft delete) tetap tercatat di `package_modules`: jumlah modul paket salah dan order baru ikut menyalin modul terhapus ke subscription/lisensi. Terlihat saat verifikasi lokal T-13 (modul `TEST_FUTURE`). | Data | Selesai — lihat Riwayat "T-25" |
 | T-26 | lmd | `SecurityHelper::getClientIp` memercayai `X-Forwarded-For` / `Client-IP` dari siapa pun: rate limit bisa ditembus dan IP di audit log bisa dipalsukan. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
+| T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Terbuka |
+| T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Terbuka |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — Inventaris pekerjaan tersisa
+**Jenis:** Analisis (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos
+
+- Atas pertanyaan "apakah masih ada pekerjaan yang belum dikerjakan", kode diperiksa ulang terhadap `STANDAR_INTEGRASI.md` dan roadmap.
+- Ditemukan **T-28** (modules tidak mengunci fitur di Mini POS; klaim di standar dikoreksi) dan **T-29** (demo client Apotek memanggil API dari browser).
+- Roadmap yang belum dikerjakan dicatat sebagai 📋 di jawaban kepada pemilik proyek: churn risk scoring, ekspor laporan, filter tanggal (`REKOMENDASI_DECISION_SUPPORT.md`); integrasi n8n + payment gateway (token sudah siap); kuota *concurrent sessions*; HTTPS di production.
 
 ### 2026-10-31 — Verifikasi lokal paket keamanan (PR LMD #8, Mini POS #5, Showcase #5)
 **Jenis:** Verifikasi (tanpa perubahan kode)
