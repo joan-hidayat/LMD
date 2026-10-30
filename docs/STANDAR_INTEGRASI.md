@@ -82,7 +82,7 @@ Nilai khusus server ditaruh di `lmd-client.local.php` (tidak di-commit).
 | 2 | **Menolak** respons valid yang `app_code`-nya bukan milik aplikasi ini (alasan lokal `app_mismatch`). | `LicenseGate::validateRemote` |
 | 3 | Menyimpan license key setelah aktivasi (DB / `.env` / registry) dan **tidak** mengandalkan URL atau `localStorage`. | tabel `mini_pos.tenants` |
 | 4 | Menerima link aktivasi `?tenant={domain}&lic={license_key}` (aplikasi hosted), lalu menghapus `lic` dari URL. | `LicenseGate::enter` |
-| 5 | Menerapkan `modules` (fitur) dan `max_users` (jumlah akun aktif). | `max_users`: `UserRepository` ✅ · `modules`: 🟡 baru disimpan di `tenants.modules`, belum mengunci fitur (T-28) |
+| 5 | Menerapkan `modules` (fitur) dan `max_users` (jumlah akun aktif). | `max_users`: `UserRepository` ✅ · `modules`: ✅ `APP_MODULES` + `require_module()` di `lib/bootstrap.php` — menu di luar paket terkunci, halamannya 403 "upgrade paket" (T-28) |
 | 6 | Menangani setiap `reason` penolakan dengan pesan yang jelas (tabel 5). | `LicenseGate::deny` |
 | 7 | Cache hasil validasi (≤ 5 menit) dan masa tenggang offline terbatas (≤ 24 jam). | `config.php` |
 | 8 | Mengelola user, role, dan login sendiri. Akun admin pertama dibuat dengan email pemesan (`licensee.email`). | `setup.php` |

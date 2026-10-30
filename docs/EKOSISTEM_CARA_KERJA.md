@@ -160,9 +160,21 @@ sequenceDiagram
 | `setup.php` | Buat akun admin pertama (sekali, hanya jika tenant belum punya user). |
 | `login.php` / `logout.php` | Masuk/keluar; token CSRF di semua form; sesi terikat ke satu tenant. |
 | `users.php` | Khusus admin: tambah user, nonaktifkan/aktifkan, ganti password. |
+| `index.php` + `api.php` | Modul **KASIR**: produk dari tabel `products`, checkout `POST api.php?action=checkout` (CSRF header). Browser hanya mengirim `id` + `qty`; harga, PPN, total dihitung ulang di server lalu disimpan ke `sales` / `sale_items` (T-28). |
+| `laporan.php` | Modul **LAPORAN** (admin): omzet, jumlah & rata-rata transaksi, PPN, produk terlaris, per kasir, per hari, 20 transaksi terakhir; filter tanggal (maks 1 tahun). |
+| `stok.php` | Modul **STOK** (admin): atur stok & stok minimum. Dengan modul ini checkout mengurangi stok (`SELECT … FOR UPDATE`) dan menolak penjualan melebihi stok; tanpa modul ini stok diabaikan. |
+| `outlet.php` | Modul **MULTI_OUTLET**: penguncian sudah berlaku, fitur 📋 rencana (halaman "segera hadir" untuk paket Bisnis). |
 | `config.php` | Koneksi DB `mini_pos`, URL LMD, TTL cache, masa tenggang. Override lokal lewat `config.local.php` (di-ignore git). |
 
 **Lupa password:** kasir di-reset oleh admin toko (Kelola User → Ganti password). Admin toko yang lupa password meminta link reset ke penyedia layanan: admin LMD membuka **Licenses → Detail → Buat link reset**, link `…/mini-pos/?tenant=…&reset_token=…` (sekali pakai, 24 jam) dikirim ke pemilik toko, lalu `reset.php` memeriksa token ke LMD dan mengganti password admin (T-21).
+
+**Penegakan modul (`modules`, T-28):** daftar fitur ada di `APP_MODULES` (`lib/bootstrap.php`), kodenya sama dengan `modules.code` di LMD. Setiap halaman fitur memanggil `require_module()`: modul tidak ada di lisensi → halaman **"Modul … tidak termasuk paket Anda"** (403) dengan tautan ke Showcase; menu tetap tampil dengan ikon 🔒 agar customer tahu ada fitur di paket lebih tinggi. Perubahan modul di LMD (upgrade/downgrade, `future_module_access`) berlaku paling lambat 5 menit kemudian (TTL cache validasi). Saat mode tenggang dipakai salinan modul terakhir di `tenants.modules`.
+
+| Paket MINIPOS | Modul | Menu terbuka |
+|---|---|---|
+| MPOS_STARTER | KASIR, LAPORAN | Kasir, Laporan |
+| MPOS_PRO | + STOK | + Stok (stok dikurangi & dibatasi saat checkout) |
+| MPOS_BISNIS | + MULTI_OUTLET | + Multi Outlet (📋 segera hadir) |
 
 **Penegakan kuota (`max_users`):** metode *named users*. Jumlah akun **aktif** tidak boleh melebihi kuota. Jika kuota turun (downgrade), hanya admin yang bisa masuk sampai jumlah user aktif dirapikan. Metode *concurrent sessions* belum dipakai.
 
@@ -284,6 +296,10 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penguncian instance + domain | ✅ Jalan | Kuota `max_instances` per paket, domain terkunci, blokir oleh admin (T-02). Belum anti-pemalsuan (T-22) |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |
+| Penegakan `modules` di Mini POS | ✅ Jalan | Kasir, Laporan, Stok terkunci sesuai paket; halaman di luar paket 403 (T-28) |
+| Transaksi & laporan Mini POS | ✅ Jalan | Produk & transaksi tersimpan di DB `mini_pos`, harga dihitung server; laporan penjualan; stok (modul STOK) (T-28) |
+| Multi Outlet Mini POS | 📋 Rencana | Modul sudah dikunci per paket, fiturnya belum dibuat |
+| Kelola produk (tambah/ubah harga) di Mini POS | 📋 Rencana | Katalog contoh 6 produk dibuat otomatis per toko; stok bisa diatur (modul STOK) |
 | `future_module_access` (modul baru otomatis) | ✅ Jalan | Modul yang dibuat setelah paket/subscription masuk ke paket, subscription (`source = future_module`), dan lisensi; disusulkan juga oleh `migrate.php` (T-13) |
 | Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |
 | Login admin LMD | ✅ Jalan | 1 akun (`system_users`, dibuat via `php database/admin.php`); endpoint admin wajib sesi, endpoint publik untuk Showcase/client tetap terbuka (T-04) |
