@@ -176,6 +176,8 @@ try {
             $controller = new LicenseController();
             if ($method === 'POST' && $id && is_numeric($id) && $action === 'status') {
                 $controller->updateInstanceStatus($id);
+            } elseif ($method === 'POST' && $id && is_numeric($id) && $action === 'reset_secret') {
+                $controller->resetInstanceSecret($id);
             } else {
                 sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
             }

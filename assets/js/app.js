@@ -382,6 +382,17 @@ createApp({
             }
         },
 
+        async resetInstanceSecret(inst) {
+            if (!confirm(`Reset secret instalasi "${inst.instance_name}"?\nValidasi berikutnya dari instalasi ini akan menerima secret baru. Lakukan hanya bila pemilik toko mengonfirmasi database aplikasinya hilang / dipindah.`)) return;
+            const res = await fetch(`api/index.php/instances/${inst.id}/reset_secret`, { method: 'POST' });
+            const json = await res.json();
+            if (!json.success) {
+                alert('Gagal: ' + json.message);
+                return;
+            }
+            inst.has_secret = 0;
+        },
+
         closeModal() {
             this.showModal = false;
         },

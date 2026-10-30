@@ -1390,8 +1390,10 @@
                                 <div><dt>Instance key</dt><dd><code>{{ inst.instance_key }}</code></dd></div>
                                 <div><dt>Terakhir aktif</dt><dd>{{ inst.last_seen_at ? formatDate(inst.last_seen_at) : 'Belum pernah' }}</dd></div>
                                 <div><dt>Terdaftar</dt><dd>{{ formatDate(inst.created_at) }}</dd></div>
+                                <div><dt>Tanda tangan request</dt><dd>{{ Number(inst.has_secret) ? '🔐 Secret terpasang' : 'Belum ada secret' }}</dd></div>
                             </dl>
                             <div class="instance-actions">
+                                <button v-if="Number(inst.has_secret)" type="button" class="btn btn-sm" @click="resetInstanceSecret(inst)" title="Untuk instalasi yang kehilangan database / dipindah server">Reset secret</button>
                                 <button v-if="inst.status !== 'blocked'" type="button" class="btn btn-sm btn-danger" @click="setInstanceStatus(inst, 'blocked')">Blokir instalasi</button>
                                 <button v-else type="button" class="btn btn-sm" @click="setInstanceStatus(inst, 'active')">Aktifkan kembali</button>
                             </div>
@@ -1591,6 +1593,6 @@
     </template>
 </div>
 
-<script src="./assets/js/app.js?v=20261031_v2"></script>
+<script src="./assets/js/app.js?v=20261031_v3"></script>
 </body>
 </html>

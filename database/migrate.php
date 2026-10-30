@@ -64,6 +64,7 @@ $migrations = [
             'slug' => 'mini-pos-express',
             'description' => 'Aplikasi kasir web multi-user untuk toko, kafe, dan UMKM.',
             'launch_url' => '/mini-pos/?tenant={tenant}&lic={license_key}',
+            'require_signature' => 1,
             'modules' => [
                 ['KASIR', 'Kasir & Transaksi', 'standard', 'Penjualan, keranjang, dan struk.'],
                 ['LAPORAN', 'Laporan Penjualan', 'standard', 'Rekap harian, produk terlaris, omzet.'],
@@ -168,6 +169,23 @@ $migrations = [
         ");
         return true;
     },
+
+    // T-22: request bertanda tangan secret per instalasi; diwajibkan per aplikasi (Mini POS sejak awal)
+    '2026_10_31_instance_signatures' => function (PDO $db) {
+        $changed = false;
+        if (!columnExists($db, 'applications', 'require_signature')) {
+            $db->exec("ALTER TABLE `applications` ADD COLUMN `require_signature` TINYINT(1) NOT NULL DEFAULT 0
+                       COMMENT 'Wajib request bertanda tangan secret per instalasi (T-22)' AFTER `description`");
+            $db->exec("UPDATE `applications` SET `require_signature` = 1 WHERE `code` = 'MINIPOS'");
+            $changed = true;
+        }
+        if (!columnExists($db, 'application_instances', 'secret')) {
+            $db->exec("ALTER TABLE `application_instances` ADD COLUMN `secret` CHAR(64) NULL
+                       COMMENT 'Secret HMAC per instalasi (T-22); hanya dikirim sekali ke client' AFTER `last_seen_at`");
+            $changed = true;
+        }
+        return $changed;
+    },
 ];
 
 /**
@@ -186,6 +204,9 @@ function registerApplication(PDO $db, array $app) {
         $db->prepare("INSERT INTO applications (code, name, slug, description, launch_url, status) VALUES (:code, :name, :slug, :description, :launch_url, 'active')")
             ->execute(['code' => $app['code'], 'name' => $app['name'], 'slug' => $app['slug'], 'description' => $app['description'], 'launch_url' => $app['launch_url']]);
         $appId = $db->lastInsertId();
+        if (!empty($app['require_signature']) && columnExists($db, 'applications', 'require_signature')) {
+            $db->prepare("UPDATE applications SET require_signature = 1 WHERE id = :id")->execute(['id' => $appId]);
+        }
 
         $moduleIds = [];
         $insModule = $db->prepare("INSERT INTO modules (application_id, code, name, slug, module_type, description, sort_order) VALUES (:app, :code, :name, :slug, :type, :description, :sort)");

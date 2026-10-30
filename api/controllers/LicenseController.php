@@ -50,7 +50,11 @@ class LicenseController {
             sendJsonResponse(['valid' => false, 'message' => 'license_key and instance_key parameters are required.'], 400);
         }
 
-        $result = $this->licenseModel->validateLicense($licenseKey, $instanceKey, $domain);
+        $result = $this->licenseModel->validateLicense($licenseKey, $instanceKey, $domain, null, [
+            'timestamp' => $_SERVER['HTTP_X_LMD_TIMESTAMP'] ?? '',
+            'signature' => $_SERVER['HTTP_X_LMD_SIGNATURE'] ?? '',
+            'body' => file_get_contents('php://input'),
+        ]);
         if (empty($result['valid']) && empty($result['reason']) && strpos($result['message'] ?? '', 'non-existent') !== false) {
             // License key tidak dikenal: dihitung untuk penangkal tebak-tebakan (T-05)
             rate_limit_hit('licenses/validate_failed');
@@ -182,6 +186,15 @@ class LicenseController {
         }
         $result = (new AdminResetModel())->check($input['license_key'], $input['token'], !empty($input['consume']));
         sendJsonResponse($result, $result['valid'] ? 200 : 403, $result['valid'] ? 'Reset token is valid.' : 'Reset token rejected.');
+    }
+
+    public function resetInstanceSecret($instanceId) {
+        try {
+            $this->licenseModel->resetInstanceSecret((int) $instanceId);
+            sendJsonResponse(['id' => (int) $instanceId], 200, 'Instance secret reset. The next validation issues a new secret.');
+        } catch (OutOfBoundsException $e) {
+            sendJsonResponse(null, 404, $e->getMessage());
+        }
     }
 
     public function rejectOrder() {
