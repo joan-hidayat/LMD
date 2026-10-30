@@ -46,6 +46,14 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-30 — Verifikasi lokal Standar Integrasi v1 (PR LMD #4, Showcase #3, Mini POS #3)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, software-showcase, sample-mini-pos
+
+- XAMPP lokal ditarik ke `fee9457` / `d8a6c48` / `69726d1`. Backup: `_backup_20261030_2107_central_saas.sql` (56.760 byte) dan `_backup_20261030_2107_mini_pos.sql` (4.296 byte).
+- `migrate.php` dua kali: semua "sudah terpasang". **Catatan:** run pertama yang dilaporkan seharusnya "DITERAPKAN" untuk dua migrasi baru; kemungkinan migrasi sudah dijalankan sekali sebelum laporan dibuat. Struktur & data akhir sesuai (verifikasi a), jadi tidak ada tindakan perbaikan.
+- Hasil: (a) `launch_url` hanya MINIPOS, 3 paket MPOS sesuai; (b) label Hosted/On-premise benar; (c) hanya Mini POS & Apotek yang bisa dipesan; (d) order MINIPOS `SUB-2026-5AF5A9` → `LIC-MINIPOS-…` → "Buat Akun Admin — Toko Mini POS Baru"; (e) order APOTEK `SUB-2026-305C5E` → `app_url` null, layar on-premise tanpa tombol buka; (f) tenant lama `apotek-sehat.pos.local` → "Instalasi Tidak Diizinkan" (`app_mismatch`), sesuai desain; (g) tidak ada error PHP baru.
+
 ### 2026-10-30 — Standar Integrasi v1 (LMD ↔ Showcase ↔ aplikasi client)
 **Jenis:** Perubahan kode + migrasi database + dokumen standar
 **Repo:** lmd, software-showcase, sample-mini-pos
