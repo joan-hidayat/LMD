@@ -47,6 +47,15 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Verifikasi lokal T-21 (PR LMD #7, Mini POS #4)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos
+
+- XAMPP lokal di `e611320` / `00f05e5`; backup `_backup_20261030_2314_central_saas.sql` (63.877 byte) dan `_backup_20261030_2314_mini_pos.sql` (4.569 byte).
+- `migrate.php`: run 1 `2026_10_31_admin_reset_tokens` **DITERAPKAN**, run 2 semua "sudah terpasang".
+- Tenant uji `tokobaruminipos.pos.local`: (a) link reset terbit dari Licenses → Detail; (b) redirect ke `reset.php`, token hilang dari address bar; (c) konfirmasi berbeda ditolak; (d) password admin diganti, login dengan password baru berhasil; (e) link yang sama ditolak "sudah dipakai" (HTTP 403); (f) teks bantuan login benar; (g) tidak ada error PHP baru.
+- Password baru & token uji sengaja **tidak** dicatat di repo (repo publik).
+
 ### 2026-10-31 — T-21: reset password admin aplikasi client dari dashboard LMD
 **Jenis:** Perubahan kode + tabel baru
 **Repo:** lmd, sample-mini-pos
