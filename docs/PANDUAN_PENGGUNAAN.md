@@ -275,12 +275,12 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
    - ✅ Dashboard dan seluruh endpoint admin (data, approve/tolak pesanan, blokir instalasi, link reset, audit) wajib login admin LMD; tanpa sesi → `401`. Sesi memakai cookie `HttpOnly` + `SameSite=Strict`, berakhir setelah 2 jam tidak aktif; akun dikunci 15 menit setelah 5 kali salah password; setiap login tercatat (`admin_login`).
    - ✅ Akun admin (saat ini satu akun) dibuat & di-reset dari server: `php database/admin.php create <email> "<nama>"`, `php database/admin.php reset-password <email>`.
    - ✅ Endpoint publik untuk Showcase & aplikasi client tetap terbuka: `licenses/validate`, `licenses/register`, `licenses/order`, `licenses/order_status`, `licenses/reset_token`, `packages?app_code=`.
-   - 📋 Token API untuk otomasi (n8n) dan App ID + secret per aplikasi client (request bertanda tangan) belum ada (T-04, T-22).
+   - ✅ Token API untuk otomasi (n8n): `php database/admin.php token-create "n8n"` → header `Authorization: Bearer lmdtok_…`, hanya untuk endpoint pesanan; bisa dicabut (`token-revoke`).
 
 2. **🌐 Binding Domain & Instance Key (Anti-Clone / Anti-Piracy)**:
    - ✅ Setiap instalasi (`instance_key`) dikunci ke domain pertamanya. Domain berbeda → `"valid": false, "reason": "domain_mismatch"`.
    - ✅ Jumlah instalasi dibatasi kuota paket (`max_instances`); instalasi baru di luar kuota → `"reason": "instance_limit_reached"`. Admin dapat memblokir instalasi (`"reason": "instance_blocked"`).
-   - 🟡 Domain dan instance key masih dikirim oleh client sendiri sehingga dapat dipalsukan oleh pemegang license key; perlindungan penuh membutuhkan request bertanda tangan (T-04 / T-22).
+   - ✅ Request bertanda tangan (T-22): setiap instalasi menerima *instance secret* saat validasi pertama; validasi berikutnya wajib HMAC-SHA256 + timestamp. Salinan license key tanpa secret ditolak (`signature_required`). Wajib untuk aplikasi dengan `require_signature` (Mini POS); detail di `STANDAR_INTEGRASI.md` 4.3.
 
 3. **🔒 License Key Acak (CSPRNG)**:
    - License key (`LIC-{APP_CODE}-` + 24 hex = 96-bit) dan activation key (`ACT-` + 16 hex = 64-bit) dibuat dengan `random_bytes()`, generator acak kriptografis PHP, sehingga tidak dapat ditebak (`api/helpers/security.php`).
@@ -296,7 +296,8 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
    - Seluruh komunikasi API antara aplikasi client dan Central SaaS di lingkungan production diwajibkan menggunakan enkripsi HTTPS/TLS 1.3 untuk mencegah sniffing data di jaringan (*Man-in-the-Middle Attack*).
 
 7. **⚡ Anti-Brute Force Rate Limiting**:
-   - Pembatasan jumlah request HTTP per IP per menit untuk mencegah serangan percobaan kunci lisensi secara membabi buta (*brute force / dictionary attack*).
+   - ✅ Batas per IP per menit (T-05): `validate` 600 (aplikasi hosted memvalidasi banyak toko dari satu IP) dengan **license key tak dikenal maksimal 20**, `register` 10, `order` 10, `order_status` 120, `reset_token` 20, login admin 10, katalog paket 120. Kelebihan → HTTP 429 + `Retry-After`.
+   - IP diambil dari koneksi langsung; header `X-Forwarded-For` hanya dipercaya dari proxy di `SecurityHelper::TRUSTED_PROXIES`.
 
 ---
 
@@ -398,7 +399,7 @@ Error: `400` input tidak valid (email, format subdomain `a-z 0-9 -`, 3–40 kara
    ```
 3. **Notifikasi:** kirim tanda terima dan link aplikasi (`app_url` dari respons approve) ke WhatsApp customer (`customers.phone`).
 
-Endpoint `approve_order` kini wajib login admin (T-04). Agar n8n bisa memanggilnya, dibutuhkan token API untuk otomasi (📋 bagian T-04 yang belum dikerjakan).
+Endpoint `approve_order` wajib login admin (T-04). n8n memakai token API: buat dengan `php database/admin.php token-create "n8n pembayaran"`, lalu di node HTTP Request tambahkan header `Authorization: Bearer <token>`. Token hanya berlaku untuk endpoint pesanan dan bisa dicabut kapan saja.
 
 ---
 

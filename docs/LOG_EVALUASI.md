@@ -20,10 +20,10 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-01 | lmd, software-showcase | Endpoint `licenses/order`, `licenses/order_status`, `licenses/approve_order` dipanggil Showcase (`assets/js/app.js`) tetapi tidak ada di router LMD (`api/index.php`). Wizard berlangganan berhenti di langkah bayar. | Blocker fungsional | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. Bukti nyata di data lokal: lisensi Budi Santoso tercatat punya 2 instance, salah satunya ber-domain IP `192.168.0.116`. | Blocker desain | Selesai — lihat Riwayat "T-02" (batasan pemalsuan dilanjutkan di T-22) |
 | T-03 | sample-mini-pos | `max_users` diterima dari LMD tetapi belum ditegakkan (belum ada batas sesi/akun). | Fungsional | Selesai — lihat Riwayat "Login Mini POS" (metode named users) |
-| T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Sebagian — login admin LMD selesai (Riwayat "T-04"); token API untuk otomasi (n8n) masih rencana; App secret client di T-22 |
-| T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Ditunda — tahap pengembangan |
+| T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Selesai — lihat Riwayat "T-04" & "Paket keamanan" |
+| T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Selesai — lihat Riwayat "Paket keamanan" |
 | T-06 | sample-mini-pos | Lisensi dikirim lewat query string (`?tenant=&lic=`) dan disimpan di `localStorage`; validasi JS mudah dilewati. `index.php` membaca DB `central_saas` langsung (coupling ke DB LMD). | Arsitektur | Selesai — lihat Riwayat "Login Mini POS" |
-| T-07 | software-showcase | Password admin hardcode di `admin/admin.js` (`nexus2024`) dan dicek di browser. | Hardening (pra-production) | Ditunda — sengaja selama pengembangan |
+| T-07 | software-showcase | Password admin hardcode di `admin/admin.js` (`nexus2024`) dan dicek di browser. | Hardening (pra-production) | Selesai — lihat Riwayat "Paket keamanan" |
 | T-08 | lmd | `SecurityHelper::generateActivationKey` menghasilkan prefix ganda `ACT-ACT-…`. | Minor | Selesai — lihat Riwayat "Perapian T-08, T-11, T-14" |
 | T-09 | semua | Docs memuat path lokal Windows (`c:\xampp\…`, `file:///c:/…`), IP LAN `192.168.0.116`, base URL tidak konsisten (`/api/...` vs `/api/index.php/...`), dan dua bagian bernomor 12 di `PANDUAN_SHOWCASE.md`. | Dokumentasi | Ditunda — tahap pengembangan |
 | T-10 | lmd | Docs menyebut backend "100% siap" untuk n8n (`approve_order`), tidak sesuai kode. Perlu penanda status (✅/🟡/📋) pada klaim di docs. | Dokumentasi | Selesai — `approve_order` kini ada; klaim docs sesuai |
@@ -38,14 +38,55 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-19 | sample-mini-pos | Judul toko di Mini POS memakai nama customer (`Budi Santoso — Mini POS Express`), bukan nama toko yang diisi di wizard (tersimpan di `application_instances.instance_name`). | Minor | Selesai — lihat Riwayat "Login Mini POS" |
 | T-20 | sample-mini-pos | `app.js` tersimpan dengan encoding ganda (UTF-8 dibaca sebagai Windows-1252), sehingga emoji produk tampil rusak (`ðŸ¥`, `â˜•`). | Bug UI | Selesai — lihat Riwayat "Login Mini POS" |
 | T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Selesai — lihat Riwayat "T-21" |
-| T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Terbuka |
+| T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Selesai — lihat Riwayat "Paket keamanan" (model trust on first use) |
 | T-23 | lmd | `database/seed.sql` men-`TRUNCATE` semua tabel `central_saas` tanpa peringatan; berbahaya jika dijalankan pada data nyata. Peringatan ditambahkan di kepala file, dan pembaruan struktur kini lewat `database/migrate.php`. | Operasional | Selesai — lihat Riwayat "T-02" |
 | T-24 | lmd, sample-mini-pos, software-showcase | Mini POS belum terdaftar sebagai aplikasi sendiri di LMD (seed hanya APOTEK, DISTRIBUTOR, TMS); ia memakai paket `APOTEK`. Selain itu `LicenseGate` Mini POS tidak memeriksa `app_code` di respons `validate`, sehingga license key aplikasi lain (misal TMS) juga diterima. Perlu: aplikasi `MINIPOS` + modul + paket di LMD, `lmdAppCode` per produk di Showcase (T-18), dan pengecekan `app_code` di client. | Fungsional / keamanan | Selesai — lihat Riwayat "Standar Integrasi v1" |
 | T-25 | lmd | Modul yang dihapus (soft delete) tetap tercatat di `package_modules`: jumlah modul paket salah dan order baru ikut menyalin modul terhapus ke subscription/lisensi. Terlihat saat verifikasi lokal T-13 (modul `TEST_FUTURE`). | Data | Selesai — lihat Riwayat "T-25" |
+| T-26 | lmd | `SecurityHelper::getClientIp` memercayai `X-Forwarded-For` / `Client-IP` dari siapa pun: rate limit bisa ditembus dan IP di audit log bisa dipalsukan. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
+| T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — Paket keamanan sebelum production (T-05, T-04 token, T-22, T-07)
+**Jenis:** Perubahan kode + migrasi database
+**Repo:** lmd, sample-mini-pos, software-showcase
+
+**Keputusan pemilik proyek:** T-22 memakai secret **per instalasi** (bukan per aplikasi), diwajibkan per aplikasi; T-07 memakai login PHP sendiri di Showcase. Sinkronisasi lokal dilakukan sekaligus setelah semua selesai.
+
+**T-05 — rate limit (LMD)**
+- Tabel `rate_limits` + migrasi `2026_10_31_rate_limits`; `api/helpers/rate_limit.php` (jendela tetap 60 detik, 429 + `Retry-After`).
+- Batas per IP: `validate` 600 (aplikasi hosted memvalidasi banyak toko dari satu IP), **license key tak dikenal 20**, `register` 10, `order` 10, `order_status` 120, `reset_token` 20, `auth/login` 10, `packages` 120.
+- **T-26:** `getClientIp` tidak lagi memercayai `X-Forwarded-For` kecuali dari `TRUSTED_PROXIES` (default kosong).
+- Desain awal (validate 60/menit) diubah setelah analisis: akan memblokir aplikasi hosted dengan banyak toko.
+
+**T-04 sisa — token API otomasi (LMD)**
+- Tabel `api_tokens` (hash SHA-256, scope, `last_used_at`, `revoked_at`) + migrasi `2026_10_31_api_tokens`; `ApiTokenModel`.
+- `require_admin()` menerima `Authorization: Bearer lmdtok_…` hanya untuk endpoint dalam scope `orders` (`pending_orders`, `approve_order`, `reject_order`, `order_status`).
+- CLI `admin.php token-create "<nama>" | token-list | token-revoke <id>`; token ditampilkan sekali.
+- `api/.htaccess` + fallback `getallheaders()` agar header `Authorization` sampai ke PHP di Apache.
+
+**T-22 — request bertanda tangan (LMD + Mini POS)**
+- `applications.require_signature` (MINIPOS = 1), `application_instances.secret` + migrasi `2026_10_31_instance_signatures` (instalasi baru via `registerApplication`).
+- `validate`: instalasi tanpa secret menerima `instance_secret` sekali (*trust on first use*); berikutnya wajib `X-LMD-Timestamp` + `X-LMD-Signature` = HMAC-SHA256(secret, ts + "\n" + body), toleransi 5 menit. Reason `signature_required` / `signature_invalid` / `signature_expired`. Secret tidak pernah dicatat di log dan tidak dikirim ke API admin (`has_secret` saja).
+- `POST /instances/{id}/reset_secret` (admin) + tombol **Reset secret** di Licenses → Detail.
+- Mini POS: kolom `tenants.instance_secret` (ditambah otomatis di DB lama), `LicenseGate` menyimpan & menandatangani; pesan untuk `signature_*`. Tombol heartbeat dipindah ke server (`heartbeat.php`) karena browser tidak boleh memegang secret.
+- `STANDAR_INTEGRASI.md` naik ke **v1.1** (bagian 4.3, reason baru, endpoint publik/admin, checklist). Contoh `lmd-client.php` tidak lagi menyebut App ID/secret per aplikasi.
+
+**T-07 — login Admin Showcase**
+- Password `nexus2024` dihapus dari `admin.js`; **T-27:** status login tidak lagi di `sessionStorage`; `admin/index.html` statis dihapus.
+- `admin/index.php` (login + logout ber-CSRF), `admin/app.php` (halaman admin hanya untuk sesi login), `admin/auth.php` (sesi HttpOnly + SameSite=Strict, idle 2 jam, kunci 15 menit per IP setelah 5 gagal), `admin/set-password.php` (CLI, hash di `credentials.local.php` yang di-ignore git), `admin/.htaccess`.
+
+**Verifikasi** (MariaDB + PHP server, browser)
+- Rate limit: 100 validasi sah dari satu IP lolos; 20 tebakan license key → 429; `X-Forwarded-For` palsu tidak menembus; login 10/menit.
+- Token: approve order nyata via token; endpoint di luar scope, token palsu, token dicabut → 403.
+- Tanda tangan (15 skenario API): issued → unsigned ditolak → signed verified → salah/kedaluwarsa/tebakan ditolak → secret tidak bocor (API admin & log) → reset secret (wajib login) → secret lama mati, baru berlaku → APOTEK `not_required`.
+- Browser: aktivasi Mini POS menyimpan secret; heartbeat via server valid; perangkat lain `verified`; **toko lama tanpa secret otomatis mendapat secret** (tidak terkunci); secret hilang → halaman penjelasan → admin Reset secret → masuk lagi.
+- Admin Showcase: tanpa password bawaan; `nexus2024` & trik `sessionStorage` gagal; login/logout; kunci setelah 5 gagal.
+- Migrasi: DB lama & instalasi baru (`schema` → `seed` → `migrate`) memberi `require_signature = 1` untuk MINIPOS.
+
+**Temuan baru:** T-26, T-27 (keduanya selesai).
 
 ### 2026-10-31 — T-04 (bagian 1): login admin dashboard LMD
 **Jenis:** Perubahan kode + tabel baru

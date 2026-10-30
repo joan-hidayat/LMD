@@ -1305,7 +1305,9 @@
                                     <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Modul baru otomatis masuk paket, subscription, dan lisensi (T-13)</td></tr>
                                     <tr><td>Paket &amp; harga Showcase sinkron dengan LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dibaca dari <code>GET packages?app_code</code> (T-12)</td></tr>
                                     <tr><td>Login admin LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>1 akun, endpoint admin wajib login (T-04)</td></tr>
-                                    <tr><td>Token API otomasi / App secret / rate limit</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Hardening sebelum production (T-04 sisa, T-05, T-22)</td></tr>
+                                    <tr><td>Token API otomasi (n8n)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Bearer token ber-scope pesanan (T-04)</td></tr>
+                                    <tr><td>Rate limit</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Per IP per endpoint publik &amp; login (T-05)</td></tr>
+                                    <tr><td>Request validasi bertanda tangan</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Secret per instalasi + HMAC, wajib untuk Mini POS (T-22)</td></tr>
                                     <tr><td>Password + credential di <code>.env</code></td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Sengaja hardcode selama pengembangan</td></tr>
                                     <tr><td>n8n + payment gateway</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Endpoint <code>approve_order</code> sudah siap</td></tr>
                                 </tbody>
