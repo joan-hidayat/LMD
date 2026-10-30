@@ -15,6 +15,8 @@ require_once __DIR__ . '/controllers/CustomerController.php';
 require_once __DIR__ . '/controllers/SubscriptionController.php';
 require_once __DIR__ . '/controllers/LicenseController.php';
 require_once __DIR__ . '/controllers/AuditController.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/helpers/auth.php';
 
 // Parse Request URI
 $requestUri = $_SERVER['REQUEST_URI'];
@@ -32,8 +34,47 @@ $resource = $segments[0] ?? '';
 $id = $segments[1] ?? null;
 $action = $segments[2] ?? null;
 
+/**
+ * Endpoint yang boleh dipanggil tanpa login admin (T-04): dipakai Software Showcase dan aplikasi client.
+ * Semua endpoint lain (dashboard, CRUD, approve, blokir instalasi, link reset, audit) wajib login.
+ */
+function is_public_endpoint($resource, $id, $method) {
+    if ($resource === 'auth') {
+        return true;
+    }
+    if ($resource === 'licenses') {
+        return in_array($id, ['validate', 'register'], true)
+            || ($id === 'order' && $method === 'POST')
+            || ($id === 'order_status' && $method === 'GET')
+            || ($id === 'reset_token' && $method === 'POST');
+    }
+    // Katalog paket publik untuk Showcase
+    return $resource === 'packages' && $method === 'GET' && !empty($_GET['app_code']) && !$id;
+}
+
+if ($method === 'OPTIONS') {
+    sendJsonResponse(null, 200);
+}
+
 try {
+    if (!is_public_endpoint($resource, $id, $method)) {
+        require_admin();
+    }
+
     switch ($resource) {
+        case 'auth':
+            $controller = new AuthController();
+            if ($id === 'me' && $method === 'GET') {
+                $controller->me();
+            } elseif ($id === 'login' && $method === 'POST') {
+                $controller->login();
+            } elseif ($id === 'logout' && $method === 'POST') {
+                $controller->logout();
+            } else {
+                sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
+            }
+            break;
+
         case 'dashboard':
         case '':
             $controller = new DashboardController();

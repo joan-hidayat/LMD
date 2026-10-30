@@ -96,6 +96,8 @@ Nilai khusus server ditaruh di `lmd-client.local.php` (tidak di-commit).
 
 Base URL: `{lmd}/api/index.php` (atau `{lmd}/api` bila `api/.htaccess` aktif).
 
+Endpoint di tabel ini **publik** (tanpa login). Semua endpoint lain di LMD wajib login admin (T-04), kecuali `POST /licenses/{id}/admin_reset` yang dipanggil admin dari dashboard (juga wajib login).
+
 | Endpoint | Pemanggil | Inti |
 |---|---|---|
 | `GET /packages?app_code=` | Showcase | Paket publik + modul |

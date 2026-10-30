@@ -20,7 +20,7 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-01 | lmd, software-showcase | Endpoint `licenses/order`, `licenses/order_status`, `licenses/approve_order` dipanggil Showcase (`assets/js/app.js`) tetapi tidak ada di router LMD (`api/index.php`). Wizard berlangganan berhenti di langkah bayar. | Blocker fungsional | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-02 | lmd | `validateLicense` membuat instance baru jika `instance_key` tidak dikenal dan menimpa `domain` (`COALESCE`). Tidak ada respons `domain_mismatch` seperti klaim di `PANDUAN_PENGGUNAAN.md` §5. Satu license key bisa dipakai dari mana saja. Bukti nyata di data lokal: lisensi Budi Santoso tercatat punya 2 instance, salah satunya ber-domain IP `192.168.0.116`. | Blocker desain | Selesai — lihat Riwayat "T-02" (batasan pemalsuan dilanjutkan di T-22) |
 | T-03 | sample-mini-pos | `max_users` diterima dari LMD tetapi belum ditegakkan (belum ada batas sesi/akun). | Fungsional | Selesai — lihat Riwayat "Login Mini POS" (metode named users) |
-| T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Ditunda — tahap pengembangan |
+| T-04 | lmd | Tidak ada autentikasi API key/App-Secret untuk client maupun auth untuk endpoint admin (`customers`, `subscriptions`, `licenses/{id}`). Klaim "7 layer security" di docs belum terimplementasi. | Hardening (pra-production) | Sebagian — login admin LMD selesai (Riwayat "T-04"); token API untuk otomasi (n8n) masih rencana; App secret client di T-22 |
 | T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Ditunda — tahap pengembangan |
 | T-06 | sample-mini-pos | Lisensi dikirim lewat query string (`?tenant=&lic=`) dan disimpan di `localStorage`; validasi JS mudah dilewati. `index.php` membaca DB `central_saas` langsung (coupling ke DB LMD). | Arsitektur | Selesai — lihat Riwayat "Login Mini POS" |
 | T-07 | software-showcase | Password admin hardcode di `admin/admin.js` (`nexus2024`) dan dicek di browser. | Hardening (pra-production) | Ditunda — sengaja selama pengembangan |
@@ -46,6 +46,29 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-04 (bagian 1): login admin dashboard LMD
+**Jenis:** Perubahan kode + tabel baru
+**Repo:** lmd
+
+**Keputusan pemilik proyek:** sementara satu akun admin.
+
+**Perubahan**
+- Tabel `system_users` (ERD level 1-4 "System Users") di `schema.sql` + migrasi `2026_10_31_system_users`.
+- `database/admin.php` (CLI): `create <email> "<nama>"` (menolak akun kedua), `reset-password <email>` (sekaligus membuka kunci), `list`. Password ditanya interaktif atau via `LMD_ADMIN_PASSWORD`; minimal 10 karakter. Akun sengaja **tidak** bisa dibuat lewat web agar tidak ada yang "mendaftar duluan" di server yang terbuka.
+- `api/helpers/auth.php`: sesi `LMDSESSID` (`HttpOnly`, `SameSite=Strict`, path folder LMD), idle 2 jam, `session_regenerate_id` saat login/logout. `SystemUserModel`: bcrypt, kunci 15 menit setelah 5 kali gagal, waktu respons sama untuk email tak terdaftar.
+- `AuthController`: `GET /auth/me`, `POST /auth/login`, `POST /auth/logout`; setiap percobaan login dicatat `admin_login`.
+- `api/index.php`: daftar putih endpoint publik (`validate`, `register`, `order`, `order_status`, `reset_token`, `packages?app_code`, `auth/*`); selain itu `require_admin()` → 401. Preflight `OPTIONS` dijawab sebelum pemeriksaan.
+- Dashboard: layar login (petunjuk CLI bila belum ada akun / lupa password), nama admin + tombol **Keluar** di topbar, respons 401 di tengah sesi otomatis kembali ke layar login.
+- Docs: `PANDUAN_PENGGUNAAN.md` (lapis keamanan 1, catatan n8n), `STANDAR_INTEGRASI.md` (endpoint publik), `EKOSISTEM_CARA_KERJA.md`, tab Ekosistem.
+
+**Belum (tetap di T-04):** token API untuk otomasi (n8n memanggil `approve_order`). App ID + secret aplikasi client ditangani di T-22.
+
+**Verifikasi**
+- CLI: password pendek ditolak; akun dibuat; akun kedua ditolak; `list`; `reset-password` membuka kunci.
+- API tanpa sesi: 9 endpoint admin → 401; endpoint publik tetap 200/403/404 sesuai isi. Login salah → 401; login benar → cookie `LMDSESSID; HttpOnly; SameSite=Strict`; dengan sesi → 200; setelah logout → 401. 5 kali salah → terkunci 15 menit. Audit `admin_login` tercatat.
+- Browser: layar login sebelum masuk; password salah ditolak; login → dashboard dengan 8 grafik; reload tetap login; cookie dihapus → kembali ke login "Sesi berakhir"; tombol Keluar.
+- Regresi tanpa login admin: Showcase memuat paket & mengirim order, polling melihat approve, Mini POS memvalidasi lisensi. Tidak ada error JS.
 
 ### 2026-10-31 — Verifikasi lokal T-21 (PR LMD #7, Mini POS #4)
 **Jenis:** Verifikasi (tanpa perubahan kode)

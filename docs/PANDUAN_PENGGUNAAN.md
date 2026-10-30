@@ -271,9 +271,11 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
 
 ### 🛡️ 7 Layer Keamanan Utama:
 
-1. **🔑 API Key & Secret Signature Authentication**:
-   - Setiap aplikasi client (Apotek, DMS, TMS) memiliki `App-Secret` / API Key khusus.
-   - Request tanpa API Key yang sah akan ditolak oleh gateway (`401 Unauthorized`).
+1. **🔑 Login Admin & Autentikasi API**:
+   - ✅ Dashboard dan seluruh endpoint admin (data, approve/tolak pesanan, blokir instalasi, link reset, audit) wajib login admin LMD; tanpa sesi → `401`. Sesi memakai cookie `HttpOnly` + `SameSite=Strict`, berakhir setelah 2 jam tidak aktif; akun dikunci 15 menit setelah 5 kali salah password; setiap login tercatat (`admin_login`).
+   - ✅ Akun admin (saat ini satu akun) dibuat & di-reset dari server: `php database/admin.php create <email> "<nama>"`, `php database/admin.php reset-password <email>`.
+   - ✅ Endpoint publik untuk Showcase & aplikasi client tetap terbuka: `licenses/validate`, `licenses/register`, `licenses/order`, `licenses/order_status`, `licenses/reset_token`, `packages?app_code=`.
+   - 📋 Token API untuk otomasi (n8n) dan App ID + secret per aplikasi client (request bertanda tangan) belum ada (T-04, T-22).
 
 2. **🌐 Binding Domain & Instance Key (Anti-Clone / Anti-Piracy)**:
    - ✅ Setiap instalasi (`instance_key`) dikunci ke domain pertamanya. Domain berbeda → `"valid": false, "reason": "domain_mismatch"`.
@@ -396,7 +398,7 @@ Error: `400` input tidak valid (email, format subdomain `a-z 0-9 -`, 3–40 kara
    ```
 3. **Notifikasi:** kirim tanda terima dan link aplikasi (`app_url` dari respons approve) ke WhatsApp customer (`customers.phone`).
 
-Sebelum diaktifkan di production, endpoint approve wajib dilindungi autentikasi (temuan T-04).
+Endpoint `approve_order` kini wajib login admin (T-04). Agar n8n bisa memanggilnya, dibutuhkan token API untuk otomasi (📋 bagian T-04 yang belum dikerjakan).
 
 ---
 

@@ -16,11 +16,38 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=20261031_v1">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261031_v3">
 </head>
 
 <body>
 <div id="app">
+    <!-- LOGIN ADMIN LMD (T-04) -->
+    <div v-if="auth.checked && !auth.user" class="login-screen">
+        <form class="login-card" @submit.prevent="login" novalidate>
+            <div class="brand">
+                <div class="brand-logo">CS</div>
+                <div>
+                    <div class="brand-title">Central SaaS</div>
+                    <span class="brand-subtitle">License Management</span>
+                </div>
+            </div>
+            <h2>Masuk ke dashboard</h2>
+            <p class="login-lead">Khusus admin Central SaaS LMD.</p>
+            <div v-if="auth.setupNeeded" class="login-alert">
+                Belum ada akun admin. Buat dari command line di server:<br>
+                <code>php database/admin.php create &lt;email&gt; "&lt;nama&gt;"</code>
+            </div>
+            <div v-if="auth.error" class="login-alert error">{{ auth.error }}</div>
+            <label for="login-email">Email</label>
+            <input id="login-email" v-model="auth.email" type="email" autocomplete="username" required autofocus>
+            <label for="login-password">Password</label>
+            <input id="login-password" v-model="auth.password" type="password" autocomplete="current-password" required>
+            <button type="submit" class="btn btn-primary" :disabled="auth.loading">{{ auth.loading ? 'Memeriksa…' : 'Masuk' }}</button>
+            <p class="login-hint">Lupa password? Jalankan <code>php database/admin.php reset-password &lt;email&gt;</code> di server.</p>
+        </form>
+    </div>
+
+    <template v-if="auth.user">
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="brand">
@@ -73,6 +100,10 @@
                 <a href="http://localhost:8080/software-showcase/" target="_blank" class="btn btn-sm" style="background: rgba(99, 102, 241, 0.15); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 700; text-decoration: none;">🚀 Portfolio Showcase</a>
                 <a href="client_demo/apotek.html" target="_blank" class="btn btn-sm" style="background: rgba(13, 148, 136, 0.2); color: #2dd4bf; border: 1px solid rgba(13, 148, 136, 0.4); font-weight: 700; text-decoration: none;">💊 Demo Client Apotek</a>
                 <button class="btn btn-primary btn-sm" @click="openModal('tester')">⚡ Test License API</button>
+                <div class="admin-chip" :title="auth.user.email">
+                    <span>{{ auth.user.name }}</span>
+                    <button type="button" class="btn btn-sm" @click="logout">Keluar</button>
+                </div>
             </div>
         </header>
 
@@ -1273,7 +1304,8 @@
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
                                     <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Modul baru otomatis masuk paket, subscription, dan lisensi (T-13)</td></tr>
                                     <tr><td>Paket &amp; harga Showcase sinkron dengan LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dibaca dari <code>GET packages?app_code</code> (T-12)</td></tr>
-                                    <tr><td>API key / auth admin / rate limit</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Hardening sebelum production (T-04, T-05)</td></tr>
+                                    <tr><td>Login admin LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>1 akun, endpoint admin wajib login (T-04)</td></tr>
+                                    <tr><td>Token API otomasi / App secret / rate limit</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Hardening sebelum production (T-04 sisa, T-05, T-22)</td></tr>
                                     <tr><td>Password + credential di <code>.env</code></td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Sengaja hardcode selama pengembangan</td></tr>
                                     <tr><td>n8n + payment gateway</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Endpoint <code>approve_order</code> sudah siap</td></tr>
                                 </tbody>
@@ -1556,8 +1588,9 @@
             </div>
         </div>
     </div>
+    </template>
 </div>
 
-<script src="./assets/js/app.js?v=20261031_v1"></script>
+<script src="./assets/js/app.js?v=20261031_v2"></script>
 </body>
 </html>

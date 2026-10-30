@@ -109,6 +109,28 @@ $migrations = [
         ");
         return true;
     },
+
+    // T-04: akun admin dashboard LMD
+    '2026_10_31_system_users' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_users'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `system_users` (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `name` VARCHAR(150) NOT NULL,
+                `email` VARCHAR(150) NOT NULL UNIQUE,
+                `password_hash` VARCHAR(255) NOT NULL,
+                `failed_attempts` INT UNSIGNED NOT NULL DEFAULT 0,
+                `locked_until` DATETIME NULL,
+                `last_login_at` DATETIME NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
 ];
 
 /**
@@ -167,3 +189,7 @@ foreach ($migrations as $name => $migrate) {
     }
 }
 echo "Selesai.\n";
+
+if ((int) $db->query("SELECT COUNT(*) FROM system_users")->fetchColumn() === 0) {
+    echo "\nBelum ada akun admin LMD. Buat dengan:\n  php database/admin.php create <email> \"<nama>\"\n";
+}
