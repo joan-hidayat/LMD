@@ -181,6 +181,8 @@ Urutan pemeriksaan di `LicenseModel::validateLicense`:
 
 ## 5b. Mendaftarkan Aplikasi Client Baru ke LMD
 
+> Kontrak resminya: **[`STANDAR_INTEGRASI.md`](STANDAR_INTEGRASI.md)** (v1). Bagian ini adalah ringkasan visualnya.
+
 LMD **tidak membaca file** di dalam aplikasi client. LMD mengenali aplikasi dari **license key** yang dikirim client saat memanggil `validate`: license key sudah membawa customer, aplikasi (`app_code`), paket, dan modul; `instance_key` + `domain` menunjukkan lokasi instalasinya.
 
 ### Empat tahap
@@ -202,17 +204,17 @@ flowchart TD
     D --> E["Kartu paket Showcase otomatis<br>membaca GET /packages?app_code=MINIPOS"]
 ```
 
-> 🟡 Untuk Mini POS, aplikasi `MINIPOS` belum dibuat dan produk Showcase belum punya `lmdAppCode` (T-24, T-18).
+> ✅ Mini POS terdaftar sebagai `MINIPOS` (3 paket: Starter, Pro, Bisnis) dan produk Showcase-nya memakai `lmdAppCode: "MINIPOS"`. Apotek memakai `APOTEK` tanpa `launch_url` (on-premise). Produk tanpa `lmdAppCode` tampil "Segera hadir".
 
 ### Tahap 2 — Yang wajib dimiliki aplikasi client
 
 | # | Kebutuhan | Contoh di Mini POS |
 |---|---|---|
-| 1 | Identitas & koneksi: `app_code` + URL API LMD | `config.php` (`lmd_api_url`); `app_code` belum ada (T-24) |
+| 1 | Identitas & koneksi: `app_code` + URL API LMD | `lmd-client.php` |
 | 2 | Penyimpanan license key setelah aktivasi | Database `mini_pos`, tabel `tenants` |
 | 3 | Kode pemanggil `POST /licenses/validate` dari server, mematuhi hasilnya | `lib/LicenseGate.php` |
 
-📋 Usulan standar: satu file `lmd-client.php` di setiap aplikasi client:
+✅ Standar: satu file `lmd-client.php` di setiap aplikasi client:
 
 ```php
 <?php
@@ -252,7 +254,7 @@ flowchart TD
     Q5 -- penuh --> X5["403 instance_limit_reached"]
     Q5 -- ya --> OK["200 valid<br>modules · max_users · max_instances · licensee"]
     OK --> Q6{"Client: app_code =<br>kode aplikasi sendiri?"}
-    Q6 -- tidak --> X6["Tolak di client<br>(belum di Mini POS · T-24)"]
+    Q6 -- tidak --> X6["Tolak di client<br>(app_mismatch)"]
     Q6 -- ya --> RUN["Aplikasi berjalan:<br>fitur sesuai modules, akun ≤ max_users"]
 ```
 
@@ -273,6 +275,7 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Panel persetujuan pembayaran di dashboard | ✅ Jalan | Banner Dashboard + tabel di Subscriptions |
 | Detail instance per lisensi | ✅ Jalan | Menu Licenses → Detail (diporting dari WIP lokal) |
 | URL API tanpa `index.php` | ✅ Jalan | `api/.htaccess` (butuh `mod_rewrite`, default XAMPP) (T-15) |
+| Standar Integrasi v1 (`app_code` di LMD, Showcase, client) | ✅ Jalan | `STANDAR_INTEGRASI.md`; Mini POS = `MINIPOS`, `launch_url` per aplikasi (T-18, T-24) |
 | Penguncian instance + domain | ✅ Jalan | Kuota `max_instances` per paket, domain terkunci, blokir oleh admin (T-02). Belum anti-pemalsuan (T-22) |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |

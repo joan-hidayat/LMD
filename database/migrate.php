@@ -44,7 +44,86 @@ $migrations = [
         }
         return $changed;
     },
+
+    // Standar Integrasi v1: template URL aplikasi hosted per aplikasi
+    '2026_10_30_application_launch_url' => function (PDO $db) {
+        if (columnExists($db, 'applications', 'launch_url')) {
+            return false;
+        }
+        $db->exec("ALTER TABLE `applications` ADD COLUMN `launch_url` VARCHAR(255) NULL
+                   COMMENT 'Template URL aplikasi hosted; NULL = aplikasi on-premise' AFTER `description`");
+        return true;
+    },
+
+    // Standar Integrasi v1: Mini POS terdaftar sebagai aplikasi sendiri (sebelumnya menumpang APOTEK)
+    '2026_10_30_register_minipos' => function (PDO $db) {
+        return registerApplication($db, [
+            'code' => 'MINIPOS',
+            'name' => 'Mini POS Express',
+            'slug' => 'mini-pos-express',
+            'description' => 'Aplikasi kasir web multi-user untuk toko, kafe, dan UMKM.',
+            'launch_url' => '/mini-pos/?tenant={tenant}&lic={license_key}',
+            'modules' => [
+                ['KASIR', 'Kasir & Transaksi', 'standard', 'Penjualan, keranjang, dan struk.'],
+                ['LAPORAN', 'Laporan Penjualan', 'standard', 'Rekap harian, produk terlaris, omzet.'],
+                ['STOK', 'Manajemen Stok', 'standard', 'Stok produk, stok minimum, dan penyesuaian.'],
+                ['MULTI_OUTLET', 'Multi Outlet', 'advanced', 'Kelola beberapa outlet dalam satu akun.'],
+            ],
+            'packages' => [
+                ['MPOS_STARTER', 'Mini POS Starter', 'Untuk satu toko kecil.', 150000, 'monthly', 2, 1, 0, ['KASIR', 'LAPORAN']],
+                ['MPOS_PRO', 'Mini POS Pro', 'Toko dengan stok dan dua lokasi.', 350000, 'monthly', 5, 2, 0, ['KASIR', 'LAPORAN', 'STOK']],
+                ['MPOS_BISNIS', 'Mini POS Bisnis', 'Jaringan outlet, termasuk fitur baru otomatis.', 3500000, 'annual', 15, 5, 1, ['KASIR', 'LAPORAN', 'STOK', 'MULTI_OUTLET']],
+            ],
+        ]);
+    },
 ];
+
+/**
+ * Mendaftarkan aplikasi beserta modul & paketnya bila belum ada (dicari berdasarkan kode).
+ * Data yang sudah ada tidak diubah, jadi penyesuaian admin di dashboard tetap aman.
+ */
+function registerApplication(PDO $db, array $app) {
+    $find = $db->prepare("SELECT id FROM applications WHERE code = :code");
+    $find->execute(['code' => $app['code']]);
+    if ($find->fetchColumn()) {
+        return false;
+    }
+
+    $db->beginTransaction();
+    try {
+        $db->prepare("INSERT INTO applications (code, name, slug, description, launch_url, status) VALUES (:code, :name, :slug, :description, :launch_url, 'active')")
+            ->execute(['code' => $app['code'], 'name' => $app['name'], 'slug' => $app['slug'], 'description' => $app['description'], 'launch_url' => $app['launch_url']]);
+        $appId = $db->lastInsertId();
+
+        $moduleIds = [];
+        $insModule = $db->prepare("INSERT INTO modules (application_id, code, name, slug, module_type, description, sort_order) VALUES (:app, :code, :name, :slug, :type, :description, :sort)");
+        foreach ($app['modules'] as $i => [$code, $name, $type, $description]) {
+            $insModule->execute(['app' => $appId, 'code' => $code, 'name' => $name, 'slug' => strtolower($app['code'] . '-' . str_replace('_', '-', $code)),
+                'type' => $type, 'description' => $description, 'sort' => $i + 1]);
+            $moduleIds[$code] = $db->lastInsertId();
+        }
+
+        $insPackage = $db->prepare("
+            INSERT INTO packages (application_id, code, name, slug, description, base_price, billing_cycle, max_users, max_instances, future_module_access, is_public, sort_order)
+            VALUES (:app, :code, :name, :slug, :description, :price, :cycle, :users, :instances, :future, 1, :sort)
+        ");
+        $insPackageModule = $db->prepare("INSERT INTO package_modules (package_id, module_id, additional_price) VALUES (:pkg, :mod, 0.00)");
+        foreach ($app['packages'] as $i => [$code, $name, $description, $price, $cycle, $users, $instances, $future, $modules]) {
+            $insPackage->execute(['app' => $appId, 'code' => $code, 'name' => $name, 'slug' => strtolower(str_replace('_', '-', $code)),
+                'description' => $description, 'price' => $price, 'cycle' => $cycle, 'users' => $users, 'instances' => $instances,
+                'future' => $future, 'sort' => $i + 1]);
+            $packageId = $db->lastInsertId();
+            foreach ($modules as $moduleCode) {
+                $insPackageModule->execute(['pkg' => $packageId, 'mod' => $moduleIds[$moduleCode]]);
+            }
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
+    return true;
+}
 
 foreach ($migrations as $name => $migrate) {
     try {

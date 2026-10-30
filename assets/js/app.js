@@ -57,7 +57,7 @@ createApp({
             showModal: false,
 
             // Form Models
-            appForm: { code: '', name: '', description: '', status: 'active' },
+            appForm: { code: '', name: '', description: '', launch_url: '', status: 'active' },
             moduleForm: { application_id: '', code: '', name: '', module_type: 'standard', description: '', sort_order: 0 },
             packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] },
             customerForm: { code: '', name: '', email: '', phone: '', status: 'active' },
@@ -228,7 +228,7 @@ createApp({
             this.showModal = true;
             if (type === 'app') {
                 this.modalTitle = 'Tambah Aplikasi Baru';
-                this.appForm = { code: '', name: '', description: '', status: 'active' };
+                this.appForm = { code: '', name: '', description: '', launch_url: '', status: 'active' };
             } else if (type === 'module') {
                 this.modalTitle = 'Tambah Modul Baru';
                 this.moduleForm = { application_id: this.selectedAppId || (this.applications[0]?.id || ''), code: '', name: '', module_type: 'standard', description: '', sort_order: 0 };

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS `applications` (
     `name` VARCHAR(100) NOT NULL,
     `slug` VARCHAR(100) NOT NULL UNIQUE,
     `description` TEXT NULL,
+    `launch_url` VARCHAR(255) NULL COMMENT 'Template URL aplikasi hosted, mis. /mini-pos/?tenant={tenant}&lic={license_key}; NULL = aplikasi on-premise',
     `status` ENUM('draft', 'active', 'inactive') NOT NULL DEFAULT 'active',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
