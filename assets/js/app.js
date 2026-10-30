@@ -331,7 +331,10 @@ createApp({
                         await this.selectApplication(this.moduleForm.application_id);
                     }
                     await this.fetchApplications();
-                    alert('Modul berhasil ditambahkan!');
+                    const g = json.data.future_module_granted || {};
+                    alert(g.licenses
+                        ? `Modul berhasil ditambahkan!\nOtomatis diberikan ke ${g.packages} paket "fitur baru otomatis", ${g.subscriptions} subscription, dan ${g.licenses} lisensi.`
+                        : 'Modul berhasil ditambahkan!');
                 } else {
                     alert('Gagal: ' + json.message);
                 }

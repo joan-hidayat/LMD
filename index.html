@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=20261030_v1">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261030_v2">
 </head>
 
 <body>
@@ -469,7 +469,7 @@
                                     <td>{{ pkg.max_instances }} lokasi</td>
                                     <td>
                                         <span class="status" :class="pkg.future_module_access ? 'status-active' : 'status-draft'">
-                                            {{ pkg.future_module_access ? 'YES (Auto Add)' : 'NO' }}
+                                            {{ Number(pkg.future_module_access) ? 'YA (modul baru otomatis)' : 'TIDAK' }}
                                         </span>
                                     </td>
                                     <td><span class="status status-active">{{ pkg.status }}</span></td>
@@ -1032,19 +1032,19 @@
                         </div>
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
                             <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🌐 2. Domain & Instance Key Binding (Anti-Clone)</div>
-                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Lisensi dikunci spesifik ke domain & ID hardware. Jika lisensi dicopy ke domain lain, API membalas `"valid": false` (`domain_mismatch`).</p>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Setiap instalasi dikunci ke domain pertamanya dan jumlah instalasi dibatasi kuota paket. Domain lain → `domain_mismatch`; di luar kuota → `instance_limit_reached`.</p>
                         </div>
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
-                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🔒 3. Kriptografi SHA-256 License Hash</div>
-                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">License key dan activation key digenerate secara acak berbasis Hashing SHA-256 yang tidak dapat ditebak (*unpredictable*).</p>
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🔒 3. License Key Acak (CSPRNG)</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">License key (96-bit) dan activation key (64-bit) dibuat dari `random_bytes()`, generator acak kriptografis PHP, sehingga tidak dapat ditebak.</p>
                         </div>
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
                             <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🛡️ 4. Prepared Statements PDO (Anti SQLi)</div>
                             <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Seluruh backend PHP menggunakan PDO Parameterized Query, menjamin 100% perlindungan dari serangan SQL Injection.</p>
                         </div>
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
-                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🚨 5. Audit Log & Anomaly Anomaly Alert</div>
-                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Setiap validasi dicatat di `validation_logs`. Lonjakan kegagalan mendeteksi percobaan peretasan/pembajakan di dashboard.</p>
+                            <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">🚨 5. Audit Log & Anomaly Alert</div>
+                            <p style="font-size: 11px; color: #7f1d1d; line-height: 1.4; margin: 0;">Setiap validasi dicatat di `license_logs`. Lonjakan kegagalan mendeteksi percobaan peretasan/pembajakan di dashboard.</p>
                         </div>
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;">
                             <div style="font-weight: 700; color: #991b1b; font-size: 12px; margin-bottom: 4px;">⚡ 6. Enkripsi Transport TLS/HTTPS & Rate Limit</div>
@@ -1270,7 +1270,7 @@
                                     <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kuota lokasi per paket, domain terkunci, blokir admin (T-02)</td></tr>
                                     <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
-                                    <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-warning">Sebagian</span></td><td>Kolom ada, logika penyalinan modul belum ada (T-13)</td></tr>
+                                    <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Modul baru otomatis masuk paket, subscription, dan lisensi (T-13)</td></tr>
                                     <tr><td>Paket &amp; harga Showcase sinkron dengan LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dibaca dari <code>GET packages?app_code</code> (T-12)</td></tr>
                                     <tr><td>API key / auth admin / rate limit</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Hardening sebelum production (T-04, T-05)</td></tr>
                                     <tr><td>Password + credential di <code>.env</code></td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Sengaja hardcode selama pengembangan</td></tr>
@@ -1280,7 +1280,7 @@
                         </div>
                         <div class="eco-callout eco-callout-info">
                             <strong>Urutan kerja yang disarankan</strong>
-                            <p>1) Aturan penguncian instance/domain di validate (T-02). 2) Future module dan pemetaan produk Showcase (T-13, T-18). 3) Perbaikan kecil kode &amp; docs. 4) Hardening keamanan sebelum production.</p>
+                            <p>1) Pemulihan password admin Mini POS (T-21). 2) Hardening keamanan sebelum production: login admin LMD &amp; API key, rate limit, request bertanda tangan (T-04, T-05, T-22, T-07). 3) Rapikan docs lokal (T-09).</p>
                         </div>
                     </div>
                 </div>
@@ -1528,6 +1528,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=20261030_v1"></script>
+<script src="./assets/js/app.js?v=20261030_v2"></script>
 </body>
 </html>
