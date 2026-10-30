@@ -164,6 +164,6 @@ Endpoint di tabel ini **publik** (tanpa login), dengan rate limit per IP (T-05).
 | Aplikasi | `app_code` | Tipe | LMD | Showcase | Client |
 |---|---|---|---|---|---|
 | Mini POS Express | `MINIPOS` | Hosted (`/mini-pos/`) | ✅ | ✅ | ✅ |
-| Apotek Smart POS | `APOTEK` | On-premise (tanpa `launch_url`) | ✅ | ✅ | 📋 client belum ada di repo |
+| Apotek Smart POS | `APOTEK` | On-premise (tanpa `launch_url`) | ✅ | ✅ | 🟡 hanya demo `client_demo/` (lmd-client.php + validasi dari server, siap tanda tangan); aplikasi sungguhan belum ada di repo |
 | Distributor (DMS), TMS | `DISTRIBUTOR`, `TMS` | — | ✅ | 📋 belum ada produk | 📋 |
 | Produk Showcase lain | — | — | 📋 | Segera hadir | 📋 |

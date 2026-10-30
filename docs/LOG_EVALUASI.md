@@ -45,12 +45,36 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-26 | lmd | `SecurityHelper::getClientIp` memercayai `X-Forwarded-For` / `Client-IP` dari siapa pun: rate limit bisa ditembus dan IP di audit log bisa dipalsukan. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Selesai — lihat Riwayat "T-28" |
-| T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Terbuka |
+| T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Selesai — lihat Riwayat "T-29" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-29: demo client Apotek memanggil LMD dari server
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd
+
+- `client_demo/apotek.html` tidak lagi memanggil `licenses/validate` & `licenses/register` langsung dari browser (dan tidak lagi memakai URL `http://localhost:8080` hardcode). Browser memanggil `client_demo/api.php` di host yang sama (`action=state|validate|register`, POST wajib `application/json`).
+- `client_demo/api.php` meneruskan request ke LMD dari server, memeriksa `app_code === APOTEK`, dan **menandatangani request** (HMAC, T-22) bila LMD menerbitkan `instance_secret`. Secret disimpan di server (sesi PHP demo) dan disamarkan di JSON yang ditampilkan ke browser.
+- `client_demo/lmd-client.php` ditambahkan sesuai Standar Integrasi (no. 1–3): `app_code`, URL API (otomatis host yang sama), prefix instance key.
+- Vue di demo dipatok ke versi `3.4.38` (build produksi), bukan `vue@3` mengambang.
+- Batasan demo: status instalasi disimpan di sesi browser, jadi membuka demo di browser lain = instalasi baru tanpa secret. Aplikasi Apotek sungguhan wajib menyimpannya di database/.env server seperti Mini POS. `STANDAR_INTEGRASI.md` §7 diperbarui: client Apotek 🟡 (hanya demo).
+
+Verifikasi (lokal): `state` → identitas default; POST form biasa → 405; `register` → lisensi APO_BASIC baru, `valid: true`, modul DASHBOARD/MASTER_OBAT/INVENTORY/POS_KASIR; APOTEK diubah sementara ke `require_signature = 1` → `register` + validasi pertama `signature: issued` (secret tidak sampai ke browser), validasi berikutnya `signature: verified`; flag dikembalikan ke 0. Browser (Playwright): halaman demo terisi dari server, **0** request langsung dari browser ke API LMD. License key default demo (`LIC-APO-CRIT…`) hanya ada bila DB berisi `seed.sql`; tanpa itu badge menunjukkan "TIDAK VALID" sampai tombol Auto-Register dipakai.
+
+### 2026-10-31 — Verifikasi lokal T-30 (PR Mini POS #7, LMD #10)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** sample-mini-pos — dilakukan AI lokal di XAMPP, toko `tokobaruminipos.pos.local` (MPOS_STARTER)
+
+- (a) Menu **Produk** tampil untuk admin.
+- (b) "Roti Bakar Keju" Rp 15.000 (kategori Camilan) ditambahkan dan langsung tampil di Kasir.
+- (c) Dijual 1: `TRX-20261031-000002`, Rp 15.000 + PPN Rp 1.650 = Rp 16.650. Harga diubah ke Rp 17.000; Laporan tetap mencatat Rp 15.000 / Rp 16.650.
+- (d) "roti bakar keju" (huruf kecil) ditolak: `Produk "roti bakar keju" sudah ada.`
+- (e) Nonaktif → hilang dari Kasir; aktif kembali → tampil lagi.
+- (f) `error.log` Apache: tidak ada error PHP baru.
+- Catatan: laporan **tidak menyertakan** keluaran `git log -1 --oneline` yang diminta (seharusnya mini-pos `1abf8a1`, LMD `006cd00`). Hasil fungsional a–e hanya mungkin dengan kode T-30, jadi versi terpasang dianggap benar; hash tetap perlu dikonfirmasi di sinkron berikutnya.
 
 ### 2026-10-31 — T-30: Kelola Produk di Mini POS
 **Jenis:** Perubahan kode + docs
