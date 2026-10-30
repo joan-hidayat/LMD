@@ -41,10 +41,27 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Terbuka |
 | T-23 | lmd | `database/seed.sql` men-`TRUNCATE` semua tabel `central_saas` tanpa peringatan; berbahaya jika dijalankan pada data nyata. Peringatan ditambahkan di kepala file, dan pembaruan struktur kini lewat `database/migrate.php`. | Operasional | Selesai — lihat Riwayat "T-02" |
 | T-24 | lmd, sample-mini-pos, software-showcase | Mini POS belum terdaftar sebagai aplikasi sendiri di LMD (seed hanya APOTEK, DISTRIBUTOR, TMS); ia memakai paket `APOTEK`. Selain itu `LicenseGate` Mini POS tidak memeriksa `app_code` di respons `validate`, sehingga license key aplikasi lain (misal TMS) juga diterima. Perlu: aplikasi `MINIPOS` + modul + paket di LMD, `lmdAppCode` per produk di Showcase (T-18), dan pengecekan `app_code` di client. | Fungsional / keamanan | Selesai — lihat Riwayat "Standar Integrasi v1" |
+| T-25 | lmd | Modul yang dihapus (soft delete) tetap tercatat di `package_modules`: jumlah modul paket salah dan order baru ikut menyalin modul terhapus ke subscription/lisensi. Terlihat saat verifikasi lokal T-13 (modul `TEST_FUTURE`). | Data | Selesai — lihat Riwayat "T-25" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-25: modul terhapus keluar dari isi paket
+**Jenis:** Perubahan kode + pembersihan data
+**Repo:** lmd
+
+- `ModuleModel::delete` kini (dalam transaksi) men-soft-delete modul **dan** menghapusnya dari `package_modules`. Riwayat di `subscription_modules` / `license_modules` dibiarkan; `validate` sudah menyaring modul terhapus (T-13).
+- `migrate.php`: `2026_10_31_cleanup_deleted_package_modules` membersihkan sisa lama (di PC lokal: `TEST_FUTURE` di paket MPOS_BISNIS). Kolom nama migrasi dilebarkan agar output rapi.
+- Verifikasi: paket MPOS_BISNIS berisi 6 baris (2 modul terhapus) → migrate run 1 "DITERAPKAN" → 4 baris; run 2 "sudah terpasang". Modul baru dibuat lalu dihapus via API → 0 baris di `package_modules`, riwayat subscription tetap.
+
+### 2026-10-30 — Verifikasi lokal T-13 + perapian (PR LMD #5, Showcase #4)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, software-showcase
+
+- XAMPP lokal di `b042761` / `91237e7`; backup `_backup_20261030_2211_central_saas.sql` (63.723 byte).
+- `migrate.php` 2x: semua "sudah terpasang" (tidak ada modul lama yang perlu disusulkan).
+- (a) label "YA (modul baru otomatis)" / "TIDAK" benar; (b) garis tab analitik tampil (T-11); (c) modul `TEST_FUTURE` untuk MINIPOS → API `future_module_granted {packages: 1, subscriptions: 0, licenses: 0}` karena belum ada lisensi MPOS_BISNIS; hanya paket MPOS_BISNIS yang menerima; modul lalu dihapus → memunculkan **T-25**; (d) kartu keamanan no. 3 & 5 sesuai T-14; (e) tidak ada error PHP baru.
 
 ### 2026-10-30 — T-13: modul baru otomatis (future_module_access)
 **Jenis:** Perubahan kode
