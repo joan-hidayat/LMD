@@ -52,6 +52,16 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Verifikasi lokal T-29 (PR LMD #11)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd — dilakukan AI lokal di XAMPP
+
+- (a) License key demo bawaan `LIC-APO-CRIT…` ada di DB lokal tetapi berstatus **expired** → LMD menjawab "License status is expired.", badge "TIDAK VALID" (perilaku benar).
+- (b) Auto-Register → `LIC-APOTEK-8D908CD4DAFFBC0D31BEBFF4`, valid, modul DASHBOARD/MASTER_OBAT/INVENTORY/POS_KASIR; RESEP_DOKTER & BPJS_INTEGRATION terkunci (sesuai APO_BASIC).
+- (c) Heartbeat lewat `client_demo/api.php?action=validate`, tidak ada request browser langsung ke `api/index.php/licenses/...`.
+- (d) `error.log` Apache: tidak ada error PHP baru.
+- Catatan cross-check: (1) AI lokal melaporkan otomasi browsernya gagal (`ECONNREFUSED 127.0.0.1:52924`) dan pengujian dilakukan "langsung ke endpoint server", sehingga pengamatan tampilan badge dan tab Network (a–c) kemungkinan **disimpulkan dari respons HTTP, bukan dilihat di browser**. Bagian browser sudah diuji di lingkungan cloud (Playwright: 0 request langsung ke LMD), jadi risiko kecil; pemilik proyek disarankan membuka demo sekali secara manual. (2) Keluaran `git log -1 --oneline` yang diminta kembali tidak disertakan (seharusnya LMD `dbcf919`, mini-pos `1abf8a1`).
+
 ### 2026-10-31 — T-29: demo client Apotek memanggil LMD dari server
 **Jenis:** Perubahan kode + docs
 **Repo:** lmd
