@@ -49,6 +49,17 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Verifikasi lokal paket keamanan (PR LMD #8, Mini POS #5, Showcase #5)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos, software-showcase
+
+- XAMPP lokal di `269d5c4` / `ddc4de5` / `03a3bfb`; backup `_backup_20261031_0006_central_saas.sql` (67.690 byte) & `_backup_20261031_0006_mini_pos.sql` (4.820 byte).
+- `migrate.php` run 1: `system_users`, `rate_limits`, `api_tokens`, `instance_signatures` **DITERAPKAN** + pesan "Belum ada akun admin LMD"; run 2 semua "sudah terpasang".
+- Tanpa login: dashboard menampilkan layar login + petunjuk CLI; `GET /api/licenses` → 401; `GET /api/packages?app_code=MINIPOS` → 200; Admin Showcase menampilkan "Password admin belum dibuat"; `admin/app.php` → 302 ke login.
+- Mini POS `tokobaruminipos.pos.local` tetap terbuka normal dan otomatis menerima instance secret (*trust on first use* untuk toko lama berjalan). `apotek-sehat.pos.local` tanpa secret karena memakai lisensi APOTEK (ditolak `app_mismatch` sejak Standar Integrasi v1, sesuai desain).
+- Tidak ada error PHP baru.
+- Pemilik proyek membuat akun admin LMD sendiri lewat CLI dan berhasil login ke dashboard (tampilan nama admin + tombol Keluar). Password tidak dicatat.
+
 ### 2026-10-31 — Paket keamanan sebelum production (T-05, T-04 token, T-22, T-07)
 **Jenis:** Perubahan kode + migrasi database
 **Repo:** lmd, sample-mini-pos, software-showcase
