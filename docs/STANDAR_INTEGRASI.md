@@ -88,6 +88,7 @@ Nilai khusus server ditaruh di `lmd-client.local.php` (tidak di-commit).
 | 6 | Menangani setiap `reason` penolakan dengan pesan yang jelas (tabel 5). | `LicenseGate::deny` |
 | 7 | Cache hasil validasi (≤ 5 menit) dan masa tenggang offline terbatas (≤ 24 jam). | `config.php` |
 | 8 | Mengelola user, role, dan login sendiri. Akun admin pertama dibuat dengan email pemesan (`licensee.email`). | `setup.php` |
+| 9 | **Reset password admin (aplikasi hosted):** menerima `?tenant={domain}&reset_token={token}` di path `launch_url`, menghapus token dari URL, memeriksa token ke `POST /licenses/reset_token` (`consume: false`), lalu menghanguskannya (`consume: true`) **setelah** password baru lolos validasi lokal. Aplikasi on-premise menyediakan form untuk memasukkan kode reset. | `reset.php` |
 
 ---
 
@@ -102,6 +103,8 @@ Base URL: `{lmd}/api/index.php` (atau `{lmd}/api` bila `api/.htaccess` aktif).
 | `GET /licenses/order_status?subscription_no=` | Showcase | `is_approved`, `app_code`, `license_key`, `app_url` (null = on-premise) |
 | `POST /licenses/approve_order` · `reject_order` | Admin / n8n | Aktivasi / penolakan |
 | `POST /licenses/register` | Installer client (on-premise) | Customer + lisensi langsung aktif |
+| `POST /licenses/{id}/admin_reset` | Admin LMD | Token reset sekali pakai (24 jam, membatalkan token lama) + `reset_url` dari path `launch_url` (null = on-premise) |
+| `POST /licenses/reset_token` | Client | Body `license_key`, `token`, `consume`. `valid` atau `reason`: `reset_token_invalid` · `reset_token_used` · `reset_token_expired` · `license_inactive` |
 | `POST /licenses/validate` | Client | Lihat di bawah |
 
 **Respons `validate` sukses:** `valid`, `license_key`, `application`, `app_code`, `expires_at`, `max_users`, `max_instances`, `modules[]`, `licensee {name, email}`, `instance_name`.

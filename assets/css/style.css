@@ -876,3 +876,14 @@ td code, .code-pill {
 .instance-warning { font-size: 12px; color: #fbbf24; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 8px 12px; }
 .instance-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
 .app-launch { display: block; margin-top: 4px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Reset password admin aplikasi client (T-21) */
+.reset-box { border: 1px solid rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.06); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.reset-box-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.reset-box-head strong { font-size: 13px; }
+.reset-box-head p { font-size: 11px; color: var(--text-secondary); margin: 2px 0 0; }
+.reset-box-head .btn { white-space: nowrap; }
+.reset-result { display: flex; flex-direction: column; gap: 6px; }
+.reset-result label, .reset-result small { font-size: 11px; color: var(--text-secondary); }
+.reset-copy { display: flex; gap: 8px; align-items: center; }
+.reset-copy code { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 11px; color: #fbbf24; background: #050811; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 6px 8px; word-break: break-all; }

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/LicenseModel.php';
 require_once __DIR__ . '/../models/OrderModel.php';
+require_once __DIR__ . '/../models/AdminResetModel.php';
 require_once __DIR__ . '/../helpers/response.php';
 
 class LicenseController {
@@ -150,6 +151,32 @@ class LicenseController {
         } catch (DomainException $e) {
             sendJsonResponse(null, 409, $e->getMessage());
         }
+    }
+
+    /**
+     * Admin LMD menerbitkan link reset password admin aplikasi client (T-21)
+     */
+    public function issueAdminReset($licenseId) {
+        try {
+            $result = (new AdminResetModel())->issue((int) $licenseId);
+            sendJsonResponse($result, 201, 'Reset link issued. It is shown only once.');
+        } catch (OutOfBoundsException $e) {
+            sendJsonResponse(null, 404, $e->getMessage());
+        } catch (DomainException $e) {
+            sendJsonResponse(null, 409, $e->getMessage());
+        }
+    }
+
+    /**
+     * Aplikasi client memeriksa / menghanguskan token reset (body: license_key, token, consume)
+     */
+    public function checkResetToken() {
+        $input = getJsonInput();
+        if (empty($input['license_key']) || empty($input['token'])) {
+            sendJsonResponse(['valid' => false, 'reason' => 'bad_request'], 400, 'license_key and token are required.');
+        }
+        $result = (new AdminResetModel())->check($input['license_key'], $input['token'], !empty($input['consume']));
+        sendJsonResponse($result, $result['valid'] ? 200 : 403, $result['valid'] ? 'Reset token is valid.' : 'Reset token rejected.');
     }
 
     public function rejectOrder() {

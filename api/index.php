@@ -110,6 +110,10 @@ try {
                 $controller->rejectOrder();
             } elseif ($id === 'pending_orders' && $method === 'GET') {
                 $controller->pendingOrders();
+            } elseif ($id === 'reset_token' && $method === 'POST') {
+                $controller->checkResetToken();
+            } elseif ($id && is_numeric($id) && $action === 'admin_reset' && $method === 'POST') {
+                $controller->issueAdminReset($id);
             } elseif ($method === 'GET') {
                 if ($id && is_numeric($id) && $action === 'instances') {
                     $controller->instances($id);

@@ -54,6 +54,7 @@ createApp({
             modalType: null,
             modalTitle: '',
             instanceDetail: { license: null, instances: [], loading: false, error: null },
+            adminReset: { loading: false, result: null, error: null },
             showModal: false,
 
             // Form Models
@@ -252,6 +253,7 @@ createApp({
 
         async viewInstances(lic) {
             this.instanceDetail = { license: lic, instances: [], loading: true, error: null };
+            this.adminReset = { loading: false, result: null, error: null };
             this.modalType = 'instances';
             this.modalTitle = 'Instance Terhubung';
             this.showModal = true;
@@ -288,6 +290,31 @@ createApp({
                 await this.fetchLicenses();
             } catch (err) {
                 alert('Error mengubah status instalasi.');
+            }
+        },
+
+        async issueAdminReset() {
+            const lic = this.instanceDetail.license;
+            if (!confirm(`Buat link reset password admin untuk ${lic.customer_name}?\nLink sebelumnya (jika ada) tidak berlaku lagi.`)) return;
+            this.adminReset = { loading: true, result: null, error: null };
+            try {
+                const res = await fetch(`api/index.php/licenses/${lic.id}/admin_reset`, { method: 'POST' });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                this.adminReset.result = json.data;
+            } catch (err) {
+                this.adminReset.error = 'Gagal membuat link reset: ' + err.message;
+            } finally {
+                this.adminReset.loading = false;
+            }
+        },
+
+        async copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                alert('Tersalin.');
+            } catch (err) {
+                prompt('Salin manual:', text);
             }
         },
 

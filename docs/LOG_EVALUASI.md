@@ -37,7 +37,7 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-18 | software-showcase | Semua produk Showcase (termasuk Mini POS Express, DineFlow Resto) berlangganan memakai paket `APOTEK`, karena `products.js` belum punya pemetaan ke kode aplikasi LMD. Kode sudah membaca `product.lmdAppCode` (default `APOTEK`). | Fungsional / data | Selesai — lihat Riwayat "Standar Integrasi v1" |
 | T-19 | sample-mini-pos | Judul toko di Mini POS memakai nama customer (`Budi Santoso — Mini POS Express`), bukan nama toko yang diisi di wizard (tersimpan di `application_instances.instance_name`). | Minor | Selesai — lihat Riwayat "Login Mini POS" |
 | T-20 | sample-mini-pos | `app.js` tersimpan dengan encoding ganda (UTF-8 dibaca sebagai Windows-1252), sehingga emoji produk tampil rusak (`ðŸ¥`, `â˜•`). | Bug UI | Selesai — lihat Riwayat "Login Mini POS" |
-| T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Terbuka |
+| T-21 | sample-mini-pos | Belum ada pemulihan jika **admin** lupa password (kasir bisa direset oleh admin). Opsi: reset via email pemesan yang tercatat di LMD, atau tombol reset dari dashboard LMD. | Fungsional | Selesai — lihat Riwayat "T-21" |
 | T-22 | lmd | `instance_key` dan `domain` pada `validate` dikirim oleh client sendiri, sehingga pihak yang memegang license key dapat meniru instalasi asli dan lolos penguncian T-02. Perlu request bertanda tangan (secret per instance yang diterbitkan saat aktivasi + HMAC), terkait T-04. | Keamanan (pra-production) | Terbuka |
 | T-23 | lmd | `database/seed.sql` men-`TRUNCATE` semua tabel `central_saas` tanpa peringatan; berbahaya jika dijalankan pada data nyata. Peringatan ditambahkan di kepala file, dan pembaruan struktur kini lewat `database/migrate.php`. | Operasional | Selesai — lihat Riwayat "T-02" |
 | T-24 | lmd, sample-mini-pos, software-showcase | Mini POS belum terdaftar sebagai aplikasi sendiri di LMD (seed hanya APOTEK, DISTRIBUTOR, TMS); ia memakai paket `APOTEK`. Selain itu `LicenseGate` Mini POS tidak memeriksa `app_code` di respons `validate`, sehingga license key aplikasi lain (misal TMS) juga diterima. Perlu: aplikasi `MINIPOS` + modul + paket di LMD, `lmdAppCode` per produk di Showcase (T-18), dan pengecekan `app_code` di client. | Fungsional / keamanan | Selesai — lihat Riwayat "Standar Integrasi v1" |
@@ -46,6 +46,35 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-21: reset password admin aplikasi client dari dashboard LMD
+**Jenis:** Perubahan kode + tabel baru
+**Repo:** lmd, sample-mini-pos
+
+**Keputusan pemilik proyek:** pemulihan lewat dashboard LMD (tanpa server email).
+
+**LMD**
+- Tabel `admin_reset_tokens` (hash SHA-256 token, `expires_at`, `used_at`) di `schema.sql` + migrasi `2026_10_31_admin_reset_tokens`.
+- `AdminResetModel`: `issue` (token 64 hex, berlaku 24 jam, menghapus token lama yang belum dipakai, hanya untuk lisensi `active`; `reset_url` dari path `launch_url`, null untuk on-premise) dan `check` (periksa / hanguskan, `FOR UPDATE`).
+- API `POST /licenses/{id}/admin_reset`, `POST /licenses/reset_token`. Audit `admin_reset_issued`, `admin_reset_used`, `admin_reset_checked` (gagal).
+- Modal **Licenses → Detail**: kotak *Reset password admin aplikasi* dengan tombol **Buat link reset** dan **Salin**; link hanya ditampilkan sekali.
+
+**Mini POS**
+- `index.php` meneruskan `?reset_token=` ke `reset.php`; token disimpan di sesi dan dihapus dari URL.
+- `reset.php` + `views/reset.php`: pilih akun admin aktif, password baru; validasi lokal dulu, baru token dihanguskan di LMD, lalu password disimpan (kunci login ikut dibuka).
+- `LicenseGate::checkResetToken` (helper `postLmd` dipakai bersama `validate`); `UserRepository::listActiveAdmins`, `checkPassword`.
+- Petunjuk "Lupa password" di halaman login dibedakan untuk kasir dan admin.
+
+**Docs:** `STANDAR_INTEGRASI.md` (kewajiban client no. 9 + 2 endpoint), `EKOSISTEM_CARA_KERJA.md`, tab Ekosistem.
+
+**Verifikasi** (MariaDB + PHP server, browser)
+1. Dashboard menerbitkan link `…/mini-pos/?tenant=tokosari.pos.local&reset_token=…`.
+2. Link lama tidak berlaku setelah link baru dibuat.
+3. Link valid → `reset.php`, token hilang dari URL, form tampil.
+4. Konfirmasi password salah → ditolak, token **tidak** hangus.
+5. Simpan → login dengan flash sukses; password lama ditolak, password baru berhasil.
+6. Link dipakai ulang → "sudah dipakai"; link kedaluwarsa → "kedaluwarsa"; token lisensi lain di toko ini → "tidak dikenal".
+7. Audit log lengkap; tidak ada error JS. Migrasi run 1 "DITERAPKAN", run 2 "sudah terpasang".
 
 ### 2026-10-31 — Verifikasi lokal T-25 (PR LMD #6)
 **Jenis:** Verifikasi (tanpa perubahan kode)

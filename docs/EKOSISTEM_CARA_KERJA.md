@@ -119,6 +119,8 @@ Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin
 | `POST /licenses/reject_order` | Menolak: subscription `cancelled`, lisensi `revoked` (subdomain bisa dipakai lagi) | `200` + `is_rejected: true` |
 | `GET /licenses/pending_orders` | Daftar pesanan `pending` untuk otomasi (n8n) | `subscription_no`, customer, paket, `instance_domain`, `total_price` |
 | `GET /licenses/{id}/instances` | Instance yang terhubung ke satu lisensi (dipakai modal **Licenses → Detail**) | `max_users`, `max_instances`, `instances[]` |
+| `POST /licenses/{id}/admin_reset` | Admin LMD menerbitkan link reset password admin aplikasi client (T-21) | `token`, `expires_at`, `reset_url` |
+| `POST /licenses/reset_token` | Aplikasi client memeriksa / menghanguskan token reset | `valid` / `reason` |
 | `POST /instances/{id}/status` | Admin memblokir / mengaktifkan instalasi (`{"status":"blocked"\|"active"}`) | `200`; `409` jika kuota penuh saat mengaktifkan |
 
 Kode error: `400` input tidak valid (email, format subdomain), `404` paket/pesanan tidak ada, `409` subdomain sudah dipakai atau pesanan sudah diproses.
@@ -159,6 +161,8 @@ sequenceDiagram
 | `login.php` / `logout.php` | Masuk/keluar; token CSRF di semua form; sesi terikat ke satu tenant. |
 | `users.php` | Khusus admin: tambah user, nonaktifkan/aktifkan, ganti password. |
 | `config.php` | Koneksi DB `mini_pos`, URL LMD, TTL cache, masa tenggang. Override lokal lewat `config.local.php` (di-ignore git). |
+
+**Lupa password:** kasir di-reset oleh admin toko (Kelola User → Ganti password). Admin toko yang lupa password meminta link reset ke penyedia layanan: admin LMD membuka **Licenses → Detail → Buat link reset**, link `…/mini-pos/?tenant=…&reset_token=…` (sekali pakai, 24 jam) dikirim ke pemilik toko, lalu `reset.php` memeriksa token ke LMD dan mengganti password admin (T-21).
 
 **Penegakan kuota (`max_users`):** metode *named users*. Jumlah akun **aktif** tidak boleh melebihi kuota. Jika kuota turun (downgrade), hanya admin yang bisa masuk sampai jumlah user aktif dirapikan. Metode *concurrent sessions* belum dipakai.
 
@@ -278,6 +282,7 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Detail instance per lisensi | ✅ Jalan | Menu Licenses → Detail (diporting dari WIP lokal) |
 | URL API tanpa `index.php` | ✅ Jalan | `api/.htaccess` (butuh `mod_rewrite`, default XAMPP) (T-15) |
 | Standar Integrasi v1 (`app_code` di LMD, Showcase, client) | ✅ Jalan | `STANDAR_INTEGRASI.md`; Mini POS = `MINIPOS`, `launch_url` per aplikasi (T-18, T-24) |
+| Reset password admin aplikasi client | ✅ Jalan | Licenses → Detail → **Buat link reset**; token sekali pakai 24 jam, hash di `admin_reset_tokens`; Mini POS `reset.php` (T-21) |
 | Penguncian instance + domain | ✅ Jalan | Kuota `max_instances` per paket, domain terkunci, blokir oleh admin (T-02). Belum anti-pemalsuan (T-22) |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |
@@ -287,4 +292,4 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Password & credential di `.env` | 📋 Rencana | Sengaja hardcode selama pengembangan |
 | n8n + payment gateway | 📋 Rencana | Endpoint `approve_order` sudah siap dipanggil |
 
-**Urutan kerja yang disarankan:** (1) pemulihan password admin Mini POS (T-21) → (2) hardening keamanan sebelum production sebagai satu paket: login admin LMD & API key (T-04), rate limit (T-05), request bertanda tangan (T-22), password Showcase (T-07) → (3) rapikan docs lokal (T-09).
+**Urutan kerja yang disarankan:** (1) hardening keamanan sebelum production sebagai satu paket: login admin LMD & API key (T-04), rate limit (T-05), request bertanda tangan (T-22), password Showcase (T-07) → (2) rapikan docs lokal (T-09).
