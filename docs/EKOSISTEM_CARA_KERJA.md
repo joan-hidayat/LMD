@@ -228,9 +228,7 @@ return [
     'app_code'            => 'MINIPOS',
     'lmd_api_url'         => 'https://license.domainanda.com/api',
     'instance_key_prefix' => 'INST-STORE-',
-    // Production (T-04 / T-22): App ID + secret diterbitkan LMD per aplikasi
-    // 'app_id'     => 'app_7f3c...',
-    // 'app_secret' => getenv('LMD_APP_SECRET'),
+    // Instance secret untuk tanda tangan request (T-22) disimpan di database aplikasi, bukan di file ini
 ];
 ```
 
@@ -288,7 +286,11 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |
 | `future_module_access` (modul baru otomatis) | ✅ Jalan | Modul yang dibuat setelah paket/subscription masuk ke paket, subscription (`source = future_module`), dan lisensi; disusulkan juga oleh `migrate.php` (T-13) |
 | Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |
-| API key / auth admin / rate limit | 📋 Rencana | Hardening sebelum production |
+| Login admin LMD | ✅ Jalan | 1 akun (`system_users`, dibuat via `php database/admin.php`); endpoint admin wajib sesi, endpoint publik untuk Showcase/client tetap terbuka (T-04) |
+| Token API otomasi (n8n) | ✅ Jalan | `Authorization: Bearer lmdtok_…`, scope pesanan saja; CLI `admin.php token-create/list/revoke` (T-04) |
+| Rate limit | ✅ Jalan | Per IP per endpoint publik & login, 429 + `Retry-After`; tebakan license key 20/menit (T-05) |
+| Request validasi bertanda tangan | ✅ Jalan | Secret per instalasi + HMAC; wajib untuk MINIPOS (`require_signature`); tombol Reset secret (T-22) |
+| Login Admin Showcase di server | ✅ Jalan | Sesi PHP, hash password di `credentials.local.php` (T-07) |
 | Password & credential di `.env` | 📋 Rencana | Sengaja hardcode selama pengembangan |
 | n8n + payment gateway | 📋 Rencana | Endpoint `approve_order` sudah siap dipanggil |
 

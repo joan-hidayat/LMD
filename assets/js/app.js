@@ -7,6 +7,7 @@ createApp({
     data() {
         return {
             activePage: 'dashboard',
+            auth: { checked: false, user: null, setupNeeded: false, email: '', password: '', error: null, loading: false },
             searchQuery: '',
             
             // Dashboard Stats
@@ -82,12 +83,75 @@ createApp({
             return this.instanceDetail.instances.filter(inst => inst.status !== 'blocked').length;
         }
     },
+    created() {
+        // Sesi habis / belum login: setiap respons 401 dari API mengembalikan layar login (T-04)
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = async (...args) => {
+            const res = await nativeFetch(...args);
+            const url = String(args[0] || '');
+            if (res.status === 401 && url.includes('api/') && !url.includes('auth/')) {
+                this.auth.user = null;
+                this.auth.error = 'Sesi berakhir. Silakan masuk kembali.';
+            }
+            return res;
+        };
+    },
     async mounted() {
-        console.log('Central SaaS Dashboard Mounted. Loading data...');
-        await this.fetchDashboardData();
-        await this.fetchAllData();
+        await this.checkAuth();
+        if (this.auth.user) {
+            await this.loadAll();
+        }
     },
     methods: {
+        async checkAuth() {
+            try {
+                const res = await fetch('api/index.php/auth/me');
+                const json = await res.json();
+                this.auth.user = json.success ? json.data : null;
+                this.auth.setupNeeded = !json.success && !!(json.data && json.data.setup_needed);
+            } catch (err) {
+                this.auth.error = 'Tidak dapat menghubungi server LMD.';
+            } finally {
+                this.auth.checked = true;
+            }
+        },
+
+        async login() {
+            this.auth.loading = true;
+            this.auth.error = null;
+            try {
+                const res = await fetch('api/index.php/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: this.auth.email, password: this.auth.password })
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    this.auth.error = json.message;
+                    return;
+                }
+                this.auth.user = json.data;
+                this.auth.password = '';
+                await this.$nextTick();
+                await this.loadAll();
+            } catch (err) {
+                this.auth.error = 'Tidak dapat menghubungi server LMD.';
+            } finally {
+                this.auth.loading = false;
+            }
+        },
+
+        async logout() {
+            await fetch('api/index.php/auth/logout', { method: 'POST' });
+            this.auth.user = null;
+            this.auth.error = null;
+        },
+
+        async loadAll() {
+            await this.fetchDashboardData();
+            await this.fetchAllData();
+        },
+
         setActivePage(page) {
             this.activePage = page;
             if (page === 'dashboard') this.fetchDashboardData();
@@ -316,6 +380,17 @@ createApp({
             } catch (err) {
                 prompt('Salin manual:', text);
             }
+        },
+
+        async resetInstanceSecret(inst) {
+            if (!confirm(`Reset secret instalasi "${inst.instance_name}"?\nValidasi berikutnya dari instalasi ini akan menerima secret baru. Lakukan hanya bila pemilik toko mengonfirmasi database aplikasinya hilang / dipindah.`)) return;
+            const res = await fetch(`api/index.php/instances/${inst.id}/reset_secret`, { method: 'POST' });
+            const json = await res.json();
+            if (!json.success) {
+                alert('Gagal: ' + json.message);
+                return;
+            }
+            inst.has_secret = 0;
         },
 
         closeModal() {

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS `applications` (
     `name` VARCHAR(100) NOT NULL,
     `slug` VARCHAR(100) NOT NULL UNIQUE,
     `description` TEXT NULL,
+    `require_signature` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Wajib request bertanda tangan secret per instalasi (T-22)',
     `launch_url` VARCHAR(255) NULL COMMENT 'Template URL aplikasi hosted, mis. /mini-pos/?tenant={tenant}&lic={license_key}; NULL = aplikasi on-premise',
     `status` ENUM('draft', 'active', 'inactive') NOT NULL DEFAULT 'active',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -160,6 +161,7 @@ CREATE TABLE IF NOT EXISTS `application_instances` (
     `domain` VARCHAR(255) NULL,
     `environment` ENUM('production', 'staging', 'development') NOT NULL DEFAULT 'production',
     `last_seen_at` DATETIME NULL,
+    `secret` CHAR(64) NULL COMMENT 'Secret HMAC per instalasi (T-22); hanya dikirim sekali ke client',
     `status` ENUM('active', 'inactive', 'blocked') NOT NULL DEFAULT 'active',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -207,4 +209,36 @@ CREATE TABLE IF NOT EXISTS `admin_reset_tokens` (
     `used_at` DATETIME NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `fk_reset_license` FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. system_users (T-04): akun admin dashboard LMD (ERD level 1-4). Dibuat lewat: php database/admin.php create
+CREATE TABLE IF NOT EXISTS `system_users` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(150) NOT NULL,
+    `email` VARCHAR(150) NOT NULL UNIQUE,
+    `password_hash` VARCHAR(255) NOT NULL,
+    `failed_attempts` INT UNSIGNED NOT NULL DEFAULT 0,
+    `locked_until` DATETIME NULL,
+    `last_login_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. rate_limits (T-05): penghitung request per IP per endpoint, jendela 60 detik
+CREATE TABLE IF NOT EXISTS `rate_limits` (
+    `bucket` VARCHAR(191) NOT NULL PRIMARY KEY,
+    `window_start` INT UNSIGNED NOT NULL,
+    `hits` INT UNSIGNED NOT NULL DEFAULT 0,
+    KEY `idx_rate_window` (`window_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 16. api_tokens (T-04): token otomasi (mis. n8n) dengan scope terbatas. Dibuat via: php database/admin.php token-create
+CREATE TABLE IF NOT EXISTS `api_tokens` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `scope` VARCHAR(50) NOT NULL,
+    `token_hash` CHAR(64) NOT NULL UNIQUE,
+    `last_used_at` DATETIME NULL,
+    `revoked_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

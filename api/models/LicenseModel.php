@@ -52,7 +52,9 @@ class LicenseModel {
 
             // Get Instances
             $instStmt = $this->db->prepare("
-                SELECT * FROM application_instances WHERE license_id = :license_id ORDER BY id DESC
+                SELECT id, license_id, instance_key, instance_name, domain, environment, last_seen_at, status,
+                       created_at, updated_at, (secret IS NOT NULL) as has_secret
+                FROM application_instances WHERE license_id = :license_id ORDER BY id DESC
             ");
             $instStmt->execute(['license_id' => $id]);
             $license['instances'] = $instStmt->fetchAll();
@@ -100,7 +102,12 @@ class LicenseModel {
     /**
      * Core License Validation API for Client Apps (Apotek, TMS, etc.)
      */
-    public function validateLicense($licenseKey, $instanceKey, $domain = null, $ipAddress = null) {
+    const SIGNATURE_MAX_SKEW = 300;
+
+    /**
+     * $signature (T-22): ['timestamp' => X-LMD-Timestamp, 'signature' => X-LMD-Signature, 'body' => raw request body].
+     */
+    public function validateLicense($licenseKey, $instanceKey, $domain = null, $ipAddress = null, array $signature = []) {
         $ip = $ipAddress ?? SecurityHelper::getClientIp();
         $requestId = 'REQ-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
@@ -114,6 +121,7 @@ class LicenseModel {
         // 1. Fetch License
         $stmt = $this->db->prepare("
             SELECT l.*, s.max_users, s.max_instances, s.status as sub_status, a.code as app_code, a.name as app_name,
+                   a.require_signature,
                    c.name as customer_name, c.email as customer_email
             FROM licenses l
             JOIN subscriptions s ON l.subscription_id = s.id
@@ -188,6 +196,23 @@ class LicenseModel {
                 'domain' => $domain
             ]);
             $instanceId = $this->db->lastInsertId();
+            $instance = ['id' => $instanceId, 'secret' => null];
+        }
+
+        // 2b. Request bertanda tangan (T-22): instalasi pertama menerima secret sekali (trust on first use),
+        //     request berikutnya wajib HMAC-SHA256(secret, timestamp + "\n" + body).
+        $issuedSecret = null;
+        if (!empty($license['require_signature'])) {
+            if (empty($instance['secret'])) {
+                $issuedSecret = bin2hex(random_bytes(32));
+                $this->db->prepare("UPDATE application_instances SET secret = :secret WHERE id = :id")
+                    ->execute(['secret' => $issuedSecret, 'id' => $instanceId]);
+            } else {
+                $failure = $this->verifySignature($instance['secret'], $signature);
+                if ($failure) {
+                    return $reject($failure[0], $failure[1], $instanceId);
+                }
+            }
         }
 
         // Update license last checked
@@ -220,13 +245,52 @@ class LicenseModel {
                 'name' => $license['customer_name'],
                 'email' => $license['customer_email']
             ],
-            'instance_name' => $instanceName
+            'instance_name' => $instanceName,
+            'signature' => empty($license['require_signature']) ? 'not_required' : ($issuedSecret ? 'issued' : 'verified')
         ];
 
-        // 4. Log Success Audit
+        // 4. Log Success Audit (secret tidak pernah ikut dicatat)
         $this->logAction($license['id'], $instanceId, 'validate', $requestId, $ip, $requestData, $responseData, 'success');
 
+        if ($issuedSecret) {
+            // Hanya dikirim sekali; client wajib menyimpannya dan menandatangani request berikutnya
+            $responseData['instance_secret'] = $issuedSecret;
+        }
         return $responseData;
+    }
+
+    /**
+     * Mengembalikan null bila tanda tangan sah, atau [reason, pesan].
+     */
+    private function verifySignature($secret, array $signature) {
+        $timestamp = $signature['timestamp'] ?? '';
+        $provided = strtolower((string) ($signature['signature'] ?? ''));
+        if ($timestamp === '' || $provided === '') {
+            return ['signature_required', 'This installation must sign requests with its instance secret.'];
+        }
+        if (!ctype_digit((string) $timestamp) || abs(time() - (int) $timestamp) > self::SIGNATURE_MAX_SKEW) {
+            return ['signature_expired', 'Request timestamp is missing or outside the allowed window (5 minutes).'];
+        }
+        $expected = hash_hmac('sha256', $timestamp . "\n" . ($signature['body'] ?? ''), $secret);
+        if (!hash_equals($expected, $provided)) {
+            return ['signature_invalid', 'Request signature does not match this installation.'];
+        }
+        return null;
+    }
+
+    /**
+     * Admin menghapus secret instalasi (mis. database client hilang); validasi berikutnya menerbitkan secret baru.
+     */
+    public function resetInstanceSecret($instanceId) {
+        $stmt = $this->db->prepare("UPDATE application_instances SET secret = NULL WHERE id = :id");
+        $stmt->execute(['id' => $instanceId]);
+        if ($stmt->rowCount() === 0 && !$this->db->query("SELECT COUNT(*) FROM application_instances WHERE id = " . (int) $instanceId)->fetchColumn()) {
+            throw new OutOfBoundsException('Instance not found.');
+        }
+        $licenseId = $this->db->query("SELECT license_id FROM application_instances WHERE id = " . (int) $instanceId)->fetchColumn();
+        $this->logAction($licenseId, $instanceId, 'instance_secret_reset',
+            'REQ-' . date('YmdHis') . '-' . strtoupper(bin2hex(random_bytes(3))), SecurityHelper::getClientIp(),
+            ['instance_id' => (int) $instanceId], ['reset' => true], 'success');
     }
 
     /**

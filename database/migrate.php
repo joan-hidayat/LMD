@@ -64,6 +64,7 @@ $migrations = [
             'slug' => 'mini-pos-express',
             'description' => 'Aplikasi kasir web multi-user untuk toko, kafe, dan UMKM.',
             'launch_url' => '/mini-pos/?tenant={tenant}&lic={license_key}',
+            'require_signature' => 1,
             'modules' => [
                 ['KASIR', 'Kasir & Transaksi', 'standard', 'Penjualan, keranjang, dan struk.'],
                 ['LAPORAN', 'Laporan Penjualan', 'standard', 'Rekap harian, produk terlaris, omzet.'],
@@ -109,6 +110,82 @@ $migrations = [
         ");
         return true;
     },
+
+    // T-04: akun admin dashboard LMD
+    '2026_10_31_system_users' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_users'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `system_users` (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `name` VARCHAR(150) NOT NULL,
+                `email` VARCHAR(150) NOT NULL UNIQUE,
+                `password_hash` VARCHAR(255) NOT NULL,
+                `failed_attempts` INT UNSIGNED NOT NULL DEFAULT 0,
+                `locked_until` DATETIME NULL,
+                `last_login_at` DATETIME NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
+
+    // T-05: rate limit endpoint publik & login
+    '2026_10_31_rate_limits' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'rate_limits'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `rate_limits` (
+                `bucket` VARCHAR(191) NOT NULL PRIMARY KEY,
+                `window_start` INT UNSIGNED NOT NULL,
+                `hits` INT UNSIGNED NOT NULL DEFAULT 0,
+                KEY `idx_rate_window` (`window_start`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
+
+    // T-04: token API untuk otomasi (n8n)
+    '2026_10_31_api_tokens' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'api_tokens'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `api_tokens` (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `name` VARCHAR(100) NOT NULL,
+                `scope` VARCHAR(50) NOT NULL,
+                `token_hash` CHAR(64) NOT NULL UNIQUE,
+                `last_used_at` DATETIME NULL,
+                `revoked_at` DATETIME NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
+
+    // T-22: request bertanda tangan secret per instalasi; diwajibkan per aplikasi (Mini POS sejak awal)
+    '2026_10_31_instance_signatures' => function (PDO $db) {
+        $changed = false;
+        if (!columnExists($db, 'applications', 'require_signature')) {
+            $db->exec("ALTER TABLE `applications` ADD COLUMN `require_signature` TINYINT(1) NOT NULL DEFAULT 0
+                       COMMENT 'Wajib request bertanda tangan secret per instalasi (T-22)' AFTER `description`");
+            $db->exec("UPDATE `applications` SET `require_signature` = 1 WHERE `code` = 'MINIPOS'");
+            $changed = true;
+        }
+        if (!columnExists($db, 'application_instances', 'secret')) {
+            $db->exec("ALTER TABLE `application_instances` ADD COLUMN `secret` CHAR(64) NULL
+                       COMMENT 'Secret HMAC per instalasi (T-22); hanya dikirim sekali ke client' AFTER `last_seen_at`");
+            $changed = true;
+        }
+        return $changed;
+    },
 ];
 
 /**
@@ -127,6 +204,9 @@ function registerApplication(PDO $db, array $app) {
         $db->prepare("INSERT INTO applications (code, name, slug, description, launch_url, status) VALUES (:code, :name, :slug, :description, :launch_url, 'active')")
             ->execute(['code' => $app['code'], 'name' => $app['name'], 'slug' => $app['slug'], 'description' => $app['description'], 'launch_url' => $app['launch_url']]);
         $appId = $db->lastInsertId();
+        if (!empty($app['require_signature']) && columnExists($db, 'applications', 'require_signature')) {
+            $db->prepare("UPDATE applications SET require_signature = 1 WHERE id = :id")->execute(['id' => $appId]);
+        }
 
         $moduleIds = [];
         $insModule = $db->prepare("INSERT INTO modules (application_id, code, name, slug, module_type, description, sort_order) VALUES (:app, :code, :name, :slug, :type, :description, :sort)");
@@ -167,3 +247,7 @@ foreach ($migrations as $name => $migrate) {
     }
 }
 echo "Selesai.\n";
+
+if ((int) $db->query("SELECT COUNT(*) FROM system_users")->fetchColumn() === 0) {
+    echo "\nBelum ada akun admin LMD. Buat dengan:\n  php database/admin.php create <email> \"<nama>\"\n";
+}
