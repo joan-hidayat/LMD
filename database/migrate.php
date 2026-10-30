@@ -14,6 +14,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../api/config/database.php';
+require_once __DIR__ . '/../api/models/ModuleModel.php';
 
 $db = Database::getInstance()->getConnection();
 
@@ -75,6 +76,13 @@ $migrations = [
                 ['MPOS_BISNIS', 'Mini POS Bisnis', 'Jaringan outlet, termasuk fitur baru otomatis.', 3500000, 'annual', 15, 5, 1, ['KASIR', 'LAPORAN', 'STOK', 'MULTI_OUTLET']],
             ],
         ]);
+    },
+
+    // T-13: modul yang dibuat setelah paket/subscription future_module_access diberikan otomatis.
+    // Idempoten; dijalankan setiap migrate untuk menyusulkan data yang terlewat.
+    '2026_10_30_sync_future_modules' => function (PDO $db) {
+        $granted = ModuleModel::syncFutureModules($db);
+        return array_sum($granted) > 0;
     },
 ];
 

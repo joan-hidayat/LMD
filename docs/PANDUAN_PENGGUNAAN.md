@@ -280,14 +280,14 @@ Central SaaS dirancang dengan 7 lapis keamanan (*defense-in-depth*) untuk melind
    - ✅ Jumlah instalasi dibatasi kuota paket (`max_instances`); instalasi baru di luar kuota → `"reason": "instance_limit_reached"`. Admin dapat memblokir instalasi (`"reason": "instance_blocked"`).
    - 🟡 Domain dan instance key masih dikirim oleh client sendiri sehingga dapat dipalsukan oleh pemegang license key; perlindungan penuh membutuhkan request bertanda tangan (T-04 / T-22).
 
-3. **🔒 Kriptografi License Key & Hashing SHA-256**:
-   - String License Key (`LIC-DISTRIBUTOR-4B6E...`) dan Activation Key diproduksi menggunakan Hashing SHA-256 acak yang tidak dapat ditebak (*unpredictable key generation*).
+3. **🔒 License Key Acak (CSPRNG)**:
+   - License key (`LIC-{APP_CODE}-` + 24 hex = 96-bit) dan activation key (`ACT-` + 16 hex = 64-bit) dibuat dengan `random_bytes()`, generator acak kriptografis PHP, sehingga tidak dapat ditebak (`api/helpers/security.php`).
 
 4. **🛡️ Prepared Statements PDO (Proteksi SQL Injection)**:
    - Seluruh query database di backend PHP (`LicenseModel`, `CustomerModel`, `AnalyticsModel`) menggunakan **PDO Parameterized Query**, sehingga 100% aman dari ancaman SQL Injection (SQLi).
 
 5. **🚨 Health Check & Dynamic Anomaly Detection**:
-   - Setiap kali terjadi kegagalan validasi (misal domain mismatch atau expired), sistem mencatat log kejadian di `validation_logs`.
+   - Setiap kali terjadi kegagalan validasi (misal domain mismatch atau expired), sistem mencatat log kejadian di `license_logs` beserta `reason`-nya.
    - Lonjakan kegagalan otomatis memicu grafik **Health Check Validasi API** di dashboard untuk memberi peringatan awal percobaan peretasan/pembajakan.
 
 6. **🔒 Enkripsi Transport TLS/HTTPS**:

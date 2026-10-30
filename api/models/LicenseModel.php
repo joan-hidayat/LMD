@@ -199,7 +199,7 @@ class LicenseModel {
             SELECT m.code, m.name, m.module_type
             FROM license_modules lm
             JOIN modules m ON lm.module_id = m.id
-            WHERE lm.license_id = :license_id AND m.status = 'active'
+            WHERE lm.license_id = :license_id AND m.status = 'active' AND m.deleted_at IS NULL
         ");
         $modStmt->execute(['license_id' => $license['id']]);
         $entitledModules = $modStmt->fetchAll();

@@ -24,13 +24,13 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-05 | lmd | Tidak ada rate limiting / anti brute-force. | Hardening (pra-production) | Ditunda — tahap pengembangan |
 | T-06 | sample-mini-pos | Lisensi dikirim lewat query string (`?tenant=&lic=`) dan disimpan di `localStorage`; validasi JS mudah dilewati. `index.php` membaca DB `central_saas` langsung (coupling ke DB LMD). | Arsitektur | Selesai — lihat Riwayat "Login Mini POS" |
 | T-07 | software-showcase | Password admin hardcode di `admin/admin.js` (`nexus2024`) dan dicek di browser. | Hardening (pra-production) | Ditunda — sengaja selama pengembangan |
-| T-08 | lmd | `SecurityHelper::generateActivationKey` menghasilkan prefix ganda `ACT-ACT-…`. | Minor | Terbuka |
+| T-08 | lmd | `SecurityHelper::generateActivationKey` menghasilkan prefix ganda `ACT-ACT-…`. | Minor | Selesai — lihat Riwayat "Perapian T-08, T-11, T-14" |
 | T-09 | semua | Docs memuat path lokal Windows (`c:\xampp\…`, `file:///c:/…`), IP LAN `192.168.0.116`, base URL tidak konsisten (`/api/...` vs `/api/index.php/...`), dan dua bagian bernomor 12 di `PANDUAN_SHOWCASE.md`. | Dokumentasi | Ditunda — tahap pengembangan |
 | T-10 | lmd | Docs menyebut backend "100% siap" untuk n8n (`approve_order`), tidak sesuai kode. Perlu penanda status (✅/🟡/📋) pada klaim di docs. | Dokumentasi | Selesai — `approve_order` kini ada; klaim docs sesuai |
-| T-11 | lmd | Token CSS `--border` dan `--muted` dipakai di `index.html` (switcher tab analitik, header Buku Panduan, dll.) tetapi tidak didefinisikan di `style.css`; garis/warna jatuh ke default browser. | Minor (UI) | Terbuka |
+| T-11 | lmd | Token CSS `--border` dan `--muted` dipakai di `index.html` (switcher tab analitik, header Buku Panduan, dll.) tetapi tidak didefinisikan di `style.css`; garis/warna jatuh ke default browser. | Minor (UI) | Selesai — lihat Riwayat "Perapian T-08, T-11, T-14" |
 | T-12 | lmd, software-showcase | Paket & harga di wizard Showcase hardcode (Starter 3 user Rp150rb, Pro 15 user Rp350rb, Enterprise 50 user Rp850rb) dan berbeda dengan data LMD `seed.sql` (APO_BASIC 3 user Rp300rb, APO_PRO 10 user Rp750rb, APO_ENT 50 user Rp1,5jt annual). | Fungsional / konsistensi data | Selesai — lihat Riwayat "T-01 + T-12" |
-| T-13 | lmd | `future_module_access` ada di tabel `packages` (ERD level 9 🟢 FIX), tetapi belum ada logika yang menambahkan modul baru ke `subscription_modules`/`license_modules` paket terkait. | Fungsional | Terbuka |
-| T-14 | lmd, software-showcase | Istilah docs tidak sesuai kode: `validation_logs` (seharusnya `license_logs`), "Hashing SHA-256" (kode memakai `random_bytes` hex), "Level 8" di `PANDUAN_SHOWCASE.md` §10 bentrok dengan ERD Level 8. | Dokumentasi | Terbuka |
+| T-13 | lmd | `future_module_access` ada di tabel `packages` (ERD level 9 🟢 FIX), tetapi belum ada logika yang menambahkan modul baru ke `subscription_modules`/`license_modules` paket terkait. | Fungsional | Selesai — lihat Riwayat "T-13" |
+| T-14 | lmd, software-showcase | Istilah docs tidak sesuai kode: `validation_logs` (seharusnya `license_logs`), "Hashing SHA-256" (kode memakai `random_bytes` hex), "Level 8" di `PANDUAN_SHOWCASE.md` §10 bentrok dengan ERD Level 8. | Dokumentasi | Selesai — lihat Riwayat "Perapian T-08, T-11, T-14" |
 | T-15 | lmd, sample-mini-pos, docs | Repo LMD tidak memiliki `.htaccess`, tetapi Mini POS (`app.js`) dan docs memanggil `/api/licenses/...` tanpa `index.php`. Hanya berfungsi jika ada rewrite rule di server lokal. Saat ini panggilan validate Mini POS gagal diam-diam (hanya `console.warn`). Showcase sudah dipindah ke `/api/index.php/...`. | Fungsional / konfigurasi | Selesai — `api/.htaccess` masuk repo, docs `PANDUAN_PENGGUNAAN.md` dilengkapi (lihat Riwayat "Rekonsiliasi WIP lokal") |
 | T-16 | software-showcase | `style.css` publik tidak punya aturan `.hidden`, sehingga keempat langkah wizard dan layar sukses tampil bersamaan. | Bug UI | Selesai — lihat Riwayat "T-01 + T-12" |
 | T-17 | software-showcase, sample-mini-pos | Wizard meminta "password akun admin" dan menampilkan "kredensial login", tetapi Mini POS tidak punya login dan LMD sengaja tidak menyimpan password. Perlu keputusan: hapus field, atau buat akun admin di aplikasi client. | Desain / UX | Selesai — lihat Riwayat "Login Mini POS" |
@@ -45,6 +45,41 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 ---
 
 ## Riwayat
+
+### 2026-10-30 — T-13: modul baru otomatis (future_module_access)
+**Jenis:** Perubahan kode
+**Repo:** lmd
+
+**Aturan** (ERD level 9, bagian 17): modul yang **dibuat setelah** sebuah paket/subscription bertanda `future_module_access = 1` otomatis diberikan tanpa customer upgrade. Modul yang sudah ada saat paket dibuat tidak ditambahkan, agar isi paket yang dipilih admin tidak berubah diam-diam.
+
+**Perubahan**
+- `ModuleModel::syncFutureModules(PDO, ?moduleId)`: `INSERT IGNORE` ke `package_modules`, `subscription_modules` (`source = 'future_module'`, subscription `pending/active/suspended`), dan `license_modules` (lisensi selain `revoked`); setiap lisensi yang menerima modul dicatat `future_module_granted` di `license_logs`.
+- `ModuleModel::create` membuat modul + sinkronisasi dalam satu transaksi; API `POST /applications/modules` mengembalikan `future_module_granted {packages, subscriptions, licenses}` dan dashboard menampilkannya.
+- `migrate.php`: `2026_10_30_sync_future_modules` (dijalankan setiap migrate, menyusulkan modul yang dibuat di luar dashboard).
+- Ditemukan & diperbaiki: `validate` masih mengirim modul yang sudah dihapus (`deleted_at`); kini disaring.
+- Label paket "YES (Auto Add)" → "YA (modul baru otomatis)".
+
+**Verifikasi** (MariaDB + PHP server)
+- Lisensi MPOS_BISNIS (fitur baru otomatis) & MPOS_PRO dibuat → modul `LOYALTY` dibuat → hanya Bisnis yang menerima (API: 1 paket, 1 subscription, 1 lisensi); Pro tidak berubah.
+- Order Bisnis baru setelahnya otomatis berisi `LOYALTY` (via `package_modules`).
+- Modul dibuat langsung lewat SQL → `migrate.php` run 1 "DITERAPKAN" (2 subscription Bisnis menerima), run 2 "sudah terpasang".
+- Modul dihapus → tidak muncul lagi di `validate`. Audit log `future_module_granted` tercatat.
+
+### 2026-10-30 — Perapian T-08, T-11, T-14
+**Jenis:** Perubahan kode kecil + koreksi docs
+**Repo:** lmd, software-showcase
+
+- **T-08:** `SecurityHelper::generateActivationKey` tidak lagi menghasilkan `ACT-ACT-…` (sekarang `ACT-` + 16 hex). Sekalian diperbaiki bug prefix huruf kecil yang terhapus (`"pos"` → `ACT-POS-…`). Activation key lama tidak diubah.
+- **T-11:** alias token `--border` → `--border-subtle` dan `--muted` → `--text-muted` di `:root`. Garis tab analitik dan teks keterangan kini tampil sesuai tema (terverifikasi di browser).
+- **T-14:** istilah disamakan dengan kode di `PANDUAN_PENGGUNAAN.md` dan Buku Panduan dashboard: "Hashing SHA-256" → license key acak `random_bytes()` (96-bit / activation 64-bit); `validation_logs` → `license_logs`; kartu keamanan "ID hardware" → domain + kuota instalasi (T-02); typo "Anomaly Anomaly". `PANDUAN_SHOWCASE.md` §10 tidak lagi memakai istilah "Level 8" (bentrok dengan ERD), merujuk Alur B & `STANDAR_INTEGRASI.md`.
+
+### 2026-10-30 — Verifikasi lokal Standar Integrasi v1 (PR LMD #4, Showcase #3, Mini POS #3)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, software-showcase, sample-mini-pos
+
+- XAMPP lokal ditarik ke `fee9457` / `d8a6c48` / `69726d1`. Backup: `_backup_20261030_2107_central_saas.sql` (56.760 byte) dan `_backup_20261030_2107_mini_pos.sql` (4.296 byte).
+- `migrate.php` dua kali: semua "sudah terpasang". **Catatan:** run pertama yang dilaporkan seharusnya "DITERAPKAN" untuk dua migrasi baru; kemungkinan migrasi sudah dijalankan sekali sebelum laporan dibuat. Struktur & data akhir sesuai (verifikasi a), jadi tidak ada tindakan perbaikan.
+- Hasil: (a) `launch_url` hanya MINIPOS, 3 paket MPOS sesuai; (b) label Hosted/On-premise benar; (c) hanya Mini POS & Apotek yang bisa dipesan; (d) order MINIPOS `SUB-2026-5AF5A9` → `LIC-MINIPOS-…` → "Buat Akun Admin — Toko Mini POS Baru"; (e) order APOTEK `SUB-2026-305C5E` → `app_url` null, layar on-premise tanpa tombol buka; (f) tenant lama `apotek-sehat.pos.local` → "Instalasi Tidak Diizinkan" (`app_mismatch`), sesuai desain; (g) tidak ada error PHP baru.
 
 ### 2026-10-30 — Standar Integrasi v1 (LMD ↔ Showcase ↔ aplikasi client)
 **Jenis:** Perubahan kode + migrasi database + dokumen standar

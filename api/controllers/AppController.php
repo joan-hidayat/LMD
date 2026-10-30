@@ -39,8 +39,8 @@ class AppController {
             sendJsonResponse(null, 400, 'Application ID, module code, and name are required.');
         }
 
-        $modId = $this->moduleModel->create($input);
-        sendJsonResponse(['id' => $modId], 201, 'Module created successfully.');
+        [$modId, $granted] = $this->moduleModel->create($input);
+        sendJsonResponse(['id' => $modId, 'future_module_granted' => $granted], 201, 'Module created successfully.');
     }
 
     public function deleteModule($id) {

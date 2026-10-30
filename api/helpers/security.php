@@ -15,9 +15,9 @@ class SecurityHelper {
     /**
      * Generate Activation Key format: ACT-{INSTANCE_PREFIX}-{RANDOM_HEX}
      */
-    public static function generateActivationKey($prefix = 'ACT') {
-        $cleanPrefix = strtoupper(preg_replace('/[^A-Z0-9]/', '', $prefix)) . '-';
-        return 'ACT-' . $cleanPrefix . strtoupper(bin2hex(random_bytes(8)));
+    public static function generateActivationKey($prefix = '') {
+        $cleanPrefix = preg_replace('/[^A-Z0-9]/', '', strtoupper($prefix));
+        return 'ACT-' . ($cleanPrefix !== '' ? $cleanPrefix . '-' : '') . strtoupper(bin2hex(random_bytes(8)));
     }
 
     /**

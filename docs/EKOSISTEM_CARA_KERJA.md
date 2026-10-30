@@ -46,6 +46,8 @@ Semua komunikasi antar-sistem lewat HTTP JSON ke `LMD/api/index.php`. Setiap apl
 
 Prinsip penting: modul **disalin turun** `package_modules` → `subscription_modules` → `license_modules`. Lisensi yang sudah terbit tidak berubah walau isi paket diedit kemudian.
 
+**Pengecualian — `future_module_access` (T-13):** jika paket bertanda *fitur baru otomatis*, modul yang **dibuat setelah** paket/subscription itu otomatis ditambahkan ke `package_modules`, `subscription_modules` (`source = 'future_module'`), dan `license_modules`, lalu dicatat di `license_logs` (`future_module_granted`). Modul yang sudah ada saat paket dibuat tidak ditambahkan, sehingga isi paket pilihan admin tetap utuh. Modul yang dihapus (`deleted_at`) tidak lagi dikirim di `validate`.
+
 **Tiga kunci:**
 - `license_key` — bukti hak pakai.
 - `instance_key` — identitas satu instalasi (satu server/toko).
@@ -279,10 +281,10 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penguncian instance + domain | ✅ Jalan | Kuota `max_instances` per paket, domain terkunci, blokir oleh admin (T-02). Belum anti-pemalsuan (T-22) |
 | Login & manajemen user di Mini POS | ✅ Jalan | Setup admin, login, Kelola User (T-17) |
 | Penegakan `max_users` | ✅ Jalan | Mini POS: jumlah user aktif ≤ kuota (T-03) |
-| `future_module_access` (modul baru otomatis) | 🟡 Sebagian | Kolom ada, logika penyalinan modul belum ada (T-13) |
+| `future_module_access` (modul baru otomatis) | ✅ Jalan | Modul yang dibuat setelah paket/subscription masuk ke paket, subscription (`source = future_module`), dan lisensi; disusulkan juga oleh `migrate.php` (T-13) |
 | Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |
 | API key / auth admin / rate limit | 📋 Rencana | Hardening sebelum production |
 | Password & credential di `.env` | 📋 Rencana | Sengaja hardcode selama pengembangan |
 | n8n + payment gateway | 📋 Rencana | Endpoint `approve_order` sudah siap dipanggil |
 
-**Urutan kerja yang disarankan:** (1) aturan penguncian instance/domain (T-02) → (2) future module (T-13) & pemetaan produk Showcase (T-18) → (3) perbaikan kecil kode & docs → (4) hardening keamanan sebelum production.
+**Urutan kerja yang disarankan:** (1) pemulihan password admin Mini POS (T-21) → (2) hardening keamanan sebelum production sebagai satu paket: login admin LMD & API key (T-04), rate limit (T-05), request bertanda tangan (T-22), password Showcase (T-07) → (3) rapikan docs lokal (T-09).

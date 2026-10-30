@@ -37,6 +37,9 @@
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
     --border-subtle: rgba(255, 255, 255, 0.08);
+    /* Alias untuk style inline lama di index.html (T-11) */
+    --border: var(--border-subtle);
+    --muted: var(--text-muted);
     --border-hover: rgba(56, 189, 248, 0.4);
 
     /* Status Colors */
