@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apotek Maju Jaya — Client App Demo</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3.4.38/dist/vue.global.prod.js"></script>
     <style>
         :root {
             --primary: #0d9488;
@@ -93,6 +93,10 @@
                         <span class="info-val">{{ domain }}</span>
                     </div>
                     <div class="info-row">
+                        <span class="info-label">Tanda tangan request:</span>
+                        <span class="info-val" style="font-size: 11px;">{{ signed ? '🔐 HMAC (secret di server)' : 'Tidak dipakai' }}</span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">Batas User (Kuota):</span>
                         <span class="info-val" style="color: #0284c7;">{{ licenseInfo.max_users || 3 }} Users Active</span>
                     </div>
@@ -117,7 +121,7 @@
 
                 <div class="card">
                     <div class="card-title">📡 Respon Central SaaS Live</div>
-                    <p style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Respon JSON dari <code>POST /api/licenses/validate</code>:</p>
+                    <p style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Respon JSON dari <code>POST /api/licenses/validate</code>, dipanggil oleh server demo (<code>client_demo/api.php</code>), bukan oleh browser:</p>
                     <div class="code-block">{{ lastResponseJson || 'Memuat respon...' }}</div>
                 </div>
             </div>
@@ -191,9 +195,10 @@
         createApp({
             data() {
                 return {
-                    licenseKey: 'LIC-APO-CRIT558811EE0042AA66B819',
-                    domain: 'apotekmajujaya.com',
-                    instanceKey: 'INST-APO-MJJ-001',
+                    licenseKey: '…',
+                    domain: '…',
+                    instanceKey: '…',
+                    signed: false,
                     lastChecked: 'Baru Saja',
                     licenseInfo: {
                         valid: true,
@@ -208,56 +213,47 @@
                 this.checkValidation();
             },
             methods: {
+                // Semua panggilan ke LMD lewat server demo (api.php), bukan langsung dari browser (T-29)
+                async callDemo(action) {
+                    const res = await fetch('api.php?action=' + action, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: '{}'
+                    });
+                    const data = await res.json();
+                    if (data.state) {
+                        this.licenseKey = data.state.license_key;
+                        this.domain = data.state.domain;
+                        this.instanceKey = data.state.instance_key;
+                        this.signed = data.state.signed;
+                    }
+                    return data;
+                },
+                applyValidation(data) {
+                    this.lastResponseJson = JSON.stringify(data.lmd || data, null, 2);
+                    this.licenseInfo.valid = !!data.valid;
+                    const lmd = (data.lmd && data.lmd.data) || {};
+                    if (lmd.max_users) this.licenseInfo.max_users = lmd.max_users;
+                    this.activeModules = data.valid && lmd.modules ? lmd.modules : [];
+                    this.lastChecked = new Date().toLocaleTimeString();
+                },
                 async checkValidation() {
                     try {
-                        const res = await fetch('http://localhost:8080/License-Management-Dashboard/api/index.php/licenses/validate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                license_key: this.licenseKey,
-                                instance_key: this.instanceKey,
-                                domain: this.domain
-                            })
-                        });
-                        const data = await res.json();
-                        this.lastResponseJson = JSON.stringify(data, null, 2);
-                        if (data.success && data.data) {
-                            this.licenseInfo.valid = data.data.valid;
-                            this.licenseInfo.max_users = data.data.max_users;
-                            if (data.data.modules) {
-                                this.activeModules = data.data.modules;
-                            }
-                        }
-                        this.lastChecked = new Date().toLocaleTimeString();
+                        this.applyValidation(await this.callDemo('validate'));
                     } catch (e) {
-                        this.lastResponseJson = 'Error: Tidak dapat menghubungkan ke Central SaaS Server (' + e.message + ')';
+                        this.lastResponseJson = 'Error: Tidak dapat menghubungi server demo (' + e.message + ')';
                     }
                 },
                 async autoRegister() {
                     try {
-                        const randomNum = Math.floor(Math.random() * 899) + 100;
-                        const res = await fetch('http://localhost:8080/License-Management-Dashboard/api/index.php/licenses/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                app_code: 'APOTEK',
-                                package_code: 'APO_BASIC',
-                                customer_name: 'Apotek Sehat Barokah ' + randomNum,
-                                customer_email: 'owner' + randomNum + '@sehatbarokah.com',
-                                customer_phone: '0812' + randomNum + '8899',
-                                instance_key: 'INST-APO-BAROKAH-' + randomNum,
-                                domain: 'barokah' + randomNum + '.com'
-                            })
-                        });
-                        const data = await res.json();
-                        this.lastResponseJson = JSON.stringify(data, null, 2);
-                        if (data.success && data.data.license_key) {
-                            this.licenseKey = data.data.license_key;
-                            this.domain = 'barokah' + randomNum + '.com';
-                            this.instanceKey = 'INST-APO-BAROKAH-' + randomNum;
-                            alert('✨ Auto-Register Lisensi Baru Berhasil!\nLicense Key: ' + this.licenseKey);
-                            this.checkValidation();
+                        const data = await this.callDemo('register');
+                        if (!data.ok) {
+                            this.lastResponseJson = JSON.stringify(data, null, 2);
+                            alert('Gagal auto-register: ' + data.message);
+                            return;
                         }
+                        this.applyValidation(data);
+                        alert('✨ Auto-Register Lisensi Baru Berhasil!\nLicense Key: ' + this.licenseKey);
                     } catch (e) {
                         alert('Gagal auto-register: ' + e.message);
                     }
