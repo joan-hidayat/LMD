@@ -44,10 +44,64 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-25 | lmd | Modul yang dihapus (soft delete) tetap tercatat di `package_modules`: jumlah modul paket salah dan order baru ikut menyalin modul terhapus ke subscription/lisensi. Terlihat saat verifikasi lokal T-13 (modul `TEST_FUTURE`). | Data | Selesai — lihat Riwayat "T-25" |
 | T-26 | lmd | `SecurityHelper::getClientIp` memercayai `X-Forwarded-For` / `Client-IP` dari siapa pun: rate limit bisa ditembus dan IP di audit log bisa dipalsukan. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
+| T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Selesai — lihat Riwayat "T-28" |
+| T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Terbuka |
 
 ---
 
 ## Riwayat
+
+### 2026-10-30 — T-28: Mini POS menegakkan `modules` dari lisensi LMD
+**Jenis:** Perubahan kode + docs
+**Repo:** sample-mini-pos (commit `8346386`), lmd (docs)
+
+Masalah: Mini POS menyimpan `modules` dari LMD tetapi tidak memakainya, dan fitur di baliknya belum ada (kasir menghitung di browser, produk hardcode di `app.js`, transaksi tidak tersimpan). Starter dan Bisnis mendapat aplikasi yang sama.
+
+Perubahan (sample-mini-pos):
+- **Data di server:** tabel baru `products`, `sales`, `sale_items` (per tenant, `database/schema.sql`; dibuat otomatis oleh `db()` juga untuk database lama). Katalog contoh 6 produk dibuat otomatis untuk toko yang belum punya produk (`lib/ProductRepository.php`).
+- **Checkout di server (modul KASIR):** `api.php?action=checkout` (sesi login + header `X-CSRF-Token`). Browser hanya mengirim `id` + `qty`; harga, PPN 11%, total dihitung ulang dari DB dan disimpan (`lib/SaleRepository.php`). Produk tenant lain / qty tidak valid → 422. Struk memakai nomor `TRX-YYYYMMDD-xxxxxx` dari server. License key tidak lagi dikirim ke JavaScript.
+- **Penguncian modul:** `APP_MODULES`, `has_module()`, `require_module()` di `lib/bootstrap.php`. Menu dibangun dari `APP_MODULES`; modul di luar paket tampil 🔒 dan halamannya 403 "tidak termasuk paket Anda" (`views/locked.php`) dengan tautan ke Showcase untuk admin. Kasir (role) tidak melihat menu admin.
+- **Laporan (modul LAPORAN, admin):** `laporan.php` — omzet, transaksi, rata-rata, PPN, produk terlaris, per kasir, per hari, transaksi terakhir; preset Hari ini/7/30 hari + rentang tanggal (maks 1 tahun).
+- **Stok (modul STOK, admin):** `stok.php` — atur stok & stok minimum. Dengan modul STOK, checkout mengunci baris produk (`FOR UPDATE`), menolak penjualan melebihi stok, dan mengurangi stok; kartu produk menampilkan sisa stok dan "Stok habis". Tanpa modul STOK, stok diabaikan.
+- **Multi Outlet:** `outlet.php` sudah dikunci per paket; isinya "segera hadir" (📋, tidak diklaim berjalan).
+
+Docs (lmd): `STANDAR_INTEGRASI.md` 4.2 no. 5 kembali ✅; `EKOSISTEM_CARA_KERJA.md` (komponen Mini POS, tabel paket → menu, status); tab Buku Panduan Ekosistem di `index.html`.
+
+Verifikasi (lokal, MariaDB + PHP built-in server, request lisensi bertanda tangan):
+
+| Skenario | Hasil |
+|---|---|
+| Starter (KASIR, LAPORAN): Kasir / Laporan / Kelola User | 200 |
+| Starter: Stok, Multi Outlet | 403 "tidak termasuk paket" |
+| Checkout dengan `price: 1` disisipkan | Diabaikan; total dihitung dari DB (58.000 + PPN 6.380) |
+| CSRF salah / tanpa login / GET / qty 0, 1000 / keranjang kosong | 419 / 401 / 404 / 422 / 422 |
+| Starter: qty 60 > stok 50 | Diterima, stok tidak berubah (stok tidak dilacak) |
+| Pro (+STOK): stok di-set 3 → jual 2 → jual 2 lagi (dua baris produk sama) | 200 (sisa 1) → 422 "Stok tidak cukup: … (sisa 1)" |
+| Stok negatif lewat form | Ditolak "Stok harus angka 0 – 1.000.000" |
+| Role kasir di paket Pro: Laporan / Stok / Outlet / Kelola User | Redirect ke Kasir; checkout kasir tercatat di laporan "Per Kasir" |
+| Modul di LMD diubah (STOK dicabut, MULTI_OUTLET ditambah) lalu heartbeat | Stok 403, `trackStock: false`, Multi Outlet "segera hadir" 200; dikembalikan lagi setelah tes |
+| Browser (Playwright): klik kartu "Stok habis" | Tidak masuk keranjang |
+
+Catatan: tenant uji lama berisi modul APOTEK (license key `LIC-APOTEK-…`) sudah ditolak `app_mismatch` sejak Standar Integrasi v1, jadi tidak terdampak penguncian baru. Kelola produk (tambah/ubah harga) dicatat sebagai 📋 rencana.
+
+### 2026-10-31 — Inventaris pekerjaan tersisa
+**Jenis:** Analisis (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos
+
+- Atas pertanyaan "apakah masih ada pekerjaan yang belum dikerjakan", kode diperiksa ulang terhadap `STANDAR_INTEGRASI.md` dan roadmap.
+- Ditemukan **T-28** (modules tidak mengunci fitur di Mini POS; klaim di standar dikoreksi) dan **T-29** (demo client Apotek memanggil API dari browser).
+- Roadmap yang belum dikerjakan dicatat sebagai 📋 di jawaban kepada pemilik proyek: churn risk scoring, ekspor laporan, filter tanggal (`REKOMENDASI_DECISION_SUPPORT.md`); integrasi n8n + payment gateway (token sudah siap); kuota *concurrent sessions*; HTTPS di production.
+
+### 2026-10-31 — Verifikasi lokal paket keamanan (PR LMD #8, Mini POS #5, Showcase #5)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos, software-showcase
+
+- XAMPP lokal di `269d5c4` / `ddc4de5` / `03a3bfb`; backup `_backup_20261031_0006_central_saas.sql` (67.690 byte) & `_backup_20261031_0006_mini_pos.sql` (4.820 byte).
+- `migrate.php` run 1: `system_users`, `rate_limits`, `api_tokens`, `instance_signatures` **DITERAPKAN** + pesan "Belum ada akun admin LMD"; run 2 semua "sudah terpasang".
+- Tanpa login: dashboard menampilkan layar login + petunjuk CLI; `GET /api/licenses` → 401; `GET /api/packages?app_code=MINIPOS` → 200; Admin Showcase menampilkan "Password admin belum dibuat"; `admin/app.php` → 302 ke login.
+- Mini POS `tokobaruminipos.pos.local` tetap terbuka normal dan otomatis menerima instance secret (*trust on first use* untuk toko lama berjalan). `apotek-sehat.pos.local` tanpa secret karena memakai lisensi APOTEK (ditolak `app_mismatch` sejak Standar Integrasi v1, sesuai desain).
+- Tidak ada error PHP baru.
+- Pemilik proyek membuat akun admin LMD sendiri lewat CLI dan berhasil login ke dashboard (tampilan nama admin + tombol Keluar). Password tidak dicatat.
 
 ### 2026-10-31 — Paket keamanan sebelum production (T-05, T-04 token, T-22, T-07)
 **Jenis:** Perubahan kode + migrasi database

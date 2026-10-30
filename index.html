@@ -1246,7 +1246,7 @@
                     <div class="card">
                         <span class="eco-eyebrow">5 · Alur C: aktivasi, login, dan validasi di aplikasi client</span>
                         <h4 class="eco-h">Pemilik membuat akun admin, kasir login dari perangkat mana pun</h4>
-                        <p class="eco-p">Mini POS memvalidasi lisensi dari server ke API LMD, menyimpan salinannya di database <code>mini_pos</code>, lalu mengurus login dan user sendiri. LMD hanya memberi kuota <code>max_users</code>.</p>
+                        <p class="eco-p">Mini POS memvalidasi lisensi dari server ke API LMD, menyimpan salinannya di database <code>mini_pos</code>, lalu mengurus login dan user sendiri. LMD memberi kuota <code>max_users</code> dan daftar <code>modules</code>: menu Kasir, Laporan, Stok hanya terbuka bila modulnya ada di paket (T-28).</p>
                         <ol class="eco-flow">
                             <li><div><span class="eco-tag eco-t-app">Mini POS → LMD</span><p>Pemilik membuka link dari Showcase (<code>?tenant=…&amp;lic=…</code>). Mini POS memanggil <code>POST /licenses/validate</code> dan menerima kuota, modul, nama toko, serta email pemesan.</p></div></li>
                             <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Tenant dan license key disimpan di database <code>mini_pos</code>. License key dihapus dari alamat browser.</p></div></li>
@@ -1302,6 +1302,8 @@
                                     <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kuota lokasi per paket, domain terkunci, blokir admin (T-02)</td></tr>
                                     <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
+                                    <tr><td>Penegakan <code>modules</code> di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kasir, Laporan, Stok terkunci sesuai paket; transaksi tersimpan di server (T-28)</td></tr>
+                                    <tr><td>Multi Outlet Mini POS</td><td><span class="badge-pill badge-warning">Rencana</span></td><td>Modul sudah dikunci per paket, fitur belum dibuat</td></tr>
                                     <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Modul baru otomatis masuk paket, subscription, dan lisensi (T-13)</td></tr>
                                     <tr><td>Paket &amp; harga Showcase sinkron dengan LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Dibaca dari <code>GET packages?app_code</code> (T-12)</td></tr>
                                     <tr><td>Login admin LMD</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>1 akun, endpoint admin wajib login (T-04)</td></tr>
