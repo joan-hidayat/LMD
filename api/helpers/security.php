@@ -32,13 +32,17 @@ class SecurityHelper {
     /**
      * Get Client IP Address safely
      */
+    /**
+     * IP proxy/load balancer yang boleh menentukan IP asli lewat X-Forwarded-For.
+     * Kosong = header itu diabaikan (bisa diisi bebas oleh siapa pun, T-05).
+     */
+    const TRUSTED_PROXIES = [];
+
     public static function getClientIp() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            return $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-        } else {
-            return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $remote = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        if (in_array($remote, self::TRUSTED_PROXIES, true) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
         }
+        return $remote;
     }
 }

@@ -221,3 +221,22 @@ CREATE TABLE IF NOT EXISTS `system_users` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. rate_limits (T-05): penghitung request per IP per endpoint, jendela 60 detik
+CREATE TABLE IF NOT EXISTS `rate_limits` (
+    `bucket` VARCHAR(191) NOT NULL PRIMARY KEY,
+    `window_start` INT UNSIGNED NOT NULL,
+    `hits` INT UNSIGNED NOT NULL DEFAULT 0,
+    KEY `idx_rate_window` (`window_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 16. api_tokens (T-04): token otomasi (mis. n8n) dengan scope terbatas. Dibuat via: php database/admin.php token-create
+CREATE TABLE IF NOT EXISTS `api_tokens` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `scope` VARCHAR(50) NOT NULL,
+    `token_hash` CHAR(64) NOT NULL UNIQUE,
+    `last_used_at` DATETIME NULL,
+    `revoked_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

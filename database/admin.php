@@ -5,6 +5,9 @@
  *   php database/admin.php create <email> "<nama>"     buat akun admin (password ditanyakan)
  *   php database/admin.php reset-password <email>      ganti password & buka kunci login
  *   php database/admin.php list                        tampilkan akun
+ *   php database/admin.php token-create "<nama>"       token API otomasi (scope orders: pending/approve/reject order)
+ *   php database/admin.php token-list                  daftar token
+ *   php database/admin.php token-revoke <id>           cabut token
  *
  * Password ditanyakan secara interaktif agar tidak tersimpan di riwayat command line.
  * Untuk skrip otomatis, password bisa diberikan lewat environment LMD_ADMIN_PASSWORD.
@@ -16,6 +19,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../api/config/database.php';
 require_once __DIR__ . '/../api/models/SystemUserModel.php';
+require_once __DIR__ . '/../api/models/ApiTokenModel.php';
 
 $db = Database::getInstance()->getConnection();
 $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_users'")->fetchColumn();
@@ -72,8 +76,26 @@ try {
             }
             break;
 
+        case 'token-create':
+            $token = (new ApiTokenModel($db))->create($email ?: 'n8n', 'orders');
+            echo "Token dibuat (simpan sekarang, tidak bisa ditampilkan lagi):\n\n  {$token}\n\n"
+                . "Pakai di header: Authorization: Bearer <token>\n"
+                . "Hanya untuk: " . implode(', ', ApiTokenModel::SCOPES['orders']) . "\n";
+            break;
+
+        case 'token-list':
+            foreach ((new ApiTokenModel($db))->all() as $row) {
+                echo "#{$row['id']}  {$row['name']}  scope={$row['scope']}  dipakai: " . ($row['last_used_at'] ?: '-')
+                    . ($row['revoked_at'] ? "  [DICABUT {$row['revoked_at']}]" : '') . "\n";
+            }
+            break;
+
+        case 'token-revoke':
+            echo (new ApiTokenModel($db))->revoke((int) $email) ? "Token #{$email} dicabut.\n" : "Token #{$email} tidak ditemukan / sudah dicabut.\n";
+            break;
+
         default:
-            exit("Perintah: create <email> \"<nama>\" | reset-password <email> | list\n");
+            exit("Perintah: create <email> \"<nama>\" | reset-password <email> | list | token-create \"<nama>\" | token-list | token-revoke <id>\n");
     }
 } catch (InvalidArgumentException | DomainException $e) {
     exit('Gagal: ' . $e->getMessage() . "\n");

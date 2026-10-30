@@ -17,6 +17,7 @@ require_once __DIR__ . '/controllers/LicenseController.php';
 require_once __DIR__ . '/controllers/AuditController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/helpers/auth.php';
+require_once __DIR__ . '/helpers/rate_limit.php';
 
 // Parse Request URI
 $requestUri = $_SERVER['REQUEST_URI'];
@@ -57,8 +58,9 @@ if ($method === 'OPTIONS') {
 }
 
 try {
+    enforce_rate_limit($resource, $id, $method);
     if (!is_public_endpoint($resource, $id, $method)) {
-        require_admin();
+        require_admin($resource . '/' . $id);
     }
 
     switch ($resource) {

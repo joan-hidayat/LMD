@@ -131,6 +131,43 @@ $migrations = [
         ");
         return true;
     },
+
+    // T-05: rate limit endpoint publik & login
+    '2026_10_31_rate_limits' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'rate_limits'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `rate_limits` (
+                `bucket` VARCHAR(191) NOT NULL PRIMARY KEY,
+                `window_start` INT UNSIGNED NOT NULL,
+                `hits` INT UNSIGNED NOT NULL DEFAULT 0,
+                KEY `idx_rate_window` (`window_start`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
+
+    // T-04: token API untuk otomasi (n8n)
+    '2026_10_31_api_tokens' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'api_tokens'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `api_tokens` (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `name` VARCHAR(100) NOT NULL,
+                `scope` VARCHAR(50) NOT NULL,
+                `token_hash` CHAR(64) NOT NULL UNIQUE,
+                `last_used_at` DATETIME NULL,
+                `revoked_at` DATETIME NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
 ];
 
 /**

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../models/LicenseModel.php';
 require_once __DIR__ . '/../models/OrderModel.php';
 require_once __DIR__ . '/../models/AdminResetModel.php';
+require_once __DIR__ . '/../helpers/rate_limit.php';
 require_once __DIR__ . '/../helpers/response.php';
 
 class LicenseController {
@@ -50,6 +51,10 @@ class LicenseController {
         }
 
         $result = $this->licenseModel->validateLicense($licenseKey, $instanceKey, $domain);
+        if (empty($result['valid']) && empty($result['reason']) && strpos($result['message'] ?? '', 'non-existent') !== false) {
+            // License key tidak dikenal: dihitung untuk penangkal tebak-tebakan (T-05)
+            rate_limit_hit('licenses/validate_failed');
+        }
         $status = !empty($result['valid']) ? 200 : 403;
         sendJsonResponse($result, $status, $result['message'] ?? 'Validation completed');
     }
