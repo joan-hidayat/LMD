@@ -161,6 +161,7 @@ sequenceDiagram
 | `login.php` / `logout.php` | Masuk/keluar; token CSRF di semua form; sesi terikat ke satu tenant. |
 | `users.php` | Khusus admin: tambah user, nonaktifkan/aktifkan, ganti password. |
 | `index.php` + `api.php` | Modul **KASIR**: produk dari tabel `products`, checkout `POST api.php?action=checkout` (CSRF header). Browser hanya mengirim `id` + `qty`; harga, PPN, total dihitung ulang di server lalu disimpan ke `sales` / `sale_items` (T-28). |
+| `produk.php` | Bagian modul **KASIR** (admin): tambah produk, ubah nama/kategori/ikon/harga, nonaktifkan. Nama unik per toko; transaksi lama tidak berubah (T-30). |
 | `laporan.php` | Modul **LAPORAN** (admin): omzet, jumlah & rata-rata transaksi, PPN, produk terlaris, per kasir, per hari, 20 transaksi terakhir; filter tanggal (maks 1 tahun). |
 | `stok.php` | Modul **STOK** (admin): atur stok & stok minimum. Dengan modul ini checkout mengurangi stok (`SELECT … FOR UPDATE`) dan menolak penjualan melebihi stok; tanpa modul ini stok diabaikan. |
 | `outlet.php` | Modul **MULTI_OUTLET**: penguncian sudah berlaku, fitur 📋 rencana (halaman "segera hadir" untuk paket Bisnis). |
@@ -299,7 +300,7 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penegakan `modules` di Mini POS | ✅ Jalan | Kasir, Laporan, Stok terkunci sesuai paket; halaman di luar paket 403 (T-28) |
 | Transaksi & laporan Mini POS | ✅ Jalan | Produk & transaksi tersimpan di DB `mini_pos`, harga dihitung server; laporan penjualan; stok (modul STOK) (T-28) |
 | Multi Outlet Mini POS | 📋 Rencana | Modul sudah dikunci per paket, fiturnya belum dibuat |
-| Kelola produk (tambah/ubah harga) di Mini POS | 📋 Rencana | Katalog contoh 6 produk dibuat otomatis per toko; stok bisa diatur (modul STOK) |
+| Kelola produk di Mini POS | ✅ Jalan | Menu Produk (admin): tambah, ubah harga, nonaktifkan; katalog contoh 6 produk untuk toko baru (T-30) |
 | `future_module_access` (modul baru otomatis) | ✅ Jalan | Modul yang dibuat setelah paket/subscription masuk ke paket, subscription (`source = future_module`), dan lisensi; disusulkan juga oleh `migrate.php` (T-13) |
 | Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |
 | Login admin LMD | ✅ Jalan | 1 akun (`system_users`, dibuat via `php database/admin.php`); endpoint admin wajib sesi, endpoint publik untuk Showcase/client tetap terbuka (T-04) |

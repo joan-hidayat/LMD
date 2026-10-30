@@ -46,10 +46,33 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Selesai — lihat Riwayat "T-28" |
 | T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Terbuka |
+| T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-30: Kelola Produk di Mini POS
+**Jenis:** Perubahan kode + docs
+**Repo:** sample-mini-pos (commit `8da3bac`), lmd (docs)
+
+- Halaman baru `produk.php` (menu **Produk**, khusus admin, bagian dari modul KASIR): tambah produk, ubah nama/kategori/ikon emoji/harga, nonaktifkan/aktifkan. Produk tidak dihapus permanen karena dirujuk transaksi; produk nonaktif hilang dari kasir dan checkout-nya ditolak.
+- Validasi di `ProductRepository`: nama 2–150 karakter dan **unik per toko** (tanpa beda huruf besar/kecil; laporan produk terlaris dikelompokkan per nama), harga 1 – 100.000.000, ikon maks 8 code point.
+- Stok awal hanya diisi bila toko punya modul STOK; tanpa modul itu produk baru berstok 0 dan diatur di halaman Stok setelah upgrade.
+- Mengubah nama/harga tidak mengubah transaksi lama (`sale_items` menyimpan salinan nama & harga).
+
+Verifikasi (lokal): Starter tambah "Roti Bakar Keju" Rp 15.000 → tampil di kasir, checkout 2 × = Rp 33.300; ubah nama & harga → `sale_items` lama tetap "Roti Bakar Keju" Rp 15.000; nama duplikat (beda huruf besar/kecil), nama 1 karakter, harga 0 → ditolak dan isian form dipertahankan; ganti nama ke produk yang sudah ada → ditolak; nonaktif → hilang dari kasir, checkout 422; ubah produk milik toko lain → "Produk tidak ditemukan"; Pro tambah produk dengan stok awal 7 → tersimpan 7; role kasir membuka `produk.php` → dialihkan ke Kasir, menu Produk tidak tampil.
+
+### 2026-10-31 — Verifikasi lokal T-28 (PR Mini POS #6, LMD #9)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** sample-mini-pos, lmd — dilakukan AI lokal di XAMPP
+
+- Sinkron ke `main`: LMD `b9fcf8d`, Mini POS `d572300`. Tabel `products`, `sales`, `sale_items` terbentuk otomatis saat Mini POS dibuka (tanpa migrasi manual).
+- Toko `tokobaruminipos.pos.local` (MPOS_STARTER, modul `KASIR, LAPORAN`): menu Kasir, Laporan, Kelola User terbuka; Stok dan Multi Outlet bergembok 🔒.
+- Transaksi Kopi Espresso Blend ×1 = Rp 18.000 + PPN Rp 1.980 = **Rp 19.980**, nomor `TRX-20261031-000001`; muncul di Laporan (omzet, produk terlaris, transaksi terakhir). `SELECT COUNT(*) FROM mini_pos.sales` = 1.
+- `stok.php` dibuka langsung: 403 "Modul Stok tidak termasuk paket Anda" + tombol ke Showcase.
+- Skenario stok habis (paket Pro) tidak diuji lokal karena toko lokal berpaket Starter; sudah diuji di lingkungan cloud (entri T-28).
+- Catatan cross-check: hash commit yang dilaporkan cocok, tetapi **judul commit** di laporan AI lokal (`docs(lmd): arsitektur & ekosistem level 10 …`, `feat(minipos): transaksi kasir …`) tidak sesuai GitHub; judul sebenarnya `Merge pull request #9 …` dan `Merge pull request #6 …`. Kode yang terpasang benar (hash cocok); untuk laporan berikutnya AI lokal diminta menyalin keluaran `git log -1 --oneline` apa adanya.
 
 ### 2026-10-30 — T-28: Mini POS menegakkan `modules` dari lisensi LMD
 **Jenis:** Perubahan kode + docs
