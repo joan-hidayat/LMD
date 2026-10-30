@@ -51,6 +51,17 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Verifikasi lokal T-28 (PR Mini POS #6, LMD #9)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** sample-mini-pos, lmd — dilakukan AI lokal di XAMPP
+
+- Sinkron ke `main`: LMD `b9fcf8d`, Mini POS `d572300`. Tabel `products`, `sales`, `sale_items` terbentuk otomatis saat Mini POS dibuka (tanpa migrasi manual).
+- Toko `tokobaruminipos.pos.local` (MPOS_STARTER, modul `KASIR, LAPORAN`): menu Kasir, Laporan, Kelola User terbuka; Stok dan Multi Outlet bergembok 🔒.
+- Transaksi Kopi Espresso Blend ×1 = Rp 18.000 + PPN Rp 1.980 = **Rp 19.980**, nomor `TRX-20261031-000001`; muncul di Laporan (omzet, produk terlaris, transaksi terakhir). `SELECT COUNT(*) FROM mini_pos.sales` = 1.
+- `stok.php` dibuka langsung: 403 "Modul Stok tidak termasuk paket Anda" + tombol ke Showcase.
+- Skenario stok habis (paket Pro) tidak diuji lokal karena toko lokal berpaket Starter; sudah diuji di lingkungan cloud (entri T-28).
+- Catatan cross-check: hash commit yang dilaporkan cocok, tetapi **judul commit** di laporan AI lokal (`docs(lmd): arsitektur & ekosistem level 10 …`, `feat(minipos): transaksi kasir …`) tidak sesuai GitHub; judul sebenarnya `Merge pull request #9 …` dan `Merge pull request #6 …`. Kode yang terpasang benar (hash cocok); untuk laporan berikutnya AI lokal diminta menyalin keluaran `git log -1 --oneline` apa adanya.
+
 ### 2026-10-30 — T-28: Mini POS menegakkan `modules` dari lisensi LMD
 **Jenis:** Perubahan kode + docs
 **Repo:** sample-mini-pos (commit `8346386`), lmd (docs)
