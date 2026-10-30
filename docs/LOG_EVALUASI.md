@@ -52,6 +52,18 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Verifikasi lokal T-30 (PR Mini POS #7, LMD #10)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** sample-mini-pos — dilakukan AI lokal di XAMPP, toko `tokobaruminipos.pos.local` (MPOS_STARTER)
+
+- (a) Menu **Produk** tampil untuk admin.
+- (b) "Roti Bakar Keju" Rp 15.000 (kategori Camilan) ditambahkan dan langsung tampil di Kasir.
+- (c) Dijual 1: `TRX-20261031-000002`, Rp 15.000 + PPN Rp 1.650 = Rp 16.650. Harga diubah ke Rp 17.000; Laporan tetap mencatat Rp 15.000 / Rp 16.650.
+- (d) "roti bakar keju" (huruf kecil) ditolak: `Produk "roti bakar keju" sudah ada.`
+- (e) Nonaktif → hilang dari Kasir; aktif kembali → tampil lagi.
+- (f) `error.log` Apache: tidak ada error PHP baru.
+- Catatan: laporan **tidak menyertakan** keluaran `git log -1 --oneline` yang diminta (seharusnya mini-pos `1abf8a1`, LMD `006cd00`). Hasil fungsional a–e hanya mungkin dengan kode T-30, jadi versi terpasang dianggap benar; hash tetap perlu dikonfirmasi di sinkron berikutnya.
+
 ### 2026-10-31 — T-30: Kelola Produk di Mini POS
 **Jenis:** Perubahan kode + docs
 **Repo:** sample-mini-pos (commit `8da3bac`), lmd (docs)
