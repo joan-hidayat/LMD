@@ -52,6 +52,8 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 - Menjawab pertanyaan pemilik proyek tentang langkah mendaftarkan aplikasi eksternal (contoh Mini POS) ke LMD: (1) daftar aplikasi & modul, (2) buat paket, (3) integrasi `validate` di client, (4) pilih jalur penerbitan lisensi (Showcase order / auto-register / manual), (5) tampilkan di Showcase.
 - Temuan: Mini POS belum punya aplikasi sendiri di LMD dan client tidak memverifikasi `app_code` → **T-24**.
+- Pertanyaan lanjutan "apakah aplikasi client butuh file khusus": tidak ada file wajib saat ini; LMD mengenali aplikasi dari license key. Diusulkan standar `lmd-client.php` (📋 rencana), yang akan membawa App ID + secret saat T-04/T-22.
+- Diagram alur (4 tahap, setup, 3 jalur lisensi, pohon keputusan validasi) ditambahkan ke `EKOSISTEM_CARA_KERJA.md` bagian 5b; versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk.
 
 ### 2026-10-24 — T-02: kuota instalasi per paket & penguncian domain
 **Jenis:** Perubahan kode + migrasi database
