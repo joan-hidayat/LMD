@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=20261030_v2">
+    <link rel="stylesheet" href="./assets/css/style.css?v=20261031_v1">
 </head>
 
 <body>
@@ -1267,6 +1267,7 @@
                                     <tr><td>Panel persetujuan pembayaran</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Banner Dashboard + tabel di Subscriptions</td></tr>
                                     <tr><td>Detail instance per lisensi</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Menu Licenses → Detail</td></tr>
                                     <tr><td>Standar Integrasi v1</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>app_code sama di LMD, Showcase, client; Mini POS = MINIPOS (docs/STANDAR_INTEGRASI.md)</td></tr>
+                                    <tr><td>Reset password admin aplikasi client</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Licenses → Detail → Buat link reset (T-21)</td></tr>
                                     <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kuota lokasi per paket, domain terkunci, blokir admin (T-02)</td></tr>
                                     <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
@@ -1280,7 +1281,7 @@
                         </div>
                         <div class="eco-callout eco-callout-info">
                             <strong>Urutan kerja yang disarankan</strong>
-                            <p>1) Pemulihan password admin Mini POS (T-21). 2) Hardening keamanan sebelum production: login admin LMD &amp; API key, rate limit, request bertanda tangan (T-04, T-05, T-22, T-07). 3) Rapikan docs lokal (T-09).</p>
+                            <p>1) Hardening keamanan sebelum production: login admin LMD &amp; API key, rate limit, request bertanda tangan, password Showcase (T-04, T-05, T-22, T-07). 2) Rapikan docs lokal (T-09).</p>
                         </div>
                     </div>
                 </div>
@@ -1308,6 +1309,35 @@
                             <span>Kuota {{ instanceDetail.license.max_users }} user</span>
                             <span :class="{ 'quota-over': activeInstanceCount > instanceDetail.license.max_instances }">Instalasi {{ activeInstanceCount }} / {{ instanceDetail.license.max_instances }}</span>
                             <span class="status" :class="'status-' + instanceDetail.license.status">{{ instanceDetail.license.status }}</span>
+                        </div>
+                    </div>
+                    <div v-if="instanceDetail.license && instanceDetail.license.status === 'active'" class="reset-box">
+                        <div class="reset-box-head">
+                            <div>
+                                <strong>Reset password admin aplikasi</strong>
+                                <p>Untuk pemilik toko yang lupa password admin. Link berlaku 24 jam, sekali pakai, dan membatalkan link sebelumnya.</p>
+                            </div>
+                            <button type="button" class="btn btn-sm" @click="issueAdminReset" :disabled="adminReset.loading">
+                                {{ adminReset.loading ? 'Membuat…' : 'Buat link reset' }}
+                            </button>
+                        </div>
+                        <p v-if="adminReset.error" class="instance-error">{{ adminReset.error }}</p>
+                        <div v-if="adminReset.result" class="reset-result">
+                            <template v-if="adminReset.result.reset_url">
+                                <label>Kirim link ini ke pemilik toko (hanya ditampilkan sekali):</label>
+                                <div class="reset-copy">
+                                    <code>{{ adminReset.result.reset_url }}</code>
+                                    <button type="button" class="btn btn-sm" @click="copyText(adminReset.result.reset_url)">Salin</button>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <label>Aplikasi on-premise / belum terpasang. Berikan kode reset ini (hanya ditampilkan sekali):</label>
+                                <div class="reset-copy">
+                                    <code>{{ adminReset.result.token }}</code>
+                                    <button type="button" class="btn btn-sm" @click="copyText(adminReset.result.token)">Salin</button>
+                                </div>
+                            </template>
+                            <small>Berlaku sampai {{ formatDate(adminReset.result.expires_at) }}.</small>
                         </div>
                     </div>
                     <p v-if="instanceDetail.loading" class="instance-empty">Memuat instance...</p>
@@ -1528,6 +1558,6 @@
     </div>
 </div>
 
-<script src="./assets/js/app.js?v=20261030_v2"></script>
+<script src="./assets/js/app.js?v=20261031_v1"></script>
 </body>
 </html>

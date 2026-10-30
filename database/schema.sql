@@ -197,3 +197,14 @@ CREATE TABLE IF NOT EXISTS `license_logs` (
     CONSTRAINT `fk_lic_log_license` FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_lic_log_instance` FOREIGN KEY (`instance_id`) REFERENCES `application_instances` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. admin_reset_tokens (T-21): link sekali pakai untuk reset password admin aplikasi client
+CREATE TABLE IF NOT EXISTS `admin_reset_tokens` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `license_id` BIGINT UNSIGNED NOT NULL,
+    `token_hash` CHAR(64) NOT NULL UNIQUE,
+    `expires_at` DATETIME NOT NULL,
+    `used_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_reset_license` FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

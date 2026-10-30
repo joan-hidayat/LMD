@@ -89,6 +89,26 @@ $migrations = [
     '2026_10_31_cleanup_deleted_package_modules' => function (PDO $db) {
         return $db->exec("DELETE pm FROM package_modules pm JOIN modules m ON m.id = pm.module_id WHERE m.deleted_at IS NOT NULL") > 0;
     },
+
+    // T-21: token sekali pakai untuk reset password admin aplikasi client
+    '2026_10_31_admin_reset_tokens' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'admin_reset_tokens'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        $db->exec("
+            CREATE TABLE `admin_reset_tokens` (
+                `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `license_id` BIGINT UNSIGNED NOT NULL,
+                `token_hash` CHAR(64) NOT NULL UNIQUE,
+                `expires_at` DATETIME NOT NULL,
+                `used_at` DATETIME NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT `fk_reset_license` FOREIGN KEY (`license_id`) REFERENCES `licenses` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        return true;
+    },
 ];
 
 /**
