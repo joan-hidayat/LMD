@@ -134,8 +134,20 @@ class ModuleModel {
         return $this->db->lastInsertId();
     }
 
+    /**
+     * Soft delete modul dan keluarkan dari isi paket, agar tidak ikut tersalin ke subscription/lisensi baru (T-25).
+     * Riwayat di subscription_modules & license_modules dibiarkan; validate sudah menyaring modul yang dihapus.
+     */
     public function delete($id) {
-        $stmt = $this->db->prepare("UPDATE modules SET deleted_at = NOW() WHERE id = :id");
-        return $stmt->execute(['id' => $id]);
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare("UPDATE modules SET deleted_at = NOW() WHERE id = :id")->execute(['id' => $id]);
+            $this->db->prepare("DELETE FROM package_modules WHERE module_id = :id")->execute(['id' => $id]);
+            $this->db->commit();
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+        return true;
     }
 }

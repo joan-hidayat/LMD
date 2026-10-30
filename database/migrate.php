@@ -84,6 +84,11 @@ $migrations = [
         $granted = ModuleModel::syncFutureModules($db);
         return array_sum($granted) > 0;
     },
+
+    // T-25: modul yang sudah dihapus tidak boleh tersisa di isi paket
+    '2026_10_31_cleanup_deleted_package_modules' => function (PDO $db) {
+        return $db->exec("DELETE pm FROM package_modules pm JOIN modules m ON m.id = pm.module_id WHERE m.deleted_at IS NOT NULL") > 0;
+    },
 ];
 
 /**
@@ -135,9 +140,9 @@ function registerApplication(PDO $db, array $app) {
 
 foreach ($migrations as $name => $migrate) {
     try {
-        echo str_pad($name, 40) . ($migrate($db) ? "DITERAPKAN\n" : "sudah terpasang\n");
+        echo str_pad($name, 46) . ($migrate($db) ? "DITERAPKAN\n" : "sudah terpasang\n");
     } catch (Throwable $e) {
-        echo str_pad($name, 40) . "GAGAL: " . $e->getMessage() . "\n";
+        echo str_pad($name, 46) . "GAGAL: " . $e->getMessage() . "\n";
         exit(1);
     }
 }
