@@ -2,13 +2,15 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/security.php';
 require_once __DIR__ . '/LicenseModel.php';
+require_once __DIR__ . '/PaymentModel.php';
 
 /**
  * Self-Service Order Flow (Software Showcase -> Central SaaS)
  *
- * order        : customer + subscription 'pending' + license 'suspended' + instance (subdomain)
+ * order        : customer + subscription 'pending' + license 'suspended' + instance (subdomain) + tagihan (payments)
  * order_status : polling oleh Showcase; license key hanya dibuka setelah approve
  * approve      : subscription & license 'active', masa aktif dihitung dari tanggal approve
+ *                (manual oleh admin, atau otomatis oleh webhook pembayaran — lihat PaymentModel)
  * reject       : subscription 'cancelled', license 'revoked'
  *
  * Lisensi memakai status 'suspended' selama pending karena enum licenses.status
@@ -111,6 +113,9 @@ class OrderModel {
             $inInst->execute(['lic_id' => $licId, 'inst_key' => $instanceKey, 'inst_name' => $storeName, 'domain' => $domain]);
             $instId = $this->db->lastInsertId();
 
+            // Tanpa provider aktif (simulator dimatikan, gateway belum dipasang): pesanan menunggu Approve manual admin
+            $payment = payment_provider() ? (new PaymentModel())->create($subId, $totalPrice, $data['payment_method'] ?? null) : null;
+
             $this->db->commit();
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -131,8 +136,9 @@ class OrderModel {
             'base_price' => $basePrice,
             'tax_amount' => $taxAmount,
             'total_price' => $totalPrice,
-            'payment_method' => $data['payment_method'] ?? null,
-            'instance_domain' => $domain
+            'payment_method' => $payment['method'] ?? null,
+            'instance_domain' => $domain,
+            'payment' => (new PaymentModel())->latestSummary($subId)
         ];
         $this->log($licId, $instId, 'order', $data, $result);
         return $result;
@@ -157,7 +163,8 @@ class OrderModel {
             'license_key' => $isApproved ? $order['license_key'] : null,
             'expires_at' => $isApproved ? $order['expires_at'] : null,
             // null = aplikasi on-premise: customer memasukkan license key saat instalasi
-            'app_url' => $isApproved ? $this->buildAppUrl($order['launch_url'], $order['domain'], $order['license_key']) : null
+            'app_url' => $isApproved ? $this->buildAppUrl($order['launch_url'], $order['domain'], $order['license_key']) : null,
+            'payment' => (new PaymentModel())->latestSummary($order['subscription_id'])
         ];
     }
 
@@ -180,6 +187,7 @@ class OrderModel {
                 ->execute(['expires_at' => $endDate ? $endDate . ' 23:59:59' : null, 'id' => $order['license_id']]);
             $this->db->prepare("UPDATE application_instances SET status = 'active' WHERE id = :id")
                 ->execute(['id' => $order['instance_id']]);
+            (new PaymentModel())->cancelPending($order['subscription_id']);
 
             $actKey = SecurityHelper::generateActivationKey();
             $this->db->prepare("INSERT INTO license_activations (license_id, instance_id, activation_key, activated_at, ip_address, status) VALUES (:lic_id, :inst_id, :act_key, NOW(), :ip, 'active')")
@@ -209,6 +217,7 @@ class OrderModel {
 
             $this->db->prepare("UPDATE subscriptions SET status = 'cancelled' WHERE id = :id")->execute(['id' => $order['subscription_id']]);
             $this->db->prepare("UPDATE licenses SET status = 'revoked' WHERE id = :id")->execute(['id' => $order['license_id']]);
+            (new PaymentModel())->cancelPending($order['subscription_id']);
 
             $this->db->commit();
         } catch (Exception $e) {
@@ -227,7 +236,8 @@ class OrderModel {
                    c.name as customer_name, c.email as customer_email, c.phone as customer_phone,
                    a.code as app_code, p.code as package_code, p.name as package_name, s.max_users,
                    (SELECT ai.domain FROM application_instances ai JOIN licenses l ON ai.license_id = l.id
-                    WHERE l.subscription_id = s.id ORDER BY ai.id ASC LIMIT 1) as instance_domain
+                    WHERE l.subscription_id = s.id ORDER BY ai.id ASC LIMIT 1) as instance_domain,
+                   (SELECT pay.status FROM payments pay WHERE pay.subscription_id = s.id ORDER BY pay.id DESC LIMIT 1) as payment_status
             FROM subscriptions s
             JOIN customers c ON s.customer_id = c.id
             JOIN applications a ON s.application_id = a.id

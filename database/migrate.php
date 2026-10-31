@@ -186,6 +186,18 @@ $migrations = [
         }
         return $changed;
     },
+
+    // Pembayaran otomatis: tagihan per pesanan + webhook provider (simulator dulu)
+    '2026_10_31_payments' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        // Definisi tabel diambil dari schema.sql agar keduanya tidak bisa berbeda
+        preg_match('/CREATE TABLE IF NOT EXISTS `payments`.*?;/s', file_get_contents(__DIR__ . '/schema.sql'), $m);
+        $db->exec($m[0]);
+        return true;
+    },
 ];
 
 /**
@@ -238,9 +250,25 @@ function registerApplication(PDO $db, array $app) {
     return true;
 }
 
+// Migrasi yang sudah pernah dijalankan dicatat, sehingga migrasi pengisi data (mis. register_minipos)
+// tidak membuat ulang data yang sengaja dihapus admin atau database/reset_data.php.
+$db->exec("
+    CREATE TABLE IF NOT EXISTS `schema_migrations` (
+        `name` VARCHAR(100) NOT NULL PRIMARY KEY,
+        `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+");
+$applied = $db->query("SELECT name FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN);
+$record = $db->prepare("INSERT IGNORE INTO schema_migrations (name) VALUES (:name)");
+
 foreach ($migrations as $name => $migrate) {
+    if (in_array($name, $applied, true)) {
+        echo str_pad($name, 46) . "sudah terpasang\n";
+        continue;
+    }
     try {
         echo str_pad($name, 46) . ($migrate($db) ? "DITERAPKAN\n" : "sudah terpasang\n");
+        $record->execute(['name' => $name]);
     } catch (Throwable $e) {
         echo str_pad($name, 46) . "GAGAL: " . $e->getMessage() . "\n";
         exit(1);

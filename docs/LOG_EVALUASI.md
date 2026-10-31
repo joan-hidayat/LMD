@@ -46,11 +46,47 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Selesai — lihat Riwayat "T-28" |
 | T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Selesai — lihat Riwayat "T-29" |
+| T-31 | software-showcase | Admin Showcase menyimpan katalog hanya di `localStorage` browser admin; halaman publik membaca `data/products.js`. Mengubah `lmdAppCode` di admin tidak berpengaruh ke toko sampai file diekspor & diganti manual. | Fungsional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
+| T-32 | lmd | Persiapan simulasi dari nol: (a) `migrate.php` membuat ulang aplikasi MINIPOS setiap dijalankan bila datanya dihapus; (b) aplikasi tidak bisa diubah setelah dibuat (launch URL salah = buntu); (c) `require_signature` tidak bisa diatur dari dashboard. | Operasional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — Pembayaran otomatis (simulator) + persiapan simulasi integrasi dari nol
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd, software-showcase (commit `6664620`)
+
+Pembayaran otomatis (rencana di entri "Analisis: pembayaran otomatis", tahap 1):
+- **LMD:** tabel `payments` (migrasi `2026_10_31_payments`); `api/config/payment.php` (provider `simulator`, secret dev hardcode, override `payment.local.php`); adapter `api/helpers/payment_providers.php` (antarmuka `PaymentProvider`, `SimulatorPaymentProvider`); `PaymentModel` (buat tagihan saat `order`, webhook idempoten, cek nominal, retry, batal saat keputusan manual); endpoint publik `POST /payments/webhook/{provider}` (rate limit 120/menit); halaman `pay/simulator.php` (bayar / gagal / tagihan baru, CSRF, nonaktif bila `simulator.enabled = false`). `order` & `order_status` kini mengembalikan `payment {status, payment_url}`; tabel Persetujuan Pembayaran menampilkan status tagihan.
+- **Showcase:** wizard langkah 3 "Buat Tagihan & Bayar" membuka halaman bayar di tab baru; langkah 4 menampilkan status tagihan (belum dibayar / lunas / gagal / kedaluwarsa) dan otomatis menampilkan link aplikasi setelah lunas. Gambar QRIS dari layanan eksternal (`api.qrserver.com`) dihapus.
+- n8n tidak dipakai untuk pembayaran (webhook langsung ke LMD); n8n tetap 📋 untuk notifikasi/pengingat.
+
+Persiapan simulasi dari nol (permintaan pemilik: kosongkan LMD, putus produk Showcase, lalu latihan integrasi):
+- **T-31 (Showcase):** `admin/save.php` (wajib login + CSRF header, validasi id/nama/`lmdAppCode`, tulis atomik) menyimpan katalog ke `data/products.local.json` (di-ignore git agar `git pull` tidak bentrok); `data/catalog.php` menyajikan katalog admin atau `products.js` bawaan; halaman publik & admin memuat `data/catalog.php`. Tombol Reset ke Default menghapus katalog admin. Ekspor `products.js` tetap ada sebagai cadangan.
+- **T-32 (LMD):** `migrate.php` mencatat migrasi yang sudah jalan di `schema_migrations` (migrasi pengisi data tidak mengulang); tombol **Ubah** aplikasi (`PUT /applications/{id}`: nama, deskripsi, launch URL, tanda tangan; kode terkunci); checkbox *Wajib request bertanda tangan* (default aktif) saat membuat aplikasi. Metode `ApplicationModel::update` lama yang tidak terpakai (bisa mengganti kode) dihapus.
+- **`database/reset_data.php`:** mengosongkan semua tabel data LMD kecuali `system_users`, `api_tokens`, `schema_migrations`; menampilkan jumlah baris, wajib ketik `KOSONGKAN`.
+- **`docs/SIMULASI_INTEGRASI.md`:** panduan langkah demi langkah + tabel uji & masalah umum; dirujuk dari `STANDAR_INTEGRASI.md` §6.
+
+Verifikasi (lingkungan cloud, DB uji di-backup dulu):
+
+| Skenario | Hasil |
+|---|---|
+| Webhook tanpa tanda tangan / nominal salah / tagihan tak dikenal / provider tak aktif | 401 / 409 / 404 / 404 |
+| Bayar di simulator | Tagihan `paid`, pesanan `active`, `license_key` + `app_url` di `order_status`; log `payment_paid` → `approve_order` |
+| Webhook yang sama dikirim ulang | 200 `duplicate: true`, tidak diproses dua kali |
+| Gagal → tagihan baru → bayar | Tagihan lama `failed`, baru `paid`; retry kedua ditolak "Masih ada tagihan aktif" |
+| CSRF salah di halaman bayar | Ditolak |
+| Admin menolak pesanan lalu customer membuka halaman bayar | Tagihan "dibatalkan", tombol bayar tidak ada |
+| Wizard Showcase (Playwright) | Tab bayar terbuka → status "BELUM DIBAYAR" → bayar → layar sukses + URL aplikasi |
+| Admin Showcase: hapus semua `lmdAppCode` lalu hubungkan lagi | Halaman publik: 0 tombol Berlangganan → 1; id tidak valid ditolak; tanpa login 401 |
+| **Simulasi dari nol:** `reset_data.php` → `migrate.php` | 15 tabel dikosongkan, admin tetap; MINIPOS **tidak** dibuat ulang |
+| Daftar MINIPOS lewat form dashboard | Checkbox tanda tangan default aktif → `require_signature = 1`; Ubah nama berhasil, kode terkunci |
+| 4 modul + 2 paket → Showcase memuat paket Starter & Pro | ✅ |
+| Pesan "Toko Simulasi" → bayar → buka aplikasi (DB `mini_pos` dihapus dulu) | Setup admin → kasir; menu Kasir, Laporan, Produk, Kelola User terbuka, Stok & Multi Outlet 🔒; transaksi Rp 19.980; instalasi aktif dengan secret |
+
+Catatan: halaman bayar memanggil webhook LMD lewat host yang sama dengan yang dibuka browser; bila LMD tidak bisa memanggil dirinya sendiri (host/port berbeda), simulator menampilkan "Webhook ditolak LMD".
 
 ### 2026-10-31 — Analisis: pembayaran otomatis (rencana, belum ada kode)
 **Jenis:** Analisis / usulan

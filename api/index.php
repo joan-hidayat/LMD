@@ -16,6 +16,7 @@ require_once __DIR__ . '/controllers/SubscriptionController.php';
 require_once __DIR__ . '/controllers/LicenseController.php';
 require_once __DIR__ . '/controllers/AuditController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/controllers/PaymentController.php';
 require_once __DIR__ . '/helpers/auth.php';
 require_once __DIR__ . '/helpers/rate_limit.php';
 
@@ -48,6 +49,10 @@ function is_public_endpoint($resource, $id, $method) {
             || ($id === 'order' && $method === 'POST')
             || ($id === 'order_status' && $method === 'GET')
             || ($id === 'reset_token' && $method === 'POST');
+    }
+    // Notifikasi payment gateway: keabsahan dicek lewat tanda tangan provider, bukan login
+    if ($resource === 'payments') {
+        return $id === 'webhook' && $method === 'POST';
     }
     // Katalog paket publik untuk Showcase
     return $resource === 'packages' && $method === 'GET' && !empty($_GET['app_code']) && !$id;
@@ -99,6 +104,8 @@ try {
                 } else {
                     $controller->store();
                 }
+            } elseif ($method === 'PUT' && $id && is_numeric($id) && !$action) {
+                $controller->update($id);
             } elseif ($method === 'DELETE' && $id === 'modules' && !empty($_GET['id'])) {
                 $controller->deleteModule($_GET['id']);
             }
@@ -178,6 +185,14 @@ try {
                 $controller->updateInstanceStatus($id);
             } elseif ($method === 'POST' && $id && is_numeric($id) && $action === 'reset_secret') {
                 $controller->resetInstanceSecret($id);
+            } else {
+                sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
+            }
+            break;
+
+        case 'payments':
+            if ($id === 'webhook' && $action && $method === 'POST') {
+                (new PaymentController())->webhook($action);
             } else {
                 sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
             }

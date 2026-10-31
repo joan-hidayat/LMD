@@ -59,7 +59,7 @@ createApp({
             showModal: false,
 
             // Form Models
-            appForm: { code: '', name: '', description: '', launch_url: '', status: 'active' },
+            appForm: { code: '', name: '', description: '', launch_url: '', require_signature: true, status: 'active' },
             moduleForm: { application_id: '', code: '', name: '', module_type: 'standard', description: '', sort_order: 0 },
             packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] },
             customerForm: { code: '', name: '', email: '', phone: '', status: 'active' },
@@ -293,7 +293,7 @@ createApp({
             this.showModal = true;
             if (type === 'app') {
                 this.modalTitle = 'Tambah Aplikasi Baru';
-                this.appForm = { code: '', name: '', description: '', launch_url: '', status: 'active' };
+                this.appForm = { code: '', name: '', description: '', launch_url: '', require_signature: true, status: 'active' };
             } else if (type === 'module') {
                 this.modalTitle = 'Tambah Modul Baru';
                 this.moduleForm = { application_id: this.selectedAppId || (this.applications[0]?.id || ''), code: '', name: '', module_type: 'standard', description: '', sort_order: 0 };
@@ -397,11 +397,22 @@ createApp({
             this.showModal = false;
         },
 
+        openEditApp(app) {
+            this.modalType = 'app';
+            this.modalTitle = 'Ubah Aplikasi ' + app.code;
+            this.appForm = {
+                id: app.id, code: app.code, name: app.name, description: app.description || '',
+                launch_url: app.launch_url || '', require_signature: !!Number(app.require_signature)
+            };
+            this.showModal = true;
+        },
+
         // Form Submit Actions
         async submitApp() {
+            const editing = !!this.appForm.id;
             try {
-                const res = await fetch('api/index.php/applications', {
-                    method: 'POST',
+                const res = await fetch('api/index.php/applications' + (editing ? '/' + this.appForm.id : ''), {
+                    method: editing ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(this.appForm)
                 });
@@ -410,7 +421,7 @@ createApp({
                     this.closeModal();
                     await this.fetchApplications();
                     await this.fetchDashboardData();
-                    alert('Aplikasi berhasil dibuat!');
+                    alert(editing ? 'Aplikasi berhasil diubah!' : 'Aplikasi berhasil dibuat!');
                 } else {
                     alert('Gagal: ' + json.message);
                 }
@@ -512,7 +523,7 @@ createApp({
         async decideOrder(sub, decision) {
             const isApprove = decision === 'approve';
             const question = isApprove
-                ? `Approve pembayaran ${sub.subscription_no} (${sub.customer_name}) sebesar ${this.formatRupiah(sub.total_price)}?\nLisensi akan langsung aktif.`
+                ? `Approve pembayaran ${sub.subscription_no} (${sub.customer_name}) sebesar ${this.formatRupiah(sub.total_price)}?\nLisensi akan langsung aktif dan tagihan gateway yang belum dibayar dibatalkan.`
                 : `Tolak pesanan ${sub.subscription_no} (${sub.customer_name})?\nSubscription dibatalkan dan lisensi dicabut.`;
             if (!confirm(question)) return;
 
@@ -567,6 +578,16 @@ createApp({
             if (status === 'active') return 'active';
             if (status === 'pending') return 'pending';
             return 'expired';
+        },
+
+        paymentStatusLabel(status) {
+            return {
+                pending: 'Belum dibayar',
+                paid: 'Lunas',
+                failed: 'Gagal',
+                expired: 'Kedaluwarsa',
+                cancelled: 'Dibatalkan'
+            }[status] || 'Tanpa tagihan';
         },
 
         formatRupiah(val) {

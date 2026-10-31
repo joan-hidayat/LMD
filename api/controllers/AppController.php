@@ -28,6 +28,17 @@ class AppController {
         sendJsonResponse($app, 201, 'Application created successfully.');
     }
 
+    public function update($id) {
+        $input = getJsonInput();
+        if (empty($input['name'])) {
+            sendJsonResponse(null, 400, 'Application name is required.');
+        }
+        if (!$this->appModel->update($id, $input)) {
+            sendJsonResponse(null, 404, 'Application not found.');
+        }
+        sendJsonResponse($this->appModel->getById($id), 200, 'Application updated successfully.');
+    }
+
     public function getModules($appId) {
         $modules = $this->moduleModel->getByAppId($appId);
         sendJsonResponse($modules, 200, 'Modules fetched successfully.');

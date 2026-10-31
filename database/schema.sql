@@ -242,3 +242,24 @@ CREATE TABLE IF NOT EXISTS `api_tokens` (
     `revoked_at` DATETIME NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 17. payments: tagihan per pesanan Showcase. Dibayar lewat payment gateway (provider); webhook bertanda tangan
+--     yang sah menyetujui pesanan otomatis. Provider 'simulator' untuk pengembangan (api/config/payment.php).
+CREATE TABLE IF NOT EXISTS `payments` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `payment_no` VARCHAR(40) NOT NULL UNIQUE,
+    `subscription_id` BIGINT UNSIGNED NOT NULL,
+    `provider` VARCHAR(30) NOT NULL,
+    `method` VARCHAR(30) NULL COMMENT 'Pilihan customer, mis. QRIS / TRANSFER_BCA',
+    `amount` DECIMAL(15,2) NOT NULL,
+    `status` ENUM('pending', 'paid', 'failed', 'expired', 'cancelled') NOT NULL DEFAULT 'pending',
+    `checkout_token` CHAR(64) NOT NULL UNIQUE COMMENT 'Akses halaman bayar (tidak bisa ditebak)',
+    `provider_ref` VARCHAR(100) NULL COMMENT 'ID transaksi dari provider',
+    `paid_at` DATETIME NULL,
+    `expires_at` DATETIME NOT NULL,
+    `last_notification` JSON NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_payments_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `subscriptions` (`id`) ON DELETE CASCADE,
+    KEY `idx_payments_subscription` (`subscription_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

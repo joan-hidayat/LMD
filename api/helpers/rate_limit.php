@@ -26,6 +26,7 @@ function rate_limit_rule($resource, $id, $method) {
         'licenses/reset_token' => 20,
         'auth/login' => 10,
         'packages' => 120,
+        'payments/webhook' => 120,
     ];
     $key = $resource === 'packages' ? 'packages' : "{$resource}/{$id}";
     return isset($rules[$key]) ? [$key, $rules[$key]] : null;
