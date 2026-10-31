@@ -49,11 +49,40 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-31 | software-showcase | Admin Showcase menyimpan katalog hanya di `localStorage` browser admin; halaman publik membaca `data/products.js`. Mengubah `lmdAppCode` di admin tidak berpengaruh ke toko sampai file diekspor & diganti manual. | Fungsional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
 | T-32 | lmd | Persiapan simulasi dari nol: (a) `migrate.php` membuat ulang aplikasi MINIPOS setiap dijalankan bila datanya dihapus; (b) aplikasi tidak bisa diubah setelah dibuat (launch URL salah = buntu); (c) `require_signature` tidak bisa diatur dari dashboard. | Operasional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
 | T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Selesai — terbukti & dipulihkan, lihat Riwayat "Pemulihan XAMPP (T-33)" |
+| T-34 | lmd, sample-mini-pos | Kode modul di LMD harus diketik manual dan **sama persis** dengan kode yang dikenali aplikasi client (Mini POS: `APP_MODULES`). Admin yang tidak hafal bisa salah ketik; LMD tidak memperingatkan, dan fitur di client tetap terkunci tanpa pesan yang jelas. Usulan: client menerbitkan *manifest* (app_code, nama, launch URL, daftar modul) dan LMD mengimpornya. | Desain / UX | Selesai — opsi 1 (manifest), lihat Riwayat "T-34" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-34: impor aplikasi & modul dari manifest client (Standar Integrasi v1.2)
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd, sample-mini-pos (commit `8866d05`)
+
+Keputusan pemilik: opsi 1 (manifest). Kode modul kini berasal dari aplikasi client, admin LMD tidak mengetiknya.
+
+- **Mini POS:** `lmd-manifest.php` (JSON) dibangkitkan dari `lmd-client.php` (+ `app_name`, `app_description`) dan `APP_MODULES` (+ `description`); `launch_url` mengikuti folder pemasangan; `available: false` untuk MULTI_OUTLET.
+- **Demo Apotek (lmd):** `client_demo/lmd-manifest.php` on-premise (`launch_url: null`), modul dari `client_demo/lmd-client.php`.
+- **LMD:** `api/models/ManifestImporter.php` (ambil dari server LMD: hanya http(s), tanpa redirect, timeout 5 dtk, maks 200 KB; validasi skema; pratinjau perbedaan; impor = buat aplikasi baru lengkap, tambah modul baru, pulihkan modul terhapus; aplikasi lama tidak diubah; modul LMD yang tidak ada di manifest ditandai "Tidak dikenal client"). Endpoint admin `POST /applications/manifest_preview` & `manifest_import`. UI: tombol **⬇ Impor dari Manifest** + modal pratinjau.
+- **Docs:** `STANDAR_INTEGRASI.md` naik ke **v1.2** (§4.4 manifest, checklist §6, status §7); `SIMULASI_INTEGRASI.md` & tab 🧪 Simulasi: cara cepat lewat manifest + masalah umum; `EKOSISTEM_CARA_KERJA.md` status.
+
+Verifikasi (lokal cloud):
+
+| Skenario | Hasil |
+|---|---|
+| Pratinjau `/mini-pos/` (MINIPOS sudah ada) | 4 modul "Sudah ada", perbedaan nama ditampilkan, tombol "Tidak ada perubahan" |
+| Impor `/License-Management-Dashboard/client_demo/` lewat UI | Aplikasi APOTEK dibuat (on-premise, tanda tangan aktif) + 6 modul |
+| Modul STOK dihapus + modul salah ketik `KASIER` dibuat → pratinjau | STOK "Akan dipulihkan", KASIER "Tidak dikenal client"; impor memulihkan STOK |
+| URL `ftp://…` / folder tanpa manifest / tanpa login | 400 / 422 "Manifest tidak ditemukan … 404" / 401 |
+
+### 2026-10-31 — Analisis: kode modul harus dihafal admin (T-34)
+**Jenis:** Analisis (tanpa perubahan kode)
+**Repo:** lmd, sample-mini-pos
+
+- Pertanyaan pemilik saat simulasi: "modul harus sama dengan yang ada di Mini POS? bagaimana kalau admin tidak hafal?". Benar: client hanya membuka fitur untuk kode yang ia kenal; kode lain diabaikan tanpa peringatan.
+- Opsi: (1) **manifest client** — client menyediakan `lmd-manifest.php` (JSON: `app_code`, nama, `launch_url`, modul `{code, name, description}`); LMD punya tombol *Impor dari manifest* (pratinjau → buat aplikasi + modul) — sumber kebenaran ada di client, admin tidak mengetik kode; (2) client melaporkan modul yang ia dukung saat `validate`, LMD menandai modul paket yang tidak dikenal client — deteksi setelah terjadi; (3) tabel kode modul di dokumentasi — sudah ada (tab Simulasi 1b), tetap manual.
+- Rekomendasi: (1) sebagai bagian Standar Integrasi v1.2, (2) menyusul sebagai pengaman.
 
 ### 2026-10-31 — Panduan simulasi masuk Buku Panduan
 **Jenis:** Perubahan UI + docs

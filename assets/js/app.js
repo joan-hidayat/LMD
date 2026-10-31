@@ -60,6 +60,7 @@ createApp({
 
             // Form Models
             appForm: { code: '', name: '', description: '', launch_url: '', require_signature: true, status: 'active' },
+            manifestForm: { url: '/mini-pos/', preview: null, loading: false, error: '' },
             moduleForm: { application_id: '', code: '', name: '', module_type: 'standard', description: '', sort_order: 0 },
             packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] },
             customerForm: { code: '', name: '', email: '', phone: '', status: 'active' },
@@ -291,7 +292,10 @@ createApp({
         openModal(type) {
             this.modalType = type;
             this.showModal = true;
-            if (type === 'app') {
+            if (type === 'manifest') {
+                this.modalTitle = 'Impor Aplikasi dari Manifest';
+                this.manifestForm = { url: this.manifestForm.url || '/mini-pos/', preview: null, loading: false, error: '' };
+            } else if (type === 'app') {
                 this.modalTitle = 'Tambah Aplikasi Baru';
                 this.appForm = { code: '', name: '', description: '', launch_url: '', require_signature: true, status: 'active' };
             } else if (type === 'module') {
@@ -395,6 +399,44 @@ createApp({
 
         closeModal() {
             this.showModal = false;
+        },
+
+        async callManifest(action) {
+            this.manifestForm.loading = true;
+            this.manifestForm.error = '';
+            try {
+                const res = await fetch('api/index.php/applications/manifest_' + action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: this.manifestForm.url })
+                });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message);
+                return json.data;
+            } catch (err) {
+                this.manifestForm.error = err.message || 'Gagal menghubungi server.';
+                return null;
+            } finally {
+                this.manifestForm.loading = false;
+            }
+        },
+
+        async previewManifest() {
+            this.manifestForm.preview = await this.callManifest('preview');
+        },
+
+        async importManifest() {
+            const result = await this.callManifest('import');
+            if (!result) return;
+            const parts = [];
+            if (result.application_created) parts.push('aplikasi dibuat');
+            if (result.modules_created.length) parts.push(result.modules_created.length + ' modul ditambahkan (' + result.modules_created.join(', ') + ')');
+            if (result.modules_restored.length) parts.push(result.modules_restored.length + ' modul dipulihkan');
+            this.closeModal();
+            await this.fetchApplications();
+            this.selectApplication(result.application_id);
+            await this.fetchDashboardData();
+            alert('Impor selesai: ' + (parts.join(', ') || 'tidak ada perubahan') + '.\nLangkah berikutnya: buat paket di Sales Packages.');
         },
 
         openEditApp(app) {

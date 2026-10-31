@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/ApplicationModel.php';
 require_once __DIR__ . '/../models/ModuleModel.php';
+require_once __DIR__ . '/../models/ManifestImporter.php';
 require_once __DIR__ . '/../helpers/response.php';
 
 class AppController {
@@ -37,6 +38,22 @@ class AppController {
             sendJsonResponse(null, 404, 'Application not found.');
         }
         sendJsonResponse($this->appModel->getById($id), 200, 'Application updated successfully.');
+    }
+
+    /**
+     * Impor dari manifest client (T-34): preview tidak mengubah apa pun, import menerapkan.
+     */
+    public function manifest($apply) {
+        $input = getJsonInput();
+        try {
+            $importer = new ManifestImporter();
+            $result = $apply ? $importer->import($input['url'] ?? '') : $importer->preview($input['url'] ?? '');
+            sendJsonResponse($result, 200, $apply ? 'Manifest imported.' : 'Manifest preview.');
+        } catch (InvalidArgumentException $e) {
+            sendJsonResponse(null, 400, $e->getMessage());
+        } catch (DomainException $e) {
+            sendJsonResponse(null, 422, $e->getMessage());
+        }
     }
 
     public function getModules($appId) {

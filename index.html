@@ -407,7 +407,8 @@
                         <p style="color: var(--muted); font-size: 13px;">Kelola master aplikasi dan modul fitur masing-masing produk.</p>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-primary" @click="openModal('app')">+ Tambah Application</button>
+                        <button class="btn btn-primary" @click="openModal('manifest')" title="Ambil kode aplikasi & modul langsung dari aplikasi client (lmd-manifest.php)">⬇ Impor dari Manifest</button>
+                        <button class="btn" @click="openModal('app')">+ Tambah Application</button>
                         <button class="btn" @click="openModal('module')">+ Tambah Module</button>
                     </div>
                 </div>
@@ -1342,7 +1343,7 @@
                     <div class="card eco-intro">
                         <span class="eco-eyebrow">Latihan · dari database kosong</span>
                         <h4 class="eco-h">Simulasi integrasi aplikasi client: LMD ↔ Showcase ↔ Mini POS</h4>
-                        <p class="eco-p">Mendaftarkan aplikasi client mulai dari data kosong sampai customer membayar di Showcase dan memakai aplikasinya. Mengikuti Standar Integrasi v1.1. Versi teks: <code>docs/SIMULASI_INTEGRASI.md</code>.</p>
+                        <p class="eco-p">Mendaftarkan aplikasi client mulai dari data kosong sampai customer membayar di Showcase dan memakai aplikasinya. Mengikuti Standar Integrasi v1.2. Versi teks: <code>docs/SIMULASI_INTEGRASI.md</code>.</p>
                         <div class="eco-legend">
                             <span class="eco-tag eco-t-lmd">0 Backup &amp; kosongkan</span>
                             <span class="eco-tag eco-t-lmd">1 LMD: aplikasi, modul, paket</span>
@@ -1380,6 +1381,10 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                     <div class="card">
                         <span class="eco-eyebrow">1 · <span class="eco-tag eco-t-lmd">LMD</span> Daftarkan aplikasi</span>
                         <h4 class="eco-h">Applications &amp; Modules → Sales Packages</h4>
+                        <div class="eco-callout eco-callout-info">
+                            <strong>Cara cepat (disarankan): ⬇ Impor dari Manifest</strong>
+                            <p>Isi alamat <code>/mini-pos/</code> → <strong>Pratinjau</strong> → <strong>Impor</strong>. LMD membaca <code>lmd-manifest.php</code> milik Mini POS lalu membuat aplikasi <code>MINIPOS</code> (launch URL &amp; tanda tangan) dan 4 modulnya dengan kode yang pasti sama. Lewati 1a &amp; 1b, langsung ke 1c. Demo Apotek: <code>/License-Management-Dashboard/client_demo/</code>. Tabel di bawah = cara manual.</p>
+                        </div>
                         <div class="table-responsive">
                             <table>
                                 <thead><tr><th>1a. + Tambah Application</th><th>Isi</th><th>Catatan</th></tr></thead>
@@ -1477,7 +1482,8 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                                     <tr><td>Halaman bayar tidak terbuka</td><td>Popup diblokir browser</td><td>Klik <strong>Buka Halaman Pembayaran</strong> di Showcase</td></tr>
                                     <tr><td>"Webhook ditolak LMD" di simulator</td><td>LMD tidak bisa memanggil dirinya sendiri (host/port berbeda)</td><td>Buka Showcase &amp; LMD lewat host yang sama</td></tr>
                                     <tr><td>Mini POS: "Instalasi Tidak Diizinkan"</td><td>Domain, kuota, atau tanda tangan</td><td>Ikuti pesan di layar; tanda tangan: <strong>Reset secret</strong></td></tr>
-                                    <tr><td>Mini POS: semua menu 🔒</td><td>Kode modul LMD ≠ <code>APP_MODULES</code></td><td>Samakan kode modul (1b)</td></tr>
+                                    <tr><td>Mini POS: semua menu 🔒</td><td>Kode modul LMD ≠ <code>APP_MODULES</code></td><td>Pakai <strong>Impor dari Manifest</strong>; pratinjau menandai modul "Tidak dikenal client"</td></tr>
+                                    <tr><td>Impor: "Manifest tidak ditemukan"</td><td>Alamat salah / aplikasi belum punya <code>lmd-manifest.php</code></td><td>Buka <code>…/lmd-manifest.php</code> di browser untuk cek</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1567,6 +1573,59 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                     </template>
                     <div class="modal-footer" style="margin-top: 16px;">
                         <button type="button" class="btn" @click="closeModal">Tutup</button>
+                    </div>
+                </div>
+
+                <!-- Impor dari Manifest (Standar Integrasi v1.2 §4.4, T-34) -->
+                <div v-if="modalType === 'manifest'">
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Masukkan alamat aplikasi client. LMD mengambil <code>lmd-manifest.php</code> dari sana, jadi kode aplikasi &amp; modul pasti sama dengan yang dikenali aplikasi. Modul hanya ditambah; aplikasi yang sudah ada tidak diubah.</p>
+                    <form @submit.prevent="previewManifest" style="display: flex; gap: 8px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label>Alamat aplikasi</label>
+                            <input v-model="manifestForm.url" class="form-control" placeholder="/mini-pos/" required>
+                        </div>
+                        <button type="submit" class="btn" :disabled="manifestForm.loading">{{ manifestForm.loading ? 'Memuat…' : 'Pratinjau' }}</button>
+                    </form>
+                    <small style="color: var(--muted); display: block; margin-top: 6px;">Contoh: <code>/mini-pos/</code> (hosted) · <code>/License-Management-Dashboard/client_demo/</code> (demo Apotek, on-premise)</small>
+                    <div v-if="manifestForm.error" class="alert-card" style="margin-top: 12px; color: #f87171; font-size: 13px;">{{ manifestForm.error }}</div>
+
+                    <div v-if="manifestForm.preview" style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="font-size: 13px;">
+                            <strong>{{ manifestForm.preview.manifest.name }}</strong> · <code>{{ manifestForm.preview.manifest.app_code }}</code>
+                            <span class="badge-pill" :class="manifestForm.preview.application.status === 'new' ? 'badge-safe' : 'badge-expired'" style="margin-left: 6px;">{{ manifestForm.preview.application.status === 'new' ? 'Aplikasi baru' : 'Sudah terdaftar' }}</span>
+                            <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                                {{ manifestForm.preview.manifest.launch_url ? '🌐 Hosted · ' + manifestForm.preview.manifest.launch_url : '💾 On-premise (tanpa launch URL)' }}
+                                · {{ manifestForm.preview.manifest.require_signature ? '🔐 wajib tanda tangan' : '🔓 tanpa tanda tangan' }}
+                                · sumber <code>{{ manifestForm.preview.source }}</code>
+                            </div>
+                        </div>
+                        <div v-if="manifestForm.preview.application.differences && manifestForm.preview.application.differences.length" style="font-size: 12px; color: #fbbf24;">
+                            Berbeda dengan data LMD (tidak diubah oleh impor; pakai tombol Ubah bila perlu):
+                            <div v-for="d in manifestForm.preview.application.differences" :key="d.field" style="margin-top: 2px;"><code>{{ d.field }}</code>: LMD <code>{{ d.lmd === null ? '—' : d.lmd }}</code> → manifest <code>{{ d.manifest === null ? '—' : d.manifest }}</code></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Kode modul</th><th>Nama &amp; keterangan</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="m in manifestForm.preview.modules" :key="m.code">
+                                        <td><code>{{ m.code }}</code></td>
+                                        <td>{{ m.name }}<span v-if="!m.available" style="font-size: 11px; color: var(--muted);"> (segera hadir)</span><div style="font-size: 11px; color: var(--muted);">{{ m.description || '' }}</div></td>
+                                        <td><span class="badge-pill" :class="{ 'badge-safe': m.status === 'new', 'badge-warning': m.status === 'deleted', 'badge-expired': m.status === 'exists' }">{{ { new: 'Akan ditambahkan', deleted: 'Akan dipulihkan', exists: 'Sudah ada' }[m.status] }}</span></td>
+                                    </tr>
+                                    <tr v-for="m in manifestForm.preview.lmd_only_modules" :key="'lmd-' + m.code">
+                                        <td><code>{{ m.code }}</code></td>
+                                        <td>{{ m.name }}<div style="font-size: 11px; color: #f87171;">Ada di LMD tetapi tidak dikenal aplikasi: fitur ini tidak akan terbuka di client. Periksa kode / hapus bila salah ketik.</div></td>
+                                        <td><span class="badge-pill badge-critical">Tidak dikenal client</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top: 16px;">
+                        <button type="button" class="btn" @click="closeModal">Tutup</button>
+                        <button type="button" class="btn btn-primary" :disabled="!manifestForm.preview || manifestForm.loading || !manifestForm.preview.changes" @click="importManifest">
+                            {{ manifestForm.preview && !manifestForm.preview.changes ? 'Tidak ada perubahan' : 'Impor' }}
+                        </button>
                     </div>
                 </div>
 
