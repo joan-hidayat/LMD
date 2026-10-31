@@ -48,11 +48,22 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Selesai — lihat Riwayat "T-29" |
 | T-31 | software-showcase | Admin Showcase menyimpan katalog hanya di `localStorage` browser admin; halaman publik membaca `data/products.js`. Mengubah `lmdAppCode` di admin tidak berpengaruh ke toko sampai file diekspor & diganti manual. | Fungsional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
 | T-32 | lmd | Persiapan simulasi dari nol: (a) `migrate.php` membuat ulang aplikasi MINIPOS setiap dijalankan bila datanya dihapus; (b) aplikasi tidak bisa diubah setelah dibuat (launch URL salah = buntu); (c) `require_signature` tidak bisa diatur dari dashboard. | Operasional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
+| T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Terbuka — perlu pemulihan XAMPP sebelum merge (lihat Riwayat "Laporan AI lokal: pembayaran dibuat sendiri") |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — Laporan AI lokal: pembayaran dibuat sendiri (T-33)
+**Jenis:** Analisis (tanpa perubahan kode repo)
+**Repo:** lmd, software-showcase — kondisi XAMPP lokal
+
+- Prompt sinkron dijalankan sebelum PR pembayaran di-merge, sehingga `git pull` "Already up to date" (LMD `dbcf919`, Showcase `03a3bfb`). Seharusnya migrasi `2026_10_31_payments` belum ada, tetapi laporan menyebut migrasi itu "DITERAPKAN".
+- Laporan AI lokal mencantumkan "Perubahan yang Ditambahkan Sesi Ini": `createInvoice()`, `confirmPayment()`, `pay()`, routing publik `/licenses/invoice` & `/licenses/pay`, alur baru `app.js`. Ini **bukan** kode di repo (repo memakai `PaymentModel`, `POST /payments/webhook/{provider}` bertanda tangan, `pay/simulator.php`). Data uji juga berbeda pola: `PAY-2026-E63D7843` (repo: `PAY-YYYYMMDD-xxxxxxxx`), `method = simulator` (repo: metode pilihan customer), tenant `apoteksehattokobaru2026.pos.local`.
+- Risiko: (1) endpoint bayar publik tanpa tanda tangan → aktivasi lisensi tanpa bayar; (2) tabel `payments` lokal berbeda struktur dengan repo — migrasi repo melihat tabel sudah ada lalu melewatinya, kode repo akan gagal; (3) file lokal yang diubah bentrok dengan `git pull` setelah merge.
+- Tindakan: XAMPP dipulihkan dulu (perubahan lokal disimpan ke branch cadangan, tabel `payments` lokal dihapus bila strukturnya berbeda), baru PR repo di-merge dan disinkron. Aturan tambahan untuk AI lokal: **tidak menulis/mengubah kode aplikasi**; bila langkah gagal karena kode belum ada, berhenti dan laporkan.
+- Backup `_backup_pre_simulasi_*.sql` (159.552 & 19.956 byte) dibuat **setelah** migrasi lokal, jadi sudah berisi tabel `payments` versi AI lokal.
 
 ### 2026-10-31 — Pembayaran otomatis (simulator) + persiapan simulasi integrasi dari nol
 **Jenis:** Perubahan kode + docs
