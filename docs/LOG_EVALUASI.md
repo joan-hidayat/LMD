@@ -52,6 +52,16 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Analisis: pembayaran otomatis (rencana, belum ada kode)
+**Jenis:** Analisis / usulan
+**Repo:** lmd, software-showcase
+
+- Kondisi: payment gateway belum dipilih, n8n belum terpasang. Persetujuan pesanan masih manual (`approve_order` oleh admin; token API `lmdtok_…` sudah tersedia).
+- Usulan: n8n **tidak wajib** untuk pembayaran. Webhook gateway sebaiknya langsung ke LMD (`POST /payments/webhook/{provider}`) dengan verifikasi tanda tangan, lalu memanggil logika `approve_order` yang sama. Lapisan *adapter* per provider membuat pilihan vendor bisa ditunda.
+- Tahap 1 (📋): provider **simulator** (halaman bayar tiruan + webhook bertanda tangan) agar alur Showcase → bayar → lisensi aktif otomatis bisa diuji end-to-end tanpa akun vendor.
+- Tahap 2 (📋): adapter Midtrans (Snap) atau Xendit (Invoice); keduanya punya sandbox gratis, QRIS/VA/e-wallet, dan butuh verifikasi usaha (KYC) untuk production.
+- n8n (📋): untuk otomasi non-kritis — notifikasi email/WhatsApp saat lisensi aktif, pengingat sebelum kedaluwarsa, laporan berkala.
+
 ### 2026-10-31 — Verifikasi lokal T-29 (PR LMD #11)
 **Jenis:** Verifikasi (tanpa perubahan kode)
 **Repo:** lmd — dilakukan AI lokal di XAMPP
