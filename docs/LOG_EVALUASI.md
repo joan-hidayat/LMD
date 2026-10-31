@@ -48,12 +48,21 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Selesai — lihat Riwayat "T-29" |
 | T-31 | software-showcase | Admin Showcase menyimpan katalog hanya di `localStorage` browser admin; halaman publik membaca `data/products.js`. Mengubah `lmdAppCode` di admin tidak berpengaruh ke toko sampai file diekspor & diganti manual. | Fungsional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
 | T-32 | lmd | Persiapan simulasi dari nol: (a) `migrate.php` membuat ulang aplikasi MINIPOS setiap dijalankan bila datanya dihapus; (b) aplikasi tidak bisa diubah setelah dibuat (launch URL salah = buntu); (c) `require_signature` tidak bisa diatur dari dashboard. | Operasional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
-| T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Terbuka — perlu pemulihan XAMPP sebelum merge (lihat Riwayat "Laporan AI lokal: pembayaran dibuat sendiri") |
+| T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Selesai — terbukti & dipulihkan, lihat Riwayat "Pemulihan XAMPP (T-33)" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — Pemulihan XAMPP (T-33)
+**Jenis:** Verifikasi + pemulihan (tanpa perubahan kode repo)
+**Repo:** lmd, software-showcase — XAMPP lokal
+
+- Perubahan AI lokal: LMD `LicenseController.php` (+43), `api/index.php` (+6), `OrderModel.php` (+84), `migrate.php` (+28) + 14 file `scratch/` (termasuk `cookie*.txt`); Showcase `assets/js/app.js` (+99/−79). Disimpan ke branch lokal `local-ai-payment-wip` (LMD `23c4ece`, Showcase `be5e153`), **tidak di-push**; `main` lokal bersih.
+- **Celah terbukti:** sebelum pemulihan `POST /licenses/pay` dengan body `{}` dijawab `"payment_no is required."` — endpoint lolos dari pemeriksaan login dan tidak memakai tanda tangan, jadi siapa pun yang tahu `payment_no` bisa melunasi tagihan & mengaktifkan lisensi. Sesudah pemulihan: `401 Login admin diperlukan` (kode resmi tidak punya endpoint itu).
+- Tabel `payments` lokal (1 baris uji) **berbeda** dengan repo: tanpa `provider`, `checkout_token`, `provider_ref`, `expires_at`, `last_notification`; enum status tanpa `expired`/`cancelled`. Migrasi repo akan melewatinya karena nama tabel sama → tabel lokal harus dihapus sebelum `migrate.php` versi repo dijalankan. `schema_migrations` belum ada (benar, dibuat oleh migrate versi repo).
+- Branch `local-ai-payment-wip` jangan pernah di-push: berisi `scratch/cookie*.txt` (cookie sesi uji).
 
 ### 2026-10-31 — Laporan AI lokal: pembayaran dibuat sendiri (T-33)
 **Jenis:** Analisis (tanpa perubahan kode repo)
