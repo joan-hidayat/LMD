@@ -4,6 +4,7 @@ Latihan mendaftarkan aplikasi client (contoh: **Mini POS**) ke ekosistem mulai d
 sampai customer membayar di Showcase dan memakai aplikasinya. Mengikuti [`STANDAR_INTEGRASI.md`](STANDAR_INTEGRASI.md) v1.1.
 
 Sudah diuji ujung-ke-ujung di lingkungan pengembangan pada 2026-10-31 (lihat `LOG_EVALUASI.md`).
+Versi tampilan ada di dashboard LMD: **Buku Panduan → 🧪 Simulasi Integrasi** (perbarui keduanya bila langkah berubah).
 
 ```
 [0] Backup & kosongkan  →  [1] LMD: aplikasi, modul, paket  →  [2] Showcase: hubungkan produk
@@ -150,6 +151,7 @@ Tidak memakai simulator? Admin tetap bisa **Approve** manual di *Subscriptions �
 
 | Gejala | Penyebab | Solusi |
 |---|---|---|
+| Lupa password dashboard LMD / akun terkunci | — | Command Prompt di folder LMD: `C:\xampp\php\php.exe database\admin.php reset-password <email>` (email: `... admin.php list`). Tidak menghapus data. |
 | Showcase: "Belum ada paket publik" | Paket belum publik/aktif, atau `lmdAppCode` ≠ Application Code | Periksa langkah 1c & 2 |
 | Tombol produk tetap "Segera hadir" | `lmdAppCode` kosong | Langkah 2; muat ulang halaman Showcase |
 | Halaman bayar tidak terbuka | Popup diblokir browser | Klik **Buka Halaman Pembayaran** di Showcase |

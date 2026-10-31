@@ -55,6 +55,16 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Panduan simulasi masuk Buku Panduan
+**Jenis:** Perubahan UI + docs
+**Repo:** lmd
+
+- Atas permintaan pemilik proyek, langkah `SIMULASI_INTEGRASI.md` ditambahkan sebagai tab ketiga **🧪 Simulasi Integrasi** di Buku Panduan dashboard LMD (`index.html`): persiapan & pengosongan, daftar aplikasi/modul/paket, hubungkan Showcase & cek client, pesan-bayar-buka aplikasi, pemeriksaan di LMD, uji penguncian, masalah umum (termasuk cara reset password admin LMD lewat `admin.php reset-password`).
+- Blok perintah memakai `<pre>` karena template Vue merapatkan baris baru di luar `<pre>` (terlihat saat uji tampilan).
+- Tab Ekosistem dirapikan: baris "n8n + payment gateway" diganti "n8n (notifikasi)" karena pembayaran sudah lewat webhook; "Urutan kerja yang disarankan" diperbarui (simulasi → gateway sungguhan → HTTPS/credential production → T-09).
+- `SIMULASI_INTEGRASI.md` diberi rujukan ke tab tersebut dan baris lupa password.
+- Verifikasi (Playwright): tab tampil, 7 kartu, tab Ekosistem tersembunyi saat tab Simulasi aktif.
+
 ### 2026-10-31 — Sinkron lokal pembayaran otomatis (PR LMD #12, Showcase #6)
 **Jenis:** Verifikasi (tanpa perubahan kode)
 **Repo:** lmd, software-showcase — XAMPP lokal
