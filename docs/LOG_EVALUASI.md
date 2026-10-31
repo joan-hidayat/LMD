@@ -55,6 +55,17 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-10-31 — Sinkron lokal pembayaran otomatis (PR LMD #12, Showcase #6)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd, software-showcase — XAMPP lokal
+
+- Tabel `payments` buatan AI lokal dihapus (`DROP TABLE`), lalu `git pull`: LMD `dbcf919..1d28540` (20 file), Showcase `03a3bfb..2470cc9` (8 file). Hash dilaporkan mentah dan cocok.
+- `migrate.php`: `2026_10_31_payments  DITERAPKAN`; kolom `provider`, `checkout_token`, `expires_at`, enum status lengkap; `schema_migrations` = 11 baris.
+- `POST /payments/webhook/simulator` tanpa tanda tangan → `Invalid simulator signature.` (401).
+- Backup `_backup_pre_reset_central_saas.sql` (168.258 byte) dan `_backup_pre_reset_mini_pos.sql` (19.956 byte).
+- `error.log` Apache: hanya peringatan bawaan XAMPP (AH01909, AH00112, AH00098, AH00354), tidak ada error PHP.
+- Uji pesanan lewat browser (langkah 6) **belum** dilakukan: AI lokal tidak bisa mengoperasikan browser. Alur yang sama tercakup oleh simulasi dari nol (`SIMULASI_INTEGRASI.md` langkah 4) yang dijalankan pemilik proyek.
+
 ### 2026-10-31 — Pemulihan XAMPP (T-33)
 **Jenis:** Verifikasi + pemulihan (tanpa perubahan kode repo)
 **Repo:** lmd, software-showcase — XAMPP lokal
