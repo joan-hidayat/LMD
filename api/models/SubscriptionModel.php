@@ -15,7 +15,9 @@ class SubscriptionModel {
                    a.name as application_name, a.code as application_code,
                    p.name as package_name, p.code as package_code,
                    l.license_key, l.status as license_status,
-                   (SELECT ai.domain FROM application_instances ai WHERE ai.license_id = l.id ORDER BY ai.id ASC LIMIT 1) as instance_domain
+                   (SELECT ai.domain FROM application_instances ai WHERE ai.license_id = l.id ORDER BY ai.id ASC LIMIT 1) as instance_domain,
+                   (SELECT pay.status FROM payments pay WHERE pay.subscription_id = s.id ORDER BY pay.id DESC LIMIT 1) as payment_status,
+                   (SELECT pay.payment_no FROM payments pay WHERE pay.subscription_id = s.id ORDER BY pay.id DESC LIMIT 1) as payment_no
             FROM subscriptions s
             JOIN customers c ON s.customer_id = c.id
             JOIN applications a ON s.application_id = a.id

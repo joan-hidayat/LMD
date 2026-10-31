@@ -46,11 +46,87 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-27 | software-showcase | Admin Showcase: status login di `sessionStorage` (bisa dipalsukan dari DevTools) dan `admin/index.html` bisa dibuka langsung tanpa PHP. | Keamanan | Selesai — lihat Riwayat "Paket keamanan" |
 | T-28 | sample-mini-pos, lmd | Mini POS menyimpan daftar `modules` dari LMD tetapi **tidak memakainya**: semua fitur terbuka untuk semua paket (Starter = Bisnis). `STANDAR_INTEGRASI.md` 4.2 no. 5 sempat mengklaim sudah diterapkan; klaim dikoreksi menjadi 🟡. | Fungsional | Selesai — lihat Riwayat "T-28" |
 | T-29 | lmd | `client_demo/apotek.html` memanggil `validate` & `register` langsung dari browser, tidak sesuai Standar Integrasi (no. 1: wajib dari server). Aman selama APOTEK `require_signature = 0`, tetapi demo ini akan berhenti bekerja bila APOTEK diwajibkan tanda tangan. | Konsistensi / demo | Selesai — lihat Riwayat "T-29" |
+| T-31 | software-showcase | Admin Showcase menyimpan katalog hanya di `localStorage` browser admin; halaman publik membaca `data/products.js`. Mengubah `lmdAppCode` di admin tidak berpengaruh ke toko sampai file diekspor & diganti manual. | Fungsional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
+| T-32 | lmd | Persiapan simulasi dari nol: (a) `migrate.php` membuat ulang aplikasi MINIPOS setiap dijalankan bila datanya dihapus; (b) aplikasi tidak bisa diubah setelah dibuat (launch URL salah = buntu); (c) `require_signature` tidak bisa diatur dari dashboard. | Operasional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
+| T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Selesai — terbukti & dipulihkan, lihat Riwayat "Pemulihan XAMPP (T-33)" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — Pemulihan XAMPP (T-33)
+**Jenis:** Verifikasi + pemulihan (tanpa perubahan kode repo)
+**Repo:** lmd, software-showcase — XAMPP lokal
+
+- Perubahan AI lokal: LMD `LicenseController.php` (+43), `api/index.php` (+6), `OrderModel.php` (+84), `migrate.php` (+28) + 14 file `scratch/` (termasuk `cookie*.txt`); Showcase `assets/js/app.js` (+99/−79). Disimpan ke branch lokal `local-ai-payment-wip` (LMD `23c4ece`, Showcase `be5e153`), **tidak di-push**; `main` lokal bersih.
+- **Celah terbukti:** sebelum pemulihan `POST /licenses/pay` dengan body `{}` dijawab `"payment_no is required."` — endpoint lolos dari pemeriksaan login dan tidak memakai tanda tangan, jadi siapa pun yang tahu `payment_no` bisa melunasi tagihan & mengaktifkan lisensi. Sesudah pemulihan: `401 Login admin diperlukan` (kode resmi tidak punya endpoint itu).
+- Tabel `payments` lokal (1 baris uji) **berbeda** dengan repo: tanpa `provider`, `checkout_token`, `provider_ref`, `expires_at`, `last_notification`; enum status tanpa `expired`/`cancelled`. Migrasi repo akan melewatinya karena nama tabel sama → tabel lokal harus dihapus sebelum `migrate.php` versi repo dijalankan. `schema_migrations` belum ada (benar, dibuat oleh migrate versi repo).
+- Branch `local-ai-payment-wip` jangan pernah di-push: berisi `scratch/cookie*.txt` (cookie sesi uji).
+
+### 2026-10-31 — Laporan AI lokal: pembayaran dibuat sendiri (T-33)
+**Jenis:** Analisis (tanpa perubahan kode repo)
+**Repo:** lmd, software-showcase — kondisi XAMPP lokal
+
+- Prompt sinkron dijalankan sebelum PR pembayaran di-merge, sehingga `git pull` "Already up to date" (LMD `dbcf919`, Showcase `03a3bfb`). Seharusnya migrasi `2026_10_31_payments` belum ada, tetapi laporan menyebut migrasi itu "DITERAPKAN".
+- Laporan AI lokal mencantumkan "Perubahan yang Ditambahkan Sesi Ini": `createInvoice()`, `confirmPayment()`, `pay()`, routing publik `/licenses/invoice` & `/licenses/pay`, alur baru `app.js`. Ini **bukan** kode di repo (repo memakai `PaymentModel`, `POST /payments/webhook/{provider}` bertanda tangan, `pay/simulator.php`). Data uji juga berbeda pola: `PAY-2026-E63D7843` (repo: `PAY-YYYYMMDD-xxxxxxxx`), `method = simulator` (repo: metode pilihan customer), tenant `apoteksehattokobaru2026.pos.local`.
+- Risiko: (1) endpoint bayar publik tanpa tanda tangan → aktivasi lisensi tanpa bayar; (2) tabel `payments` lokal berbeda struktur dengan repo — migrasi repo melihat tabel sudah ada lalu melewatinya, kode repo akan gagal; (3) file lokal yang diubah bentrok dengan `git pull` setelah merge.
+- Tindakan: XAMPP dipulihkan dulu (perubahan lokal disimpan ke branch cadangan, tabel `payments` lokal dihapus bila strukturnya berbeda), baru PR repo di-merge dan disinkron. Aturan tambahan untuk AI lokal: **tidak menulis/mengubah kode aplikasi**; bila langkah gagal karena kode belum ada, berhenti dan laporkan.
+- Backup `_backup_pre_simulasi_*.sql` (159.552 & 19.956 byte) dibuat **setelah** migrasi lokal, jadi sudah berisi tabel `payments` versi AI lokal.
+
+### 2026-10-31 — Pembayaran otomatis (simulator) + persiapan simulasi integrasi dari nol
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd, software-showcase (commit `6664620`)
+
+Pembayaran otomatis (rencana di entri "Analisis: pembayaran otomatis", tahap 1):
+- **LMD:** tabel `payments` (migrasi `2026_10_31_payments`); `api/config/payment.php` (provider `simulator`, secret dev hardcode, override `payment.local.php`); adapter `api/helpers/payment_providers.php` (antarmuka `PaymentProvider`, `SimulatorPaymentProvider`); `PaymentModel` (buat tagihan saat `order`, webhook idempoten, cek nominal, retry, batal saat keputusan manual); endpoint publik `POST /payments/webhook/{provider}` (rate limit 120/menit); halaman `pay/simulator.php` (bayar / gagal / tagihan baru, CSRF, nonaktif bila `simulator.enabled = false`). `order` & `order_status` kini mengembalikan `payment {status, payment_url}`; tabel Persetujuan Pembayaran menampilkan status tagihan.
+- **Showcase:** wizard langkah 3 "Buat Tagihan & Bayar" membuka halaman bayar di tab baru; langkah 4 menampilkan status tagihan (belum dibayar / lunas / gagal / kedaluwarsa) dan otomatis menampilkan link aplikasi setelah lunas. Gambar QRIS dari layanan eksternal (`api.qrserver.com`) dihapus.
+- n8n tidak dipakai untuk pembayaran (webhook langsung ke LMD); n8n tetap 📋 untuk notifikasi/pengingat.
+
+Persiapan simulasi dari nol (permintaan pemilik: kosongkan LMD, putus produk Showcase, lalu latihan integrasi):
+- **T-31 (Showcase):** `admin/save.php` (wajib login + CSRF header, validasi id/nama/`lmdAppCode`, tulis atomik) menyimpan katalog ke `data/products.local.json` (di-ignore git agar `git pull` tidak bentrok); `data/catalog.php` menyajikan katalog admin atau `products.js` bawaan; halaman publik & admin memuat `data/catalog.php`. Tombol Reset ke Default menghapus katalog admin. Ekspor `products.js` tetap ada sebagai cadangan.
+- **T-32 (LMD):** `migrate.php` mencatat migrasi yang sudah jalan di `schema_migrations` (migrasi pengisi data tidak mengulang); tombol **Ubah** aplikasi (`PUT /applications/{id}`: nama, deskripsi, launch URL, tanda tangan; kode terkunci); checkbox *Wajib request bertanda tangan* (default aktif) saat membuat aplikasi. Metode `ApplicationModel::update` lama yang tidak terpakai (bisa mengganti kode) dihapus.
+- **`database/reset_data.php`:** mengosongkan semua tabel data LMD kecuali `system_users`, `api_tokens`, `schema_migrations`; menampilkan jumlah baris, wajib ketik `KOSONGKAN`.
+- **`docs/SIMULASI_INTEGRASI.md`:** panduan langkah demi langkah + tabel uji & masalah umum; dirujuk dari `STANDAR_INTEGRASI.md` §6.
+
+Verifikasi (lingkungan cloud, DB uji di-backup dulu):
+
+| Skenario | Hasil |
+|---|---|
+| Webhook tanpa tanda tangan / nominal salah / tagihan tak dikenal / provider tak aktif | 401 / 409 / 404 / 404 |
+| Bayar di simulator | Tagihan `paid`, pesanan `active`, `license_key` + `app_url` di `order_status`; log `payment_paid` → `approve_order` |
+| Webhook yang sama dikirim ulang | 200 `duplicate: true`, tidak diproses dua kali |
+| Gagal → tagihan baru → bayar | Tagihan lama `failed`, baru `paid`; retry kedua ditolak "Masih ada tagihan aktif" |
+| CSRF salah di halaman bayar | Ditolak |
+| Admin menolak pesanan lalu customer membuka halaman bayar | Tagihan "dibatalkan", tombol bayar tidak ada |
+| Wizard Showcase (Playwright) | Tab bayar terbuka → status "BELUM DIBAYAR" → bayar → layar sukses + URL aplikasi |
+| Admin Showcase: hapus semua `lmdAppCode` lalu hubungkan lagi | Halaman publik: 0 tombol Berlangganan → 1; id tidak valid ditolak; tanpa login 401 |
+| **Simulasi dari nol:** `reset_data.php` → `migrate.php` | 15 tabel dikosongkan, admin tetap; MINIPOS **tidak** dibuat ulang |
+| Daftar MINIPOS lewat form dashboard | Checkbox tanda tangan default aktif → `require_signature = 1`; Ubah nama berhasil, kode terkunci |
+| 4 modul + 2 paket → Showcase memuat paket Starter & Pro | ✅ |
+| Pesan "Toko Simulasi" → bayar → buka aplikasi (DB `mini_pos` dihapus dulu) | Setup admin → kasir; menu Kasir, Laporan, Produk, Kelola User terbuka, Stok & Multi Outlet 🔒; transaksi Rp 19.980; instalasi aktif dengan secret |
+
+Catatan: halaman bayar memanggil webhook LMD lewat host yang sama dengan yang dibuka browser; bila LMD tidak bisa memanggil dirinya sendiri (host/port berbeda), simulator menampilkan "Webhook ditolak LMD".
+
+### 2026-10-31 — Analisis: pembayaran otomatis (rencana, belum ada kode)
+**Jenis:** Analisis / usulan
+**Repo:** lmd, software-showcase
+
+- Kondisi: payment gateway belum dipilih, n8n belum terpasang. Persetujuan pesanan masih manual (`approve_order` oleh admin; token API `lmdtok_…` sudah tersedia).
+- Usulan: n8n **tidak wajib** untuk pembayaran. Webhook gateway sebaiknya langsung ke LMD (`POST /payments/webhook/{provider}`) dengan verifikasi tanda tangan, lalu memanggil logika `approve_order` yang sama. Lapisan *adapter* per provider membuat pilihan vendor bisa ditunda.
+- Tahap 1 (📋): provider **simulator** (halaman bayar tiruan + webhook bertanda tangan) agar alur Showcase → bayar → lisensi aktif otomatis bisa diuji end-to-end tanpa akun vendor.
+- Tahap 2 (📋): adapter Midtrans (Snap) atau Xendit (Invoice); keduanya punya sandbox gratis, QRIS/VA/e-wallet, dan butuh verifikasi usaha (KYC) untuk production.
+- n8n (📋): untuk otomasi non-kritis — notifikasi email/WhatsApp saat lisensi aktif, pengingat sebelum kedaluwarsa, laporan berkala.
+
+### 2026-10-31 — Verifikasi lokal T-29 (PR LMD #11)
+**Jenis:** Verifikasi (tanpa perubahan kode)
+**Repo:** lmd — dilakukan AI lokal di XAMPP
+
+- (a) License key demo bawaan `LIC-APO-CRIT…` ada di DB lokal tetapi berstatus **expired** → LMD menjawab "License status is expired.", badge "TIDAK VALID" (perilaku benar).
+- (b) Auto-Register → `LIC-APOTEK-8D908CD4DAFFBC0D31BEBFF4`, valid, modul DASHBOARD/MASTER_OBAT/INVENTORY/POS_KASIR; RESEP_DOKTER & BPJS_INTEGRATION terkunci (sesuai APO_BASIC).
+- (c) Heartbeat lewat `client_demo/api.php?action=validate`, tidak ada request browser langsung ke `api/index.php/licenses/...`.
+- (d) `error.log` Apache: tidak ada error PHP baru.
+- Catatan cross-check: (1) AI lokal melaporkan otomasi browsernya gagal (`ECONNREFUSED 127.0.0.1:52924`) dan pengujian dilakukan "langsung ke endpoint server", sehingga pengamatan tampilan badge dan tab Network (a–c) kemungkinan **disimpulkan dari respons HTTP, bukan dilihat di browser**. Bagian browser sudah diuji di lingkungan cloud (Playwright: 0 request langsung ke LMD), jadi risiko kecil; pemilik proyek disarankan membuka demo sekali secara manual. (2) Keluaran `git log -1 --oneline` yang diminta kembali tidak disertakan (seharusnya LMD `dbcf919`, mini-pos `1abf8a1`).
 
 ### 2026-10-31 — T-29: demo client Apotek memanggil LMD dari server
 **Jenis:** Perubahan kode + docs

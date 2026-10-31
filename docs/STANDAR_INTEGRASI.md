@@ -39,6 +39,7 @@ Setiap aplikasi terdaftar di menu **Applications & Modules** dengan:
 | `launch_url` | Hanya aplikasi hosted | Template URL yang dibuka customer setelah pembayaran disetujui. Placeholder: `{tenant}` (domain instance) dan `{license_key}`. Awali dengan `/` untuk host yang sama dengan LMD. **Kosongkan** untuk aplikasi on-premise: customer menerima license key untuk dimasukkan saat instalasi. |
 | Modul | ✅ minimal 1 | Kode modul unik per aplikasi (`KASIR`, `LAPORAN`, …). |
 | Paket | ✅ minimal 1 publik | `code`, harga, `billing_cycle`, `max_users`, `max_instances`, modul, `is_public`. |
+| `require_signature` | ✅ | Default **aktif** saat aplikasi dibuat di dashboard (checkbox *Wajib request bertanda tangan*); bisa diubah lewat tombol **Ubah**. Matikan hanya untuk client lama yang belum memenuhi 4.3. |
 
 Aplikasi bawaan didaftarkan lewat `database/migrate.php` (fungsi `registerApplication`) agar bisa dipasang ulang di setiap server tanpa input manual.
 
@@ -48,10 +49,11 @@ Aplikasi bawaan didaftarkan lewat `database/migrate.php` (fungsi `registerApplic
 
 | Aturan | Keterangan |
 |---|---|
-| Setiap produk yang bisa dipesan punya `lmdAppCode` | Diisi di Admin Showcase → *Kode Aplikasi di LMD*, tersimpan di `data/products.js`. |
+| Setiap produk yang bisa dipesan punya `lmdAppCode` | Diisi di Admin Showcase → *Kode Aplikasi di LMD*, langsung tersimpan di server (`data/products.local.json`; bawaan repo `data/products.js`). |
 | Produk tanpa `lmdAppCode` tidak bisa dipesan | Tombol tampil **Segera hadir** (nonaktif). |
 | Paket tidak ditulis di Showcase | Kartu paket dimuat dari `GET /packages?app_code={lmdAppCode}`. |
 | Order memakai `app_code` produk | `POST /licenses/order` dengan `app_code = lmdAppCode`. |
+| Pembayaran | Tagihan dibuat LMD bersama order; Showcase membuka `payment.payment_url` dan menunggu `order_status`. Showcase tidak pernah menandai lunas sendiri. |
 | URL aplikasi dari LMD | Setelah approve, tombol **Buka Aplikasi** memakai `app_url` dari `order_status`. Jika `app_url` kosong (on-premise), tampilkan license key + petunjuk instalasi. |
 
 ---
@@ -149,12 +151,14 @@ Endpoint di tabel ini **publik** (tanpa login), dengan rate limit per IP (T-05).
 
 ## 6. Checklist mendaftarkan aplikasi baru
 
+> Latihan langkah demi langkah dari database kosong: [`SIMULASI_INTEGRASI.md`](SIMULASI_INTEGRASI.md).
+
 - [ ] **LMD:** aplikasi (`code`, `launch_url` bila hosted), modul, minimal satu paket publik. Untuk aplikasi bawaan, tambahkan `registerApplication(...)` di `database/migrate.php`.
 - [ ] **Client:** `lmd-client.php` dengan `app_code` yang sama; kode validasi memenuhi 4.2 (salin pola `LicenseGate.php`).
 - [ ] **Client hosted:** menerima `?tenant&lic` sesuai `launch_url`. **On-premise:** wizard instalasi memanggil `POST /licenses/register` atau meminta license key.
-- [ ] **Showcase:** produk diberi `lmdAppCode` di Admin Showcase, lalu ekspor `products.js`.
-- [ ] **LMD:** tentukan `require_signature` aplikasi (wajib untuk aplikasi baru yang client-nya sudah mengikuti 4.3).
-- [ ] **Uji:** pesan dari Showcase → approve → aplikasi terbuka / license key tampil; license key aplikasi lain ditolak (`app_mismatch`); domain lain ditolak (`domain_mismatch`); request tanpa tanda tangan ditolak (`signature_required`).
+- [ ] **Showcase:** produk diberi `lmdAppCode` di Admin Showcase (tersimpan otomatis di server).
+- [ ] **LMD:** pastikan `require_signature` aktif (default aplikasi baru) bila client sudah mengikuti 4.3.
+- [ ] **Uji:** pesan dari Showcase → bayar (simulator) → lisensi aktif otomatis → aplikasi terbuka / license key tampil; license key aplikasi lain ditolak (`app_mismatch`); domain lain ditolak (`domain_mismatch`); request tanpa tanda tangan ditolak (`signature_required`).
 - [ ] **Docs:** catat di `LOG_EVALUASI.md`, perbarui `EKOSISTEM_CARA_KERJA.md` bila alur berubah.
 
 ---

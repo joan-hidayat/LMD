@@ -91,22 +91,26 @@ sequenceDiagram
     actor C as Calon Customer
     participant S as Showcase
     participant L as LMD
-    actor A as Admin LMD
-    S->>L: GET packages?app_code=APOTEK
+    participant G as Payment gateway<br>(simulator)
+    S->>L: GET packages?app_code=MINIPOS
     L-->>S: Paket publik + harga + kuota + modul
-    C->>S: Pilih paket, isi data diri & subdomain
-    C->>S: Bayar (QRIS/transfer), klik "Saya Sudah Bayar"
+    C->>S: Pilih paket, isi data diri & subdomain, pilih metode bayar
     S->>L: POST licenses/order
-    L-->>S: subscription_no (status pending)
+    L-->>S: subscription_no (pending) + payment.payment_url
+    S->>C: Tab baru: halaman bayar
+    C->>G: Bayar
+    G->>L: POST payments/webhook/simulator (bertanda tangan)
+    L->>L: Tagihan paid → approve_order otomatis
     loop tiap 2,5 detik
         S->>L: GET licenses/order_status
     end
-    A->>L: Approve di menu Subscriptions (POST licenses/approve_order)
     L-->>S: is_approved: true + license_key + app_url
     S->>C: Tombol "Buka Aplikasi" → /mini-pos/?tenant=…&lic=…
 ```
 
-Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin menyetujui pembayaran. Masa aktif dihitung **sejak tanggal approve**, bukan tanggal pesan.
+Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah pembayaran lunas (webhook gateway) atau disetujui manual admin. Masa aktif dihitung **sejak tanggal approve**, bukan tanggal pesan.
+
+**Pembayaran otomatis (2026-10-31):** `order` sekaligus membuat tagihan di tabel `payments` (berlaku 24 jam). Gateway memberi tahu LMD lewat `POST /payments/webhook/{provider}`; LMD memverifikasi tanda tangan, mencocokkan nominal, menandai tagihan `paid`, lalu memanggil `approve_order`. Notifikasi ganda diabaikan (idempoten). Tagihan gagal/kedaluwarsa bisa diganti tagihan baru dari halaman bayar. Persetujuan/penolakan manual admin tetap ada dan membatalkan tagihan yang belum dibayar. Provider saat ini: **simulator** (`pay/simulator.php`, ✅ untuk pengembangan); Midtrans/Xendit 📋 (cukup tambah adapter di `api/helpers/payment_providers.php`, diatur di `api/config/payment.php`).
 
 **Endpoint (`LicenseController` + `OrderModel`)**
 
@@ -114,7 +118,8 @@ Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah admin
 |---|---|---|
 | `GET /packages?app_code=APOTEK` | Katalog paket publik (status `active`, `is_public = 1`) beserta modul | `code`, `name`, `base_price`, `billing_cycle`, `max_users`, `modules[]` |
 | `POST /licenses/order` | Buat pesanan: customer (dicari via email), subscription `pending`, modul, lisensi `suspended`, instance `{subdomain}.pos.local` | `201` + `subscription_no`, `total_price` (PPN 11%), `instance_domain` |
-| `GET /licenses/order_status?subscription_no=` | Polling Showcase | `is_approved`, `is_rejected`; `license_key` & `app_url` hanya setelah approve |
+| `GET /licenses/order_status?subscription_no=` | Polling Showcase | `is_approved`, `is_rejected`, `payment {status, payment_url}`; `license_key` & `app_url` hanya setelah approve |
+| `POST /payments/webhook/{provider}` | Notifikasi payment gateway (publik, wajib tanda tangan provider; simulator: header `X-Simulator-Signature` = HMAC-SHA256 body) | `200` (juga untuk duplikat), `401` tanda tangan salah, `404` tagihan/provider tidak dikenal, `409` nominal tidak cocok |
 | `POST /licenses/approve_order` | Admin/n8n menyetujui pembayaran: subscription & lisensi `active`, instance aktif, activation dibuat | `200` + `license_key`, `expires_at`, `app_url` |
 | `POST /licenses/reject_order` | Menolak: subscription `cancelled`, lisensi `revoked` (subdomain bisa dipakai lagi) | `200` + `is_rejected: true` |
 | `GET /licenses/pending_orders` | Daftar pesanan `pending` untuk otomasi (n8n) | `subscription_no`, customer, paket, `instance_domain`, `total_price` |
@@ -129,7 +134,7 @@ Kode error: `400` input tidak valid (email, format subdomain), `404` paket/pesan
 - Selama pending, lisensi berstatus `suspended` karena enum `licenses.status` tidak punya `pending` (dipilih agar schema DB yang sudah terpasang tidak perlu migrasi). Status pesanan dibaca dari `subscriptions.status`. Validate menolak lisensi ini sampai di-approve.
 - `instance_key` mengikuti konvensi Mini POS: `INST-STORE-{8 karakter terakhir license key}`.
 - Wizard Showcase tidak lagi meminta password. Akun admin dibuat di aplikasi client saat pertama dibuka (lihat Alur C).
-- Admin melihat pesanan di **Dashboard** (banner) dan **Subscriptions → Persetujuan Pembayaran & Aktivasi Domain Klien** (tombol Approve / Tolak). Endpoint `approve_order` yang sama siap dipanggil n8n.
+- Admin melihat pesanan di **Dashboard** (banner) dan **Subscriptions → Persetujuan Pembayaran & Aktivasi Domain Klien** (kolom status tagihan + tombol Approve / Tolak untuk pembayaran di luar gateway).
 
 ---
 
@@ -300,6 +305,11 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penegakan `modules` di Mini POS | ✅ Jalan | Kasir, Laporan, Stok terkunci sesuai paket; halaman di luar paket 403 (T-28) |
 | Transaksi & laporan Mini POS | ✅ Jalan | Produk & transaksi tersimpan di DB `mini_pos`, harga dihitung server; laporan penjualan; stok (modul STOK) (T-28) |
 | Multi Outlet Mini POS | 📋 Rencana | Modul sudah dikunci per paket, fiturnya belum dibuat |
+| Pembayaran otomatis (webhook gateway → approve) | ✅ Jalan | Provider simulator; tagihan `payments`, webhook bertanda tangan, idempoten, retry tagihan |
+| Payment gateway sungguhan (Midtrans / Xendit) | 📋 Rencana | Tinggal adapter baru; vendor belum dipilih |
+| Ubah aplikasi di dashboard LMD (nama, launch URL, tanda tangan) | ✅ Jalan | Tombol **Ubah** di Applications; `app_code` tidak bisa diubah |
+| Katalog Admin Showcase tersimpan di server | ✅ Jalan | `data/products.local.json` via `admin/save.php` (T-31) |
+| Kosongkan data LMD untuk simulasi | ✅ Jalan | `php database/reset_data.php` (akun admin & token tetap); panduan `SIMULASI_INTEGRASI.md` |
 | Kelola produk di Mini POS | ✅ Jalan | Menu Produk (admin): tambah, ubah harga, nonaktifkan; katalog contoh 6 produk untuk toko baru (T-30) |
 | `future_module_access` (modul baru otomatis) | ✅ Jalan | Modul yang dibuat setelah paket/subscription masuk ke paket, subscription (`source = future_module`), dan lisensi; disusulkan juga oleh `migrate.php` (T-13) |
 | Paket & harga Showcase sinkron dengan LMD | ✅ Jalan | Showcase membaca `GET /packages?app_code` (T-12) |

@@ -424,6 +424,10 @@
                             <small class="app-launch" :title="app.launch_url || 'Tanpa URL hosted: customer memasukkan license key saat instalasi'">
                                 {{ app.launch_url ? '🌐 Hosted · ' + app.launch_url : '💾 On-premise (tanpa URL hosted)' }}
                             </small>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                                <small style="color: var(--muted);">{{ Number(app.require_signature) ? '🔐 Wajib tanda tangan' : '🔓 Tanpa tanda tangan' }}</small>
+                                <button class="btn btn-sm" @click.stop="openEditApp(app)">Ubah</button>
+                            </div>
                         </div>
                     </div>
                     <div>
@@ -564,7 +568,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
                         <div>
                             <h4 style="font-size: 15px; font-weight: 800;">🧾 Persetujuan Pembayaran & Aktivasi Domain Klien</h4>
-                            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Pesanan dari Software Showcase. Approve setelah dana masuk; lisensi aktif dan masa berlaku dihitung sejak tanggal approve.</p>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Pesanan dari Software Showcase. Pembayaran lewat gateway menyetujui pesanan <strong>otomatis</strong>; Approve manual hanya untuk pembayaran di luar gateway (tagihan yang belum dibayar lalu dibatalkan).</p>
                         </div>
                         <span class="badge-pill badge-warning">{{ pendingOrders.length }} menunggu</span>
                     </div>
@@ -576,6 +580,7 @@
                                     <th>Customer</th>
                                     <th>Paket & Domain</th>
                                     <th>Total Tagihan</th>
+                                    <th>Pembayaran</th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
@@ -588,6 +593,10 @@
                                     </td>
                                     <td>{{ sub.package_name }} <span style="font-size: 11px; color: var(--text-muted);">· {{ sub.max_users }} user · {{ sub.billing_cycle }}</span><div style="margin-top: 4px;"><code>{{ sub.instance_domain || '-' }}</code></div></td>
                                     <td><strong>{{ formatRupiah(sub.total_price) }}</strong><div style="font-size: 11px; color: var(--text-muted);">termasuk PPN 11%</div></td>
+                                    <td>
+                                        <span class="badge-pill" :class="{ 'badge-warning': sub.payment_status === 'pending', 'badge-expired': ['failed', 'expired', 'cancelled'].includes(sub.payment_status), 'badge-safe': sub.payment_status === 'paid' }">{{ paymentStatusLabel(sub.payment_status) }}</span>
+                                        <div v-if="sub.payment_no" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;"><code>{{ sub.payment_no }}</code></div>
+                                    </td>
                                     <td style="white-space: nowrap;">
                                         <button class="btn btn-sm btn-primary" @click="decideOrder(sub, 'approve')">✓ Approve</button>
                                         <button class="btn btn-sm btn-danger" @click="decideOrder(sub, 'reject')" style="margin-left: 6px;">Tolak</button>
@@ -1225,15 +1234,16 @@
                     <!-- 4. ALUR B -->
                     <div class="card">
                         <span class="eco-eyebrow">4 · Alur B: calon customer lewat Showcase</span>
-                        <h4 class="eco-h">Berlangganan, bayar, tunggu approve, buka aplikasi</h4>
-                        <p class="eco-p">Alur self-service untuk aplikasi yang di-host oleh provider. Bedanya dengan Alur A: subscription dibuat berstatus <em>pending</em> dulu dan baru aktif setelah admin menyetujui pembayaran.</p>
+                        <h4 class="eco-h">Berlangganan, bayar, lisensi aktif otomatis, buka aplikasi</h4>
+                        <p class="eco-p">Alur self-service untuk aplikasi yang di-host oleh provider. Bedanya dengan Alur A: subscription dibuat berstatus <em>pending</em> dulu dan baru aktif setelah pembayaran lunas (webhook payment gateway) atau disetujui manual admin.</p>
                         <ol class="eco-flow">
-                            <li><div><span class="eco-tag eco-t-shop">Showcase → LMD</span><p>Kartu paket dimuat dari <code>GET /api/packages?app_code=APOTEK</code>: nama, harga, kuota user, dan modul sama persis dengan data LMD.</p></div></li>
-                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Isi nama, email, WhatsApp, nama toko, subdomain (contoh <code>tokoberkah.pos.local</code>), dan password admin.</p></div></li>
-                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Tampil tagihan + PPN 11%, QRIS atau transfer. Customer klik “Saya Sudah Bayar”.</p></div></li>
-                            <li><div><span class="eco-tag eco-t-shop">Showcase → LMD</span><p><code>POST /api/licenses/order</code> membuat customer, subscription <em>pending</em>, lisensi (ditahan), dan instance <code>{subdomain}.pos.local</code>. Mengembalikan <code>subscription_no</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase → LMD</span><p>Kartu paket dimuat dari <code>GET /api/packages?app_code=MINIPOS</code>: nama, harga, kuota user, dan modul sama persis dengan data LMD.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Isi nama, email, WhatsApp, nama toko, dan subdomain (contoh <code>tokoberkah.pos.local</code>). Password admin dibuat di aplikasi client.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Tampil tagihan + PPN 11% dan pilihan metode. Customer klik “Buat Tagihan &amp; Bayar”.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase → LMD</span><p><code>POST /api/licenses/order</code> membuat customer, subscription <em>pending</em>, lisensi (ditahan), dan instance <code>{subdomain}.pos.local</code>. Sekaligus membuat <strong>tagihan</strong> (tabel <code>payments</code>, 24 jam). Mengembalikan <code>subscription_no</code> + <code>payment_url</code>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Payment gateway</span><p>Halaman bayar terbuka di tab baru (saat ini <strong>simulator</strong> <code>pay/simulator.php</code>). Setelah bayar, gateway mengirim <code>POST /api/payments/webhook/{provider}</code> bertanda tangan; LMD memverifikasi tanda tangan &amp; nominal lalu menyetujui pesanan otomatis.</p></div></li>
                             <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Browser polling tiap 2,5 detik ke <code>GET /api/licenses/order_status?subscription_no=…</code>.</p></div></li>
-                            <li><div><span class="eco-tag eco-t-lmd">Admin LMD</span><p>Banner muncul di Dashboard. Di <strong>Subscriptions → Persetujuan Pembayaran</strong>, admin cek uang masuk lalu klik <strong>Approve</strong> (atau Tolak). Lisensi aktif, masa berlaku dihitung sejak tanggal approve. Endpoint <code>approve_order</code> yang sama siap dipanggil n8n.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">Admin LMD</span><p>Cadangan untuk pembayaran di luar gateway: di <strong>Subscriptions → Persetujuan Pembayaran</strong> (kolom status tagihan) admin klik <strong>Approve</strong> atau Tolak; tagihan yang belum dibayar dibatalkan. Masa berlaku dihitung sejak tanggal approve.</p></div></li>
                             <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Polling melihat <code>is_approved: true</code>, menampilkan license key dan tombol “Buka Aplikasi” ke <code>/mini-pos/?tenant=…&amp;lic=…</code>. Jika ditolak, tampil pesan pesanan ditolak.</p></div></li>
                         </ol>
                         <div class="eco-callout eco-callout-info">
@@ -1302,6 +1312,8 @@
                                     <tr><td>Penguncian instance + domain</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kuota lokasi per paket, domain terkunci, blokir admin (T-02)</td></tr>
                                     <tr><td>Login &amp; Kelola User di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Setup admin, login, kelola user (T-17)</td></tr>
                                     <tr><td>Penegakan <code>max_users</code></td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Jumlah user aktif ≤ kuota (T-03)</td></tr>
+                                    <tr><td>Pembayaran otomatis (webhook → approve)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Provider simulator; Midtrans/Xendit tinggal adapter</td></tr>
+                                    <tr><td>Payment gateway sungguhan</td><td><span class="badge-pill badge-warning">Rencana</span></td><td>Vendor belum dipilih</td></tr>
                                     <tr><td>Penegakan <code>modules</code> di Mini POS</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Kasir, Laporan, Stok terkunci sesuai paket; transaksi tersimpan di server (T-28)</td></tr>
                                     <tr><td>Multi Outlet Mini POS</td><td><span class="badge-pill badge-warning">Rencana</span></td><td>Modul sudah dikunci per paket, fitur belum dibuat</td></tr>
                                     <tr><td><code>future_module_access</code> (modul baru otomatis)</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Modul baru otomatis masuk paket, subscription, dan lisensi (T-13)</td></tr>
@@ -1413,7 +1425,8 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Application Code</label>
-                            <input v-model="appForm.code" class="form-control" placeholder="MISAL: ERP" required>
+                            <input v-model="appForm.code" class="form-control" placeholder="MISAL: ERP" required :disabled="!!appForm.id">
+                            <small v-if="appForm.id" style="color: var(--muted);">Kode tidak bisa diubah (dipakai Showcase &amp; aplikasi client).</small>
                         </div>
                         <div class="form-group">
                             <label>Application Name</label>
@@ -1427,6 +1440,12 @@
                             <label>Launch URL (opsional)</label>
                             <input v-model="appForm.launch_url" class="form-control" placeholder="/nama-app/?tenant={tenant}&lic={license_key}">
                             <small style="color: var(--muted);">Alamat aplikasi hosted yang dibuka customer setelah pembayaran disetujui. Kosongkan untuk aplikasi on-premise. Lihat docs/STANDAR_INTEGRASI.md.</small>
+                        </div>
+                        <div class="form-group full">
+                            <label style="display: flex; gap: 8px; align-items: center;">
+                                <input type="checkbox" v-model="appForm.require_signature"> Wajib request bertanda tangan (HMAC secret per instalasi)
+                            </label>
+                            <small style="color: var(--muted);">Disarankan aktif. Matikan hanya untuk aplikasi client lama yang belum mengirim tanda tangan (Standar Integrasi §4.3).</small>
                         </div>
                     </div>
                     <div class="modal-footer" style="margin-top: 20px;">

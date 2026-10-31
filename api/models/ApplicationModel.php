@@ -30,8 +30,8 @@ class ApplicationModel {
 
     public function create($data) {
         $stmt = $this->db->prepare("
-            INSERT INTO applications (code, name, slug, description, launch_url, status) 
-            VALUES (:code, :name, :slug, :description, :launch_url, :status)
+            INSERT INTO applications (code, name, slug, description, launch_url, require_signature, status)
+            VALUES (:code, :name, :slug, :description, :launch_url, :require_signature, :status)
         ");
         $stmt->execute([
             'code' => strtoupper(trim($data['code'])),
@@ -39,26 +39,29 @@ class ApplicationModel {
             'slug' => strtolower(trim($data['slug'] ?? str_replace(' ', '-', $data['name']))),
             'description' => $data['description'] ?? null,
             'launch_url' => trim($data['launch_url'] ?? '') ?: null,
+            // Standar Integrasi: aplikasi baru wajib request bertanda tangan (T-22) kecuali dimatikan eksplisit
+            'require_signature' => array_key_exists('require_signature', $data) ? (!empty($data['require_signature']) ? 1 : 0) : 1,
             'status' => $data['status'] ?? 'active'
         ]);
         return $this->db->lastInsertId();
     }
 
+    /**
+     * Mengubah identitas aplikasi. Kode (app_code) tidak bisa diubah karena dipakai Showcase & client.
+     */
     public function update($id, $data) {
         $stmt = $this->db->prepare("
-            UPDATE applications 
-            SET code = :code, name = :name, slug = :slug, description = :description, launch_url = :launch_url, status = :status, updated_at = NOW()
+            UPDATE applications SET name = :name, description = :description, launch_url = :launch_url, require_signature = :require_signature
             WHERE id = :id AND deleted_at IS NULL
         ");
-        return $stmt->execute([
+        $stmt->execute([
             'id' => $id,
-            'code' => strtoupper(trim($data['code'])),
             'name' => trim($data['name']),
-            'slug' => strtolower(trim($data['slug'])),
             'description' => $data['description'] ?? null,
             'launch_url' => trim($data['launch_url'] ?? '') ?: null,
-            'status' => $data['status'] ?? 'active'
+            'require_signature' => !empty($data['require_signature']) ? 1 : 0,
         ]);
+        return $stmt->rowCount() > 0 || $this->getById($id);
     }
 
     public function delete($id) {
