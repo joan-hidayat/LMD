@@ -733,6 +733,9 @@
                     <button class="btn btn-sm" :class="{ 'btn-primary': guideTab === 'ecosystem' }" @click="guideTab = 'ecosystem'">
                         🧭 Ekosistem Central SaaS
                     </button>
+                    <button class="btn btn-sm" :class="{ 'btn-primary': guideTab === 'simulation' }" @click="guideTab = 'simulation'">
+                        🧪 Simulasi Integrasi
+                    </button>
                 </div>
 
                 <!-- TAB 1: PANDUAN & INTEGRASI API -->
@@ -1323,13 +1326,160 @@
                                     <tr><td>Rate limit</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Per IP per endpoint publik &amp; login (T-05)</td></tr>
                                     <tr><td>Request validasi bertanda tangan</td><td><span class="badge-pill badge-safe">Jalan</span></td><td>Secret per instalasi + HMAC, wajib untuk Mini POS (T-22)</td></tr>
                                     <tr><td>Password + credential di <code>.env</code></td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Sengaja hardcode selama pengembangan</td></tr>
-                                    <tr><td>n8n + payment gateway</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Endpoint <code>approve_order</code> sudah siap</td></tr>
+                                    <tr><td>n8n (notifikasi WhatsApp/email, pengingat)</td><td><span class="badge-pill badge-expired">Rencana</span></td><td>Tidak dibutuhkan untuk pembayaran (webhook langsung ke LMD)</td></tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="eco-callout eco-callout-info">
                             <strong>Urutan kerja yang disarankan</strong>
-                            <p>1) Hardening keamanan sebelum production: login admin LMD &amp; API key, rate limit, request bertanda tangan, password Showcase (T-04, T-05, T-22, T-07). 2) Rapikan docs lokal (T-09).</p>
+                            <p>1) Latihan integrasi dari nol (tab <strong>🧪 Simulasi Integrasi</strong>). 2) Pilih payment gateway sungguhan (Midtrans / Xendit) lalu buat adapternya. 3) HTTPS &amp; credential production. 4) Rapikan docs lokal (T-09).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: SIMULASI INTEGRASI DARI NOL (sumber: docs/SIMULASI_INTEGRASI.md) -->
+                <div v-show="guideTab === 'simulation'" class="eco">
+                    <div class="card eco-intro">
+                        <span class="eco-eyebrow">Latihan · dari database kosong</span>
+                        <h4 class="eco-h">Simulasi integrasi aplikasi client: LMD ↔ Showcase ↔ Mini POS</h4>
+                        <p class="eco-p">Mendaftarkan aplikasi client mulai dari data kosong sampai customer membayar di Showcase dan memakai aplikasinya. Mengikuti Standar Integrasi v1.1. Versi teks: <code>docs/SIMULASI_INTEGRASI.md</code>.</p>
+                        <div class="eco-legend">
+                            <span class="eco-tag eco-t-lmd">0 Backup &amp; kosongkan</span>
+                            <span class="eco-tag eco-t-lmd">1 LMD: aplikasi, modul, paket</span>
+                            <span class="eco-tag eco-t-shop">2 Showcase: hubungkan produk</span>
+                            <span class="eco-tag eco-t-app">3 Client: lmd-client.php</span>
+                            <span class="eco-tag eco-t-shop">4 Pesan &amp; bayar</span>
+                            <span class="eco-tag eco-t-app">5 Buka aplikasi</span>
+                            <span class="eco-tag eco-t-lmd">6 Periksa di LMD</span>
+                            <span class="eco-tag eco-t-bad">7 Uji penguncian</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <span class="eco-eyebrow">0 · Persiapan</span>
+                        <h4 class="eco-h">Migrasi, backup, lalu kosongkan data</h4>
+                        <p class="eco-p">Jalankan di Command Prompt komputer XAMPP setelah semua repo di-<code>git pull</code> ke <code>main</code>. Pengosongan <strong>tidak bisa dibatalkan</strong>, jadi backup dulu.</p>
+                        <pre class="eco-code" style="font-family: var(--font-mono); font-size: 11.5px; color: #7dd3fc; background: #050811; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px;">cd C:\xampp\htdocs\License-Management-Dashboard
+C:\xampp\php\php.exe database\migrate.php
+C:\xampp\mysql\bin\mysqldump.exe -u root central_saas &gt; C:\xampp\htdocs\_backup_central_saas.sql
+C:\xampp\mysql\bin\mysqldump.exe -u root --databases mini_pos &gt; C:\xampp\htdocs\_backup_mini_pos.sql
+C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Bagian</th><th>Cara mengosongkan</th><th>Yang tersisa</th></tr></thead>
+                                <tbody>
+                                    <tr><td>LMD</td><td><code>database\reset_data.php</code> → ketik <code>KOSONGKAN</code></td><td>Akun admin LMD, token API, catatan migrasi</td></tr>
+                                    <tr><td>Mini POS</td><td>phpMyAdmin → hapus database <code>mini_pos</code> (dibuat ulang otomatis saat Mini POS dibuka)</td><td>—</td></tr>
+                                    <tr><td>Showcase</td><td>Admin Showcase → edit produk → kosongkan <strong>Kode Aplikasi di LMD</strong> → Simpan</td><td>Produk tetap ada, tombol jadi "Segera hadir"</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="eco-note"><code>migrate.php</code> tidak membuat ulang aplikasi MINIPOS setelah pengosongan (migrasi yang sudah jalan dicatat di <code>schema_migrations</code>).</p>
+                    </div>
+
+                    <div class="card">
+                        <span class="eco-eyebrow">1 · <span class="eco-tag eco-t-lmd">LMD</span> Daftarkan aplikasi</span>
+                        <h4 class="eco-h">Applications &amp; Modules → Sales Packages</h4>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>1a. + Tambah Application</th><th>Isi</th><th>Catatan</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Application Code</td><td><code>MINIPOS</code></td><td>Sama persis dengan <code>app_code</code> di <code>mini-pos/lmd-client.php</code>. Tidak bisa diubah setelah disimpan.</td></tr>
+                                    <tr><td>Application Name</td><td>Mini POS Express</td><td>Bebas</td></tr>
+                                    <tr><td>Launch URL</td><td><code>/mini-pos/?tenant={tenant}&amp;lic={license_key}</code></td><td>Aplikasi hosted. Kosongkan untuk on-premise.</td></tr>
+                                    <tr><td>Wajib request bertanda tangan</td><td>✅ (default)</td><td>Mini POS sudah menandatangani request</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="eco-note">Salah isi? Tombol <strong>Ubah</strong> pada kartu aplikasi.</p>
+                        <div class="eco-two">
+                            <div class="eco-box">
+                                <span class="eco-sublabel">1b. + Tambah Module (aplikasi MINIPOS)</span>
+                                <p class="eco-note">Kode <strong>harus sama</strong> dengan yang dikenali Mini POS (<code>APP_MODULES</code>); kode lain tidak membuka fitur apa pun.</p>
+                                <div class="eco-checks">
+                                    <div class="eco-check"><span><code>KASIR</code> Kasir</span><span class="eco-r">kasir + menu Produk</span></div>
+                                    <div class="eco-check"><span><code>LAPORAN</code> Laporan</span><span class="eco-r">laporan penjualan</span></div>
+                                    <div class="eco-check"><span><code>STOK</code> Stok</span><span class="eco-r">stok dibatasi</span></div>
+                                    <div class="eco-check"><span><code>MULTI_OUTLET</code> Multi Outlet</span><span class="eco-r">segera hadir</span></div>
+                                </div>
+                            </div>
+                            <div class="eco-box">
+                                <span class="eco-sublabel">1c. Sales Packages → + Tambah Paket</span>
+                                <p class="eco-note">Paket harus <strong>publik</strong> dan aktif agar muncul di Showcase.</p>
+                                <div class="eco-checks">
+                                    <div class="eco-check"><span><code>MPOS_STARTER</code> Rp 150.000/bln · 2 user · 1 instalasi</span><span class="eco-r">KASIR, LAPORAN</span></div>
+                                    <div class="eco-check"><span><code>MPOS_PRO</code> Rp 350.000/bln · 5 user · 1 instalasi</span><span class="eco-r">+ STOK</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <span class="eco-eyebrow">2–3 · Hubungkan Showcase &amp; cek client</span>
+                        <h4 class="eco-h">Satu kode di tiga tempat</h4>
+                        <ol class="eco-flow">
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Admin Showcase (<code>/software-showcase/admin/</code>) → Produk Katalog → edit <em>Mini POS Express</em> → <strong>Kode Aplikasi di LMD</strong> = <code>MINIPOS</code> → Simpan. Langsung tersimpan di server; tombol produk di toko berubah menjadi <strong>Berlangganan</strong>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Client</span><p>Buka <code>C:\xampp\htdocs\mini-pos\lmd-client.php</code>: <code>'app_code' =&gt; 'MINIPOS'</code>. Registry LMD = <code>lmdAppCode</code> Showcase = <code>app_code</code> client.</p></div></li>
+                        </ol>
+                    </div>
+
+                    <div class="card">
+                        <span class="eco-eyebrow">4–5 · Sebagai customer</span>
+                        <h4 class="eco-h">Pesan, bayar, buka aplikasi</h4>
+                        <ol class="eco-flow">
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Mini POS Express → <strong>Berlangganan</strong>. Paket yang tampil berasal dari LMD (langkah 1c). Isi data diri, nama toko, subdomain (mis. <code>tokosimulasi</code>).</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Pilih metode → <strong>Buat Tagihan &amp; Bayar</strong>. Halaman bayar <strong>SIMULATOR</strong> terbuka di tab baru.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-lmd">Simulator → LMD</span><p>Klik <strong>Bayar</strong>: webhook bertanda tangan ke LMD → tagihan lunas → pesanan disetujui otomatis. Coba juga <em>Simulasikan pembayaran gagal</em> → <em>Buat tagihan baru &amp; coba lagi</em>.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-shop">Showcase</span><p>Tab Showcase menampilkan <strong>Pembayaran Disetujui &amp; Lisensi Aktif</strong> + tombol buka aplikasi.</p></div></li>
+                            <li><div><span class="eco-tag eco-t-app">Mini POS</span><p>Buat akun admin dengan email yang sama saat berlangganan → kasir terbuka. Paket Starter: Kasir &amp; Laporan terbuka, Stok &amp; Multi Outlet 🔒. Lakukan satu transaksi → muncul di Laporan.</p></div></li>
+                        </ol>
+                        <p class="eco-note">Tanpa simulator: admin tetap bisa <strong>Approve</strong> manual di Subscriptions → Persetujuan Pembayaran.</p>
+                    </div>
+
+                    <div class="card">
+                        <span class="eco-eyebrow">6–7 · Periksa &amp; uji</span>
+                        <h4 class="eco-h">Yang harus terlihat di LMD, dan uji penguncian</h4>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Menu LMD</th><th>Yang terlihat</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Customers</td><td>Customer baru dari Showcase</td></tr>
+                                    <tr><td>Subscriptions</td><td>Status <code>active</code>; tidak lagi di Persetujuan Pembayaran</td></tr>
+                                    <tr><td>Licenses → Detail</td><td>Instalasi <code>tokosimulasi.pos.local</code> aktif, 🔐 Secret terpasang</td></tr>
+                                    <tr><td>License Audit Logs</td><td><code>order</code> → <code>payment_paid</code> → <code>approve_order</code> → <code>validate</code></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Uji (opsional)</th><th>Cara</th><th>Hasil yang benar</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Modul di luar paket</td><td>Buka <code>mini-pos/stok.php?tenant=…</code> pada paket Starter</td><td>403 "tidak termasuk paket Anda"</td></tr>
+                                    <tr><td>Domain lain</td><td>Buka lisensi yang sama dari tenant lain (paket 1 instalasi)</td><td>"Instalasi Tidak Diizinkan"</td></tr>
+                                    <tr><td>Aplikasi lain</td><td>Pakai license key aplikasi lain di Mini POS</td><td>Ditolak <code>app_mismatch</code></td></tr>
+                                    <tr><td>Tanda tangan</td><td>Kosongkan <code>instance_secret</code> tenant di DB <code>mini_pos</code></td><td>Ditolak; pulihkan dengan <strong>Reset secret</strong></td></tr>
+                                    <tr><td>Webhook palsu</td><td><code>POST /api/index.php/payments/webhook/simulator</code> tanpa tanda tangan</td><td>401 Invalid simulator signature</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <span class="eco-eyebrow">Masalah umum</span>
+                        <h4 class="eco-h">Gejala, penyebab, solusi</h4>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Gejala</th><th>Penyebab</th><th>Solusi</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Lupa password dashboard LMD / akun terkunci</td><td>—</td><td>Command Prompt: <code>C:\xampp\php\php.exe database\admin.php reset-password &lt;email&gt;</code> (cek email: <code>... admin.php list</code>). Tidak menghapus data.</td></tr>
+                                    <tr><td>Showcase: "Belum ada paket publik"</td><td>Paket belum publik/aktif, atau <code>lmdAppCode</code> ≠ Application Code</td><td>Periksa langkah 1c &amp; 2</td></tr>
+                                    <tr><td>Tombol produk tetap "Segera hadir"</td><td><code>lmdAppCode</code> kosong</td><td>Langkah 2, lalu muat ulang Showcase</td></tr>
+                                    <tr><td>Halaman bayar tidak terbuka</td><td>Popup diblokir browser</td><td>Klik <strong>Buka Halaman Pembayaran</strong> di Showcase</td></tr>
+                                    <tr><td>"Webhook ditolak LMD" di simulator</td><td>LMD tidak bisa memanggil dirinya sendiri (host/port berbeda)</td><td>Buka Showcase &amp; LMD lewat host yang sama</td></tr>
+                                    <tr><td>Mini POS: "Instalasi Tidak Diizinkan"</td><td>Domain, kuota, atau tanda tangan</td><td>Ikuti pesan di layar; tanda tangan: <strong>Reset secret</strong></td></tr>
+                                    <tr><td>Mini POS: semua menu 🔒</td><td>Kode modul LMD ≠ <code>APP_MODULES</code></td><td>Samakan kode modul (1b)</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
