@@ -125,6 +125,10 @@ try {
                 }
             } elseif ($method === 'POST') {
                 $controller->store();
+            } elseif ($method === 'PUT' && $id && is_numeric($id)) {
+                $controller->update($id);
+            } elseif ($method === 'DELETE' && $id && is_numeric($id)) {
+                $controller->destroy($id);
             }
             break;
 

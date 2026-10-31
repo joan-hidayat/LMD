@@ -308,6 +308,7 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Pembayaran otomatis (webhook gateway → approve) | ✅ Jalan | Provider simulator; tagihan `payments`, webhook bertanda tangan, idempoten, retry tagihan |
 | Payment gateway sungguhan (Midtrans / Xendit) | 📋 Rencana | Tinggal adapter baru; vendor belum dipilih |
 | Impor aplikasi & modul dari manifest client | ✅ Jalan | Standar v1.2 §4.4: `lmd-manifest.php` di Mini POS & demo Apotek; tombol **⬇ Impor dari Manifest** (T-34) |
+| Kelola paket: pilih modul, ubah, hapus | ✅ Jalan | Form paket berisi daftar modul aplikasi; Ubah (kode terkunci bila sudah dipakai subscription); Hapus = soft delete, subscription lama tetap jalan (T-35) |
 | Ubah aplikasi di dashboard LMD (nama, launch URL, tanda tangan) | ✅ Jalan | Tombol **Ubah** di Applications; `app_code` tidak bisa diubah |
 | Katalog Admin Showcase tersimpan di server | ✅ Jalan | `data/products.local.json` via `admin/save.php` (T-31) |
 | Kosongkan data LMD untuk simulasi | ✅ Jalan | `php database/reset_data.php` (akun admin & token tetap); panduan `SIMULASI_INTEGRASI.md` |

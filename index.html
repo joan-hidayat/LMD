@@ -489,10 +489,11 @@
                                     <th>Package Name</th>
                                     <th>Code</th>
                                     <th>Base Price</th>
-                                    <th>Max Users</th>
-                                    <th>Max Instalasi</th>
-                                    <th>Future Module Access</th>
+                                    <th>Kuota</th>
+                                    <th>Modul</th>
+                                    <th>Modul baru otomatis</th>
                                     <th>Status</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -501,14 +502,24 @@
                                     <td>{{ pkg.name }}</td>
                                     <td><code>{{ pkg.code }}</code></td>
                                     <td><strong>{{ formatRupiah(pkg.base_price) }}</strong> / {{ pkg.billing_cycle }}</td>
-                                    <td>{{ pkg.max_users }} Users</td>
-                                    <td>{{ pkg.max_instances }} lokasi</td>
+                                    <td style="white-space: nowrap;">{{ pkg.max_users }} user<div style="font-size: 11px; color: var(--muted);">{{ pkg.max_instances }} lokasi</div></td>
+                                    <td style="min-width: 160px;">
+                                        <span v-if="!pkg.module_codes" class="badge-pill badge-critical" title="Lisensi dari paket ini tidak membuka fitur apa pun di aplikasi client">⚠ Belum ada modul</span>
+                                        <code v-for="code in (pkg.module_codes ? pkg.module_codes.split(',') : [])" :key="code" style="margin: 0 4px 4px 0; display: inline-block;">{{ code }}</code>
+                                    </td>
                                     <td>
-                                        <span class="status" :class="pkg.future_module_access ? 'status-active' : 'status-draft'">
-                                            {{ Number(pkg.future_module_access) ? 'YA (modul baru otomatis)' : 'TIDAK' }}
+                                        <span class="status" :class="Number(pkg.future_module_access) ? 'status-active' : 'status-draft'">
+                                            {{ Number(pkg.future_module_access) ? 'YA' : 'TIDAK' }}
                                         </span>
                                     </td>
-                                    <td><span class="status status-active">{{ pkg.status }}</span></td>
+                                    <td>
+                                        <span class="status" :class="pkg.status === 'active' ? 'status-active' : 'status-draft'">{{ pkg.status }}</span>
+                                        <div v-if="!Number(pkg.is_public)" style="font-size: 11px; color: var(--muted); margin-top: 4px;">tidak publik</div>
+                                    </td>
+                                    <td style="white-space: nowrap;">
+                                        <button class="btn btn-sm" @click="openEditPackage(pkg)">Ubah</button>
+                                        <button class="btn btn-sm btn-danger" style="margin-left: 6px;" @click="deletePackage(pkg)">Hapus</button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1410,7 +1421,7 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                             </div>
                             <div class="eco-box">
                                 <span class="eco-sublabel">1c. Sales Packages → + Tambah Paket</span>
-                                <p class="eco-note">Paket harus <strong>publik</strong> dan aktif agar muncul di Showcase.</p>
+                                <p class="eco-note">Centang modulnya di <strong>Modul yang termasuk paket</strong>. Paket harus <strong>publik</strong> dan aktif agar muncul di Showcase. Salah isi? <strong>Ubah</strong> / <strong>Hapus</strong> di tabel (berlaku untuk pesanan baru).</p>
                                 <div class="eco-checks">
                                     <div class="eco-check"><span><code>MPOS_STARTER</code> Rp 150.000/bln · 2 user · 1 instalasi</span><span class="eco-r">KASIR, LAPORAN</span></div>
                                     <div class="eco-check"><span><code>MPOS_PRO</code> Rp 350.000/bln · 5 user · 1 instalasi</span><span class="eco-r">+ STOK</span></div>
@@ -1703,13 +1714,14 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                     <div class="form-grid">
                         <div class="form-group full">
                             <label>Application</label>
-                            <select v-model="packageForm.application_id" class="form-control" required>
+                            <select v-model="packageForm.application_id" class="form-control" required :disabled="!!packageForm.id" @change="packageForm.module_ids = []; loadPackageModules()">
                                 <option v-for="app in applications" :key="app.id" :value="app.id">{{ app.name }}</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Package Code</label>
-                            <input v-model="packageForm.code" class="form-control" placeholder="APO_PRO" required>
+                            <input v-model="packageForm.code" class="form-control" placeholder="MPOS_PRO" required :disabled="packageForm.id && packageForm.subscriptions_count > 0">
+                            <small v-if="packageForm.id && packageForm.subscriptions_count > 0" style="color: var(--muted);">Kode terkunci: sudah dipakai {{ packageForm.subscriptions_count }} subscription.</small>
                         </div>
                         <div class="form-group">
                             <label>Package Name</label>
@@ -1718,6 +1730,15 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                         <div class="form-group">
                             <label>Base Price (Rp)</label>
                             <input type="number" v-model="packageForm.base_price" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Siklus Tagihan</label>
+                            <select v-model="packageForm.billing_cycle" class="form-control">
+                                <option value="monthly">Bulanan</option>
+                                <option value="quarterly">3 bulan</option>
+                                <option value="semi_annual">6 bulan</option>
+                                <option value="annual">Tahunan</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Max Users</label>
@@ -1731,6 +1752,25 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                             <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
                                 <input type="checkbox" v-model="packageForm.future_module_access">
                                 <span><strong>Future Module Access:</strong> Paket ini otomatis mendapat modul baru di masa depan tanpa bayar lagi.</span>
+                            </label>
+                        </div>
+                        <div class="form-group full">
+                            <label>Modul yang termasuk paket</label>
+                            <div v-if="!packageModuleOptions.length" style="font-size: 12px; color: #f87171;">Aplikasi ini belum punya modul. Tambahkan dulu di Applications &amp; Modules (⬇ Impor dari Manifest).</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px;">
+                                <label v-for="m in packageModuleOptions" :key="m.id" style="display: flex; gap: 8px; align-items: flex-start; font-weight: normal; cursor: pointer; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                                    <input type="checkbox" :value="Number(m.id)" v-model="packageForm.module_ids">
+                                    <span><code>{{ m.code }}</code> {{ m.name }}<small v-if="m.description" style="display: block; color: var(--muted);">{{ m.description }}</small></span>
+                                </label>
+                            </div>
+                            <small v-if="packageForm.id" style="color: var(--muted); display: block; margin-top: 6px;">Perubahan harga, kuota, dan modul hanya berlaku untuk pesanan baru. Lisensi yang sudah terbit tidak berubah.</small>
+                        </div>
+                        <div class="form-group full" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                                <input type="checkbox" v-model="packageForm.is_public"> Tampil di Showcase (publik)
+                            </label>
+                            <label v-if="packageForm.id" style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                                <input type="checkbox" :checked="packageForm.status === 'active'" @change="packageForm.status = $event.target.checked ? 'active' : 'inactive'"> Aktif (bisa dipesan)
                             </label>
                         </div>
                     </div>

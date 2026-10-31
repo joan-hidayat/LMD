@@ -50,11 +50,25 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-32 | lmd | Persiapan simulasi dari nol: (a) `migrate.php` membuat ulang aplikasi MINIPOS setiap dijalankan bila datanya dihapus; (b) aplikasi tidak bisa diubah setelah dibuat (launch URL salah = buntu); (c) `require_signature` tidak bisa diatur dari dashboard. | Operasional | Selesai — lihat Riwayat "Pembayaran otomatis + simulasi dari nol" |
 | T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Selesai — terbukti & dipulihkan, lihat Riwayat "Pemulihan XAMPP (T-33)" |
 | T-34 | lmd, sample-mini-pos | Kode modul di LMD harus diketik manual dan **sama persis** dengan kode yang dikenali aplikasi client (Mini POS: `APP_MODULES`). Admin yang tidak hafal bisa salah ketik; LMD tidak memperingatkan, dan fitur di client tetap terkunci tanpa pesan yang jelas. Usulan: client menerbitkan *manifest* (app_code, nama, launch URL, daftar modul) dan LMD mengimpornya. | Desain / UX | Selesai — opsi 1 (manifest), lihat Riwayat "T-34" |
+| T-35 | lmd | Form **Buat Paket Baru** tidak punya pilihan modul (API menerima `module_ids`, UI tidak mengirim) → paket dari dashboard selalu **tanpa modul**, lisensinya tidak membuka fitur apa pun di client. Paket juga tidak bisa diubah/dihapus dan siklus tagihan selalu `monthly`. Ditemukan pemilik saat simulasi (paket Basic/Profesional/Bussiness). | Bug fungsional | Selesai — lihat Riwayat "T-35" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-10-31 — T-35: paket memilih modul, bisa diubah & dihapus
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd
+
+- **Form paket:** daftar modul aplikasi (checkbox, dimuat dari `GET /applications/{id}/modules`), siklus tagihan, tampil di Showcase (publik), status aktif. Simpan paket tanpa modul meminta konfirmasi.
+- **Tabel Sales Packages:** kolom *Modul* (kode modul; ⚠ "Belum ada modul" bila kosong), kuota digabung, tombol **Ubah** & **Hapus**.
+- **API:** `PUT /packages/{id}` (nama, harga, siklus, kuota, modul, publik, status; kode hanya bisa diubah selama belum dipakai subscription; aplikasi tidak bisa dipindah) dan `DELETE /packages/{id}` (soft delete + nonaktif + tidak publik; subscription & lisensi lama tetap berjalan). Modul yang dikirim wajib milik aplikasi paket (juga saat membuat paket).
+- Prinsip salin-turun tetap: perubahan isi paket hanya berlaku untuk pesanan **baru**.
+- Catatan: modul yang dipulihkan lewat impor manifest tidak otomatis kembali ke paket (karena saat dihapus ia dikeluarkan dari paket, T-25); centang ulang di Ubah paket.
+- Untuk XAMPP pemilik: paket Basic/Profesional/Bussiness yang dibuat sebelum perbaikan perlu dibuka **Ubah** dan dicentang modulnya. Kode `PROFESIONAL`/`BUSSINESS` bisa diperbaiki selama belum ada pesanan.
+
+Verifikasi (Playwright): buat paket lewat form dengan 2 modul → tersimpan `KASIR,LAPORAN`; Ubah → centang awal benar, tambah STOK + ganti kode → tersimpan; ganti kode paket yang sudah dipakai → ditolak; modul aplikasi lain → ditolak; Hapus → hilang dari daftar & katalog Showcase.
 
 ### 2026-10-31 — T-34: impor aplikasi & modul dari manifest client (Standar Integrasi v1.2)
 **Jenis:** Perubahan kode + docs
