@@ -1,7 +1,7 @@
 # Simulasi Integrasi dari Nol — LMD ↔ Showcase ↔ Aplikasi Client
 
 Latihan mendaftarkan aplikasi client (contoh: **Mini POS**) ke ekosistem mulai dari database LMD kosong,
-sampai customer membayar di Showcase dan memakai aplikasinya. Mengikuti [`STANDAR_INTEGRASI.md`](STANDAR_INTEGRASI.md) v1.1.
+sampai customer membayar di Showcase dan memakai aplikasinya. Mengikuti [`STANDAR_INTEGRASI.md`](STANDAR_INTEGRASI.md) v1.2.
 
 Sudah diuji ujung-ke-ujung di lingkungan pengembangan pada 2026-10-31 (lihat `LOG_EVALUASI.md`).
 Versi tampilan ada di dashboard LMD: **Buku Panduan → 🧪 Simulasi Integrasi** (perbarui keduanya bila langkah berubah).
@@ -45,6 +45,13 @@ C:\xampp\mysql\bin\mysqldump.exe -u root --databases mini_pos > C:\xampp\htdocs\
 ## 1. LMD — daftarkan aplikasi
 
 Login dashboard LMD → **Applications & Modules**.
+
+**Cara cepat (disarankan, v1.2): ⬇ Impor dari Manifest** → alamat `/mini-pos/` → **Pratinjau** → **Impor**.
+LMD membaca `mini-pos/lmd-manifest.php`, lalu membuat aplikasi `MINIPOS` (launch URL + tanda tangan) dan 4 modulnya
+dengan kode yang pasti sama dengan Mini POS. Lewati 1a & 1b, langsung ke **1c**.
+(Demo Apotek on-premise: alamat `/License-Management-Dashboard/client_demo/`.)
+
+Cara manual (untuk aplikasi yang belum punya manifest):
 
 **1a. + Tambah Application**
 
@@ -157,4 +164,5 @@ Tidak memakai simulator? Admin tetap bisa **Approve** manual di *Subscriptions �
 | Halaman bayar tidak terbuka | Popup diblokir browser | Klik **Buka Halaman Pembayaran** di Showcase |
 | "Webhook ditolak LMD" di simulator | LMD tidak bisa memanggil dirinya sendiri (host/port berbeda) | Buka Showcase & LMD lewat host yang sama, mis. `http://localhost/…` |
 | Mini POS: "Instalasi Tidak Diizinkan" | Lihat pesan di layar (domain, kuota, tanda tangan) | Ikuti petunjuk di pesan; untuk tanda tangan: **Reset secret** |
-| Mini POS: semua menu 🔒 | Kode modul di LMD tidak sama dengan `APP_MODULES` | Samakan kode modul (langkah 1b) |
+| Mini POS: semua menu 🔒 | Kode modul di LMD tidak sama dengan `APP_MODULES` | Pakai **Impor dari Manifest**: pratinjau menandai modul **Tidak dikenal client** |
+| Impor: "Manifest tidak ditemukan" | Alamat salah atau aplikasi belum punya `lmd-manifest.php` | Cek dengan membuka `…/lmd-manifest.php` di browser |

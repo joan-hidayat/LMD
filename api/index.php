@@ -99,7 +99,9 @@ try {
                     $controller->index();
                 }
             } elseif ($method === 'POST') {
-                if ($id === 'modules') {
+                if ($id === 'manifest_preview' || $id === 'manifest_import') {
+                    $controller->manifest($id === 'manifest_import');
+                } elseif ($id === 'modules') {
                     $controller->storeModule();
                 } else {
                     $controller->store();

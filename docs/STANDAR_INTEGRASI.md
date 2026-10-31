@@ -1,7 +1,7 @@
-# Standar Integrasi Central SaaS LMD — v1.1
+# Standar Integrasi Central SaaS LMD — v1.2
 
 > Kontrak wajib antara **Central SaaS LMD**, **Software Showcase**, dan setiap **aplikasi client**.
-> v1 berlaku sejak 2026-10-30; **v1.1 (2026-10-31)** menambah request bertanda tangan (bagian 4.3) dan pembagian endpoint publik/admin. Implementasi acuan: Mini POS Express (`joan-hidayat/sample-mini-pos`).
+> v1 berlaku sejak 2026-10-30; **v1.1 (2026-10-31)** menambah request bertanda tangan (bagian 4.3) dan pembagian endpoint publik/admin; **v1.2 (2026-10-31)** menambah manifest client (bagian 4.4) agar kode aplikasi & modul tidak diketik manual. Implementasi acuan: Mini POS Express (`joan-hidayat/sample-mini-pos`).
 > Perubahan pada kontrak ini wajib dicatat di [`LOG_EVALUASI.md`](LOG_EVALUASI.md) dan menaikkan nomor versi.
 
 Status: ✅ berlaku · 📋 rencana (belum wajib)
@@ -113,6 +113,43 @@ $headers = ['X-LMD-Timestamp: ' . $ts, 'X-LMD-Signature: ' . hash_hmac('sha256',
 
 ---
 
+### 4.4. Manifest client `lmd-manifest.php` ✅ v1.2
+
+Setiap aplikasi client menyediakan `lmd-manifest.php` di root aplikasinya (publik, tanpa rahasia, tanpa sesi/DB). Admin LMD memasukkan alamat aplikasi di **Applications & Modules → ⬇ Impor dari Manifest**; LMD mengambil manifest **dari server LMD**, menampilkan pratinjau, lalu membuat aplikasi + modul. Kode modul berasal dari aplikasi itu sendiri, jadi tidak ada salah ketik (T-34).
+
+```json
+{
+  "manifest_version": 1,
+  "standard": "lmd-integration/1.2",
+  "app_code": "MINIPOS",
+  "name": "Mini POS Express",
+  "description": "…",
+  "type": "hosted",
+  "launch_url": "/mini-pos/?tenant={tenant}&lic={license_key}",
+  "require_signature": true,
+  "modules": [
+    { "code": "KASIR", "name": "Kasir", "description": "…", "module_type": "standard", "sort_order": 1, "available": true }
+  ]
+}
+```
+
+| Field | Aturan |
+|---|---|
+| `app_code` | Wajib, `^[A-Z][A-Z0-9_]{1,49}$`, sama dengan `lmd-client.php`. |
+| `name` | Wajib, maks 150. |
+| `launch_url` | Hosted: berawalan `/` atau `http(s)://`. On-premise: `null`. |
+| `require_signature` | `true` bila client sudah memenuhi 4.3 (default `true`). |
+| `modules[]` | 1–100 modul; `code` pola sama dengan `app_code`, unik; `name` maks 100; `module_type` `standard`/`advanced`; `available: false` = fitur belum dibuat (tetap didaftarkan). |
+
+**Wajib dibangkitkan dari sumber yang sama dengan kode penguncian fitur** (Mini POS: `APP_MODULES` di `lib/bootstrap.php` + `lmd-client.php`), bukan daftar tulisan tangan terpisah.
+
+Perilaku impor di LMD:
+- Aplikasi **baru** dibuat lengkap dari manifest. Aplikasi yang **sudah ada tidak diubah**; perbedaan (nama, `launch_url`, tanda tangan) hanya ditampilkan — ubah lewat tombol **Ubah** bila perlu.
+- Modul hanya **ditambah**, atau **dipulihkan** bila pernah dihapus. Modul yang ada di LMD tetapi tidak ada di manifest ditandai **Tidak dikenal client** (tidak dihapus otomatis).
+- Endpoint admin: `POST /applications/manifest_preview` dan `POST /applications/manifest_import` dengan `{"url": "/mini-pos/"}` (path folder → otomatis `lmd-manifest.php`; path berawalan `/` = host LMD). Hanya `http(s)`, tanpa redirect, timeout 5 detik, maks 200 KB. Impor selalu mengambil ulang manifest (pratinjau dari browser tidak dipercaya).
+
+---
+
 ## 5. Kontrak API
 
 Base URL: `{lmd}/api/index.php` (atau `{lmd}/api` bila `api/.htaccess` aktif).
@@ -153,7 +190,8 @@ Endpoint di tabel ini **publik** (tanpa login), dengan rate limit per IP (T-05).
 
 > Latihan langkah demi langkah dari database kosong: [`SIMULASI_INTEGRASI.md`](SIMULASI_INTEGRASI.md).
 
-- [ ] **LMD:** aplikasi (`code`, `launch_url` bila hosted), modul, minimal satu paket publik. Untuk aplikasi bawaan, tambahkan `registerApplication(...)` di `database/migrate.php`.
+- [ ] **Client:** `lmd-manifest.php` (4.4) dibangkitkan dari kode penguncian fitur.
+- [ ] **LMD:** **⬇ Impor dari Manifest** (aplikasi + modul), lalu minimal satu paket publik. Input manual (`+ Tambah Application/Module`) hanya untuk client yang belum punya manifest.
 - [ ] **Client:** `lmd-client.php` dengan `app_code` yang sama; kode validasi memenuhi 4.2 (salin pola `LicenseGate.php`).
 - [ ] **Client hosted:** menerima `?tenant&lic` sesuai `launch_url`. **On-premise:** wizard instalasi memanggil `POST /licenses/register` atau meminta license key.
 - [ ] **Showcase:** produk diberi `lmdAppCode` di Admin Showcase (tersimpan otomatis di server).
@@ -167,7 +205,7 @@ Endpoint di tabel ini **publik** (tanpa login), dengan rate limit per IP (T-05).
 
 | Aplikasi | `app_code` | Tipe | LMD | Showcase | Client |
 |---|---|---|---|---|---|
-| Mini POS Express | `MINIPOS` | Hosted (`/mini-pos/`) | ✅ | ✅ | ✅ |
-| Apotek Smart POS | `APOTEK` | On-premise (tanpa `launch_url`) | ✅ | ✅ | 🟡 hanya demo `client_demo/` (lmd-client.php + validasi dari server, siap tanda tangan); aplikasi sungguhan belum ada di repo |
+| Mini POS Express | `MINIPOS` | Hosted (`/mini-pos/`) | ✅ | ✅ | ✅ (termasuk manifest v1.2) |
+| Apotek Smart POS | `APOTEK` | On-premise (tanpa `launch_url`) | ✅ | ✅ | 🟡 hanya demo `client_demo/` (lmd-client.php + manifest + validasi dari server, siap tanda tangan); aplikasi sungguhan belum ada di repo |
 | Distributor (DMS), TMS | `DISTRIBUTOR`, `TMS` | — | ✅ | 📋 belum ada produk | 📋 |
 | Produk Showcase lain | — | — | 📋 | Segera hadir | 📋 |
