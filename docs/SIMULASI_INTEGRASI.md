@@ -164,6 +164,7 @@ Tidak memakai simulator? Admin tetap bisa **Approve** manual di *Subscriptions �
 | Tombol produk tetap "Segera hadir" | `lmdAppCode` kosong | Langkah 2; muat ulang halaman Showcase |
 | Halaman bayar tidak terbuka | Popup diblokir browser | Klik **Buka Halaman Pembayaran** di Showcase |
 | "Webhook ditolak LMD" di simulator | LMD tidak bisa memanggil dirinya sendiri (host/port berbeda) | Buka Showcase & LMD lewat host yang sama, mis. `http://localhost/…` |
+| Perangkat mati / tab tertutup saat di halaman **Buat Akun Admin** | Lisensi sudah aktif & tersimpan; setup menunggu akun admin pertama | Dari perangkat lain: Showcase → 🔎 Cek Pesanan → **Buka Aplikasi** (langsung ke setup), atau buka `/mini-pos/?tenant=<subdomain>.pos.local` lalu isi **license key** + email pemesan |
 | Mini POS: "Instalasi Tidak Diizinkan" | Lihat pesan di layar (domain, kuota, tanda tangan) | Ikuti petunjuk di pesan; untuk tanda tangan: **Reset secret** |
 | Mini POS: semua menu 🔒 | Kode modul di LMD tidak sama dengan `APP_MODULES` | Pakai **Impor dari Manifest**: pratinjau menandai modul **Tidak dikenal client** |
 | Impor: "Manifest tidak ditemukan" | Alamat salah atau aplikasi belum punya `lmd-manifest.php` | Cek dengan membuka `…/lmd-manifest.php` di browser |
