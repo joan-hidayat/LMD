@@ -87,7 +87,7 @@ Nilai khusus server ditaruh di `lmd-client.local.php` (tidak di-commit).
 | 5 | Menerapkan `modules` (fitur) dan `max_users` (jumlah akun aktif). | `max_users`: `UserRepository` ✅ · `modules`: ✅ `APP_MODULES` + `require_module()` di `lib/bootstrap.php` — menu di luar paket terkunci, halamannya 403 "upgrade paket" (T-28) |
 | 6 | Menangani setiap `reason` penolakan dengan pesan yang jelas (tabel 5). | `LicenseGate::deny` |
 | 7 | Cache hasil validasi (≤ 5 menit) dan masa tenggang offline terbatas (≤ 24 jam). | `config.php` |
-| 8 | Mengelola user, role, dan login sendiri. Akun admin pertama dibuat dengan email pemesan (`licensee.email`). | `setup.php` |
+| 8 | Mengelola user, role, dan login sendiri. Akun admin pertama dibuat dengan email pemesan (`licensee.email`) **dan** bukti kepemilikan lisensi: datang dari link aktivasi berisi license key di sesi yang sama, atau mengetik license key (agar setup bisa dilanjutkan di perangkat lain tanpa bisa didahului orang yang hanya tahu alamat toko + email). | `setup.php` (T-42) |
 | 9 | **Reset password admin (aplikasi hosted):** menerima `?tenant={domain}&reset_token={token}` di path `launch_url`, menghapus token dari URL, memeriksa token ke `POST /licenses/reset_token` (`consume: false`), lalu menghanguskannya (`consume: true`) **setelah** password baru lolos validasi lokal. Aplikasi on-premise menyediakan form untuk memasukkan kode reset. | `reset.php` |
 
 ### 4.3. Request bertanda tangan (instance secret) ✅ v1.1
@@ -167,7 +167,7 @@ Endpoint di tabel ini **publik** (tanpa login), dengan rate limit per IP (T-05).
 | `POST /licenses/reset_token` | Client | Body `license_key`, `token`, `consume`. `valid` atau `reason`: `reset_token_invalid` · `reset_token_used` · `reset_token_expired` · `license_inactive` |
 | `POST /licenses/validate` | Client | Lihat di bawah |
 
-**Respons `validate` sukses:** `valid`, `license_key`, `application`, `app_code`, `expires_at`, `max_users`, `max_instances`, `modules[]`, `licensee {name, email}`, `instance_name`.
+**Respons `validate` sukses:** `valid`, `license_key`, `application`, `app_code`, `expires_at`, `max_users`, `max_instances`, `modules[]`, `licensee {name, email}`, `instance_name`, `subscription {subscription_no, package_name, billing_cycle, start_date, end_date, receipt_url}` (v1.2, untuk halaman langganan di aplikasi client; `receipt_url` null bila tanpa payment gateway).
 
 **Alasan penolakan (`reason`):**
 

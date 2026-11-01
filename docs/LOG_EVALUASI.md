@@ -57,11 +57,27 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-39 | software-showcase, lmd | Kartu paket di wizard hanya menampilkan modul yang termasuk (maks 4, sisanya "+n modul lainnya"); modul yang tidak termasuk tidak terlihat, sehingga customer tidak bisa membandingkan paket. Ditemukan pemilik saat uji dari HP. | UX | Selesai — lihat Riwayat "T-39" |
 | T-40 | lmd, software-showcase | Setelah membayar, halaman simulator tidak punya jalan kembali ke Showcase, dan customer tidak punya bukti pembayaran yang bisa dibuka lagi (status/license key hanya terlihat di tab wizard yang masih terbuka). Ditemukan pemilik saat uji dari HP. | UX / fungsional | Selesai — lihat Riwayat "T-40" |
 | T-41 | lmd | `GET /licenses/order_status?subscription_no=` publik dan mengembalikan `license_key` + `app_url` hanya berdasarkan nomor pesanan (`SUB-YYYY-` + 6 hex ≈ 16,7 juta kemungkinan, rate limit 120/menit). Cukup untuk pengembangan, tetapi sebelum production sebaiknya polling memakai token rahasia pesanan (seperti `order_lookup` dengan token) dan `license_key` tidak dikirim lewat polling. | Keamanan (pra-production) | Terbuka |
+| T-42 | sample-mini-pos, lmd | (a) Customer yang kehilangan nomor pesanan tidak bisa menemukannya sendiri; (b) setup akun admin Mini POS hanya meminta email pemesan, sehingga orang yang tahu alamat toko + email bisa mendahului membuat admin bila customer belum menyelesaikan setup (mis. perangkat mati di halaman setup). | UX / keamanan | Selesai — lihat Riwayat "T-42" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-11-02 — T-42: halaman Langganan di Mini POS, setup lintas perangkat
+**Jenis:** Perubahan kode + docs
+**Repo:** sample-mini-pos (commit `73c4428`), lmd
+
+- Pertanyaan pemilik: (1) di mana no. pesanan bisa dilihat → dijawab (wizard, halaman bayar, kuitansi, Cek Pesanan; admin: LMD Subscriptions/Audit Logs) dan dipilih opsi **A** (tampilkan di Mini POS); (2) bagaimana bila perangkat customer mati saat di halaman *Buat Akun Admin*.
+- **LMD:** respons `validate` membawa `subscription` {no. pesanan, paket, siklus, mulai, akhir, `receipt_url` pembayaran lunas terakhir} — hanya server-ke-server (request bertanda tangan).
+- **Mini POS:**
+  - Kolom `tenants.subscription` (JSON, dibuat otomatis).
+  - Menu admin **Langganan** (`langganan.php`): no. pesanan, paket · siklus, masa aktif + sisa hari, user aktif/kuota, fitur ✓/✕, license key & domain, tombol 🧾 Bukti pembayaran, 🔎 Cek Pesanan (Showcase, nomor terisi), ⬆ Upgrade.
+  - **Setup admin**: wajib bukti lisensi — datang dari link aktivasi `?lic=` (ditandai di sesi), atau mengetik **license key** di form; tetap wajib email pemesan. Jawaban untuk perangkat mati: dari perangkat lain buka Cek Pesanan → Buka Aplikasi, atau alamat toko + license key.
+  - Menu atas tidak lagi melebar keluar layar di HP (wrap + ukuran lebih kecil).
+- Docs: STANDAR (respons validate v1.2, kewajiban no. 8), EKOSISTEM (komponen `langganan.php`), SIMULASI (masalah umum: perangkat mati saat setup).
+
+Verifikasi (Playwright, viewport HP): pesan → bayar → buka aplikasi di perangkat 1 → setup tanpa kolom license key; perangkat 2 buka `?tenant=` → setup menampilkan kolom license key; key salah → ditolak; key benar (huruf kecil) → masuk kasir; halaman Langganan: `SUB-2026-3D27A2`, Starter · Bulanan, 01 Nov – 01 Dec 2026, 1/2 user, ✓ Kasir ✓ Laporan ✕ Stok ✕ Multi Outlet, tombol bukti bayar; lebar halaman = lebar layar (400 px).
 
 ### 2026-11-02 — T-40: kembali ke Showcase, bukti pembayaran, Cek Pesanan
 **Jenis:** Perubahan kode + docs

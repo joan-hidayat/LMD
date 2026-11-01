@@ -170,6 +170,7 @@ sequenceDiagram
 | `produk.php` | Bagian modul **KASIR** (admin): tambah produk, ubah nama/kategori/ikon/harga, nonaktifkan. Nama unik per toko; transaksi lama tidak berubah (T-30). |
 | `laporan.php` | Modul **LAPORAN** (admin): omzet, jumlah & rata-rata transaksi, PPN, produk terlaris, per kasir, per hari, 20 transaksi terakhir; filter tanggal (maks 1 tahun). |
 | `stok.php` | Modul **STOK** (admin): atur stok & stok minimum. Dengan modul ini checkout mengurangi stok (`SELECT … FOR UPDATE`) dan menolak penjualan melebihi stok; tanpa modul ini stok diabaikan. |
+| `langganan.php` | Admin: no. pesanan, paket & siklus, masa aktif + sisa hari, user aktif/kuota, fitur dalam paket (✓/✕), license key, link **bukti pembayaran**, **Cek Pesanan** & upgrade di Showcase. Data dari `validate.subscription`, disimpan di `tenants.subscription` (T-42). |
 | `outlet.php` | Modul **MULTI_OUTLET**: penguncian sudah berlaku, fitur 📋 rencana (halaman "segera hadir" untuk paket Bisnis). |
 | `config.php` | Koneksi DB `mini_pos`, URL LMD, TTL cache, masa tenggang. Override lokal lewat `config.local.php` (di-ignore git). |
 

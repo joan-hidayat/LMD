@@ -105,6 +105,20 @@ class LicenseModel {
     const SIGNATURE_MAX_SKEW = 300;
 
     /**
+     * Link kuitansi pembayaran terakhir yang lunas (null bila pesanan tidak lewat payment gateway).
+     */
+    private function latestReceiptUrl($subscriptionId) {
+        $stmt = $this->db->prepare("SELECT checkout_token FROM payments WHERE subscription_id = :id AND status = 'paid' ORDER BY paid_at DESC, id DESC LIMIT 1");
+        $stmt->execute(['id' => $subscriptionId]);
+        $payment = $stmt->fetch();
+        if (!$payment) {
+            return null;
+        }
+        require_once __DIR__ . '/PaymentModel.php';
+        return PaymentModel::receiptUrl($payment);
+    }
+
+    /**
      * $signature (T-22): ['timestamp' => X-LMD-Timestamp, 'signature' => X-LMD-Signature, 'body' => raw request body].
      */
     public function validateLicense($licenseKey, $instanceKey, $domain = null, $ipAddress = null, array $signature = []) {
@@ -121,6 +135,8 @@ class LicenseModel {
         // 1. Fetch License
         $stmt = $this->db->prepare("
             SELECT l.*, s.max_users, s.max_instances, s.status as sub_status, a.code as app_code, a.name as app_name,
+                   s.subscription_no, s.start_date as sub_start_date, s.end_date as sub_end_date, s.billing_cycle,
+                   (SELECT p.name FROM packages p WHERE p.id = s.package_id) as package_name,
                    a.require_signature,
                    c.name as customer_name, c.email as customer_email
             FROM licenses l
@@ -246,6 +262,15 @@ class LicenseModel {
                 'email' => $license['customer_email']
             ],
             'instance_name' => $instanceName,
+            // Info langganan untuk halaman "Langganan" di aplikasi client (T-42); hanya terkirim server-ke-server
+            'subscription' => [
+                'subscription_no' => $license['subscription_no'],
+                'package_name' => $license['package_name'],
+                'billing_cycle' => $license['billing_cycle'],
+                'start_date' => $license['sub_start_date'],
+                'end_date' => $license['sub_end_date'],
+                'receipt_url' => $this->latestReceiptUrl($license['subscription_id']),
+            ],
             'signature' => empty($license['require_signature']) ? 'not_required' : ($issuedSecret ? 'issued' : 'verified')
         ];
 
