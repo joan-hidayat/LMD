@@ -52,11 +52,22 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-34 | lmd, sample-mini-pos | Kode modul di LMD harus diketik manual dan **sama persis** dengan kode yang dikenali aplikasi client (Mini POS: `APP_MODULES`). Admin yang tidak hafal bisa salah ketik; LMD tidak memperingatkan, dan fitur di client tetap terkunci tanpa pesan yang jelas. Usulan: client menerbitkan *manifest* (app_code, nama, launch URL, daftar modul) dan LMD mengimpornya. | Desain / UX | Selesai — opsi 1 (manifest), lihat Riwayat "T-34" |
 | T-35 | lmd | Form **Buat Paket Baru** tidak punya pilihan modul (API menerima `module_ids`, UI tidak mengirim) → paket dari dashboard selalu **tanpa modul**, lisensinya tidak membuka fitur apa pun di client. Paket juga tidak bisa diubah/dihapus dan siklus tagihan selalu `monthly`. Ditemukan pemilik saat simulasi (paket Basic/Profesional/Bussiness). | Bug fungsional | Selesai — lihat Riwayat "T-35" |
 | T-36 | software-showcase | Tombol **Berlangganan** hanya bergantung pada `lmdAppCode` di katalog Showcase, bukan pada LMD. Setelah data LMD dikosongkan, Apotek (`lmdAppCode: APOTEK`) tetap tampil "Live Release" + Berlangganan padahal tidak terdaftar/berpaket; wizard baru gagal di langkah pilih paket. | Konsistensi | Selesai — lihat Riwayat "T-36" |
+| T-37 | software-showcase | Thumbnail produk di Admin Showcase hanya bisa diisi path/URL; gambar harus disalin manual ke `assets/images/`. Selain itu ID produk berhuruf besar baru ditolak saat simpan, dan rating `4,4` terbaca 4. | UX | Selesai — lihat Riwayat "T-37" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-11-01 — T-37: upload thumbnail di Admin Showcase
+**Jenis:** Perubahan kode + docs
+**Repo:** software-showcase (commit `ebe248f`), lmd (log)
+
+- `admin/upload.php`: wajib login + header CSRF; JPG/PNG/WebP saja (dicek dari isi file lewat `finfo` + `getimagesize`), maks 2 MB & 4000 px; nama acak `thumb_YYYYMMDD_<hex>.ext`; disimpan di `assets/images/uploads/` (di-ignore git kecuali `.htaccess` yang menolak skrip & daftar isi folder).
+- Form produk: tombol **Upload gambar**, pratinjau, path terisi otomatis; path/URL manual tetap bisa. ID produk otomatis huruf kecil; rating menerima koma.
+- `docs/PANDUAN_SHOWCASE.md` §7.2a.
+
+Verifikasi (Playwright + curl): PNG 300×200 → path terisi & pratinjau tampil; file PHP berekstensi `.jpg` → "File harus gambar JPG, PNG, atau WebP."; tanpa login → 401.
 
 ### 2026-11-01 — T-36 lanjutan: Admin Showcase menampilkan status LMD
 **Jenis:** Perubahan kode + docs
