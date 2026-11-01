@@ -59,6 +59,13 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-11-01 — Wizard berlangganan: isian tanpa data contoh
+**Jenis:** Perubahan kode kecil
+**Repo:** software-showcase (commit `a3c6ed8`)
+
+- Permintaan pemilik saat uji berlangganan: form *Data Diri & Toko* sebelumnya sudah terisi data contoh (Budi Santoso, budi@apoteksehat.com, Apotek Sehat Sentosa, `apoteksehat`), sehingga pesanan uji bisa tak sengaja memakai data itu. Kini kosong dengan placeholder `misal: …` + `autocomplete`.
+- Subdomain divalidasi di browser dengan pola yang sama dengan LMD (`OrderModel`: 3–40 karakter, huruf kecil/angka/minus, tidak diawali/diakhiri minus), jadi kesalahan format terlihat sebelum pesanan dikirim.
+
 ### 2026-11-01 — Perapian form produk Admin Showcase (lanjutan T-37)
 **Jenis:** Perubahan kode kecil
 **Repo:** software-showcase (commit `8eca2a0`)
