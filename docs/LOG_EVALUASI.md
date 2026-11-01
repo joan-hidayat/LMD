@@ -54,11 +54,22 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-36 | software-showcase | Tombol **Berlangganan** hanya bergantung pada `lmdAppCode` di katalog Showcase, bukan pada LMD. Setelah data LMD dikosongkan, Apotek (`lmdAppCode: APOTEK`) tetap tampil "Live Release" + Berlangganan padahal tidak terdaftar/berpaket; wizard baru gagal di langkah pilih paket. | Konsistensi | Selesai — lihat Riwayat "T-36" |
 | T-37 | software-showcase | Thumbnail produk di Admin Showcase hanya bisa diisi path/URL; gambar harus disalin manual ke `assets/images/`. Selain itu ID produk berhuruf besar baru ditolak saat simpan, dan rating `4,4` terbaca 4. | UX | Selesai — lihat Riwayat "T-37" |
 | T-38 | software-showcase, lmd | Showcase tidak bisa dipakai dari HP lewat IP LAN: URL API LMD memaksa port `:8080` bila tidak ada port, link footer & demo ditulis mati ke `localhost:8080` / IP lama `192.168.0.116`, tombol "Portfolio Showcase" di LMD ke `localhost`. Selain itu pola validasi subdomain (wizard) diabaikan Chrome karena `-` tidak di-escape (mode regex `v`), sehingga `Toko HP` lolos. | Fungsional | Selesai — lihat Riwayat "T-38" |
+| T-39 | software-showcase, lmd | Kartu paket di wizard hanya menampilkan modul yang termasuk (maks 4, sisanya "+n modul lainnya"); modul yang tidak termasuk tidak terlihat, sehingga customer tidak bisa membandingkan paket. Ditemukan pemilik saat uji dari HP. | UX | Selesai — lihat Riwayat "T-39" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-11-01 — T-39: kartu paket menampilkan semua modul (termasuk & tidak termasuk)
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd, software-showcase (commit `6b90d35`)
+
+- Uji dari HP berhasil setelah perbaikan jaringan PC: IP yang dipakai sebelumnya `172.25.144.1` adalah adaptor virtual; IP Wi-Fi yang benar `192.168.1.112` (adaptor `Wi-Fi 2`), dan profil jaringan `Joanrich_wifi_5G` diubah **Public → Private** agar aturan firewall port 8080 (profil Private) berlaku.
+- **LMD:** `GET /packages?app_code=` kini mengirim `excluded_modules[]` per paket (modul aktif aplikasi yang tidak termasuk paket) dan `sort_order` pada kedua daftar.
+- **Showcase:** kartu paket menampilkan semua modul sesuai urutan LMD: termasuk `✓ Nama` (normal), tidak termasuk `✕ Nama` dicoret & diredupkan (`.pkg-feature-off`); batas 4 modul dihapus. Versi aset dinaikkan agar HP tidak memakai cache lama.
+
+Verifikasi (Playwright, viewport HP): Starter → ✓ Kasir, ✓ Laporan, ✕ Stok, ✕ Multi Outlet (dicoret).
 
 ### 2026-11-01 — T-38: Showcase bisa diuji dari HP (Wi-Fi yang sama)
 **Jenis:** Perubahan kode + panduan
