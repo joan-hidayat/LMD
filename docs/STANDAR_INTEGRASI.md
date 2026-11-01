@@ -89,6 +89,7 @@ Nilai khusus server ditaruh di `lmd-client.local.php` (tidak di-commit).
 | 7 | Cache hasil validasi (≤ 5 menit) dan masa tenggang offline terbatas (≤ 24 jam). | `config.php` |
 | 8 | Mengelola user, role, dan login sendiri. Akun admin pertama dibuat dengan email pemesan (`licensee.email`) **dan** bukti kepemilikan lisensi: datang dari link aktivasi berisi license key di sesi yang sama, atau mengetik license key (agar setup bisa dilanjutkan di perangkat lain tanpa bisa didahului orang yang hanya tahu alamat toko + email). | `setup.php` (T-42) |
 | 9 | **Reset password admin (aplikasi hosted):** menerima `?tenant={domain}&reset_token={token}` di path `launch_url`, menghapus token dari URL, memeriksa token ke `POST /licenses/reset_token` (`consume: false`), lalu menghanguskannya (`consume: true`) **setelah** password baru lolos validasi lokal. Aplikasi on-premise menyediakan form untuk memasukkan kode reset. | `reset.php` |
+| 10 | **Disarankan:** notifikasi akun ke user aplikasi (akun admin dibuat, user baru, password diganti, akun dinonaktifkan/dikunci). Notifikasi komersial (pesanan, pembayaran, lisensi aktif, masa aktif) sudah dikirim LMD — aplikasi client tidak perlu mengulanginya. | `lib/Notifier.php`, menu Notifikasi (T-43) |
 
 ### 4.3. Request bertanda tangan (instance secret) ✅ v1.1
 

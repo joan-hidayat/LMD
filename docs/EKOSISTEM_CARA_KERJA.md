@@ -307,6 +307,8 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penegakan `modules` di Mini POS | ✅ Jalan | Kasir, Laporan, Stok terkunci sesuai paket; halaman di luar paket 403 (T-28) |
 | Transaksi & laporan Mini POS | ✅ Jalan | Produk & transaksi tersimpan di DB `mini_pos`, harga dihitung server; laporan penjualan; stok (modul STOK) (T-28) |
 | Multi Outlet Mini POS | 📋 Rencana | Modul sudah dikunci per paket, fiturnya belum dibuat |
+| Notifikasi ke customer (kotak surat lokal) | ✅ Jalan | LMD: pesanan dibuat, pembayaran lunas/gagal/kedaluwarsa, lisensi aktif, pesanan dibatalkan, pengingat H-7/H-1/berakhir (`database/notify.php` terjadwal), link reset admin — menu 📬 Notifikasi. Mini POS: akun admin dibuat, user baru, password diganti, akun dinonaktifkan/diaktifkan, akun dikunci — menu Notifikasi (T-43) |
+| Kirim email sungguhan (SMTP) / WhatsApp | 📋 Rencana | Kanal disiapkan di `api/config/notify.php` & `config.php` Mini POS; saat ini tersimpan di kotak surat |
 | Bukti pembayaran & Cek Pesanan | ✅ Jalan | Kuitansi `pay/receipt.php?token=` (cetak/PDF); halaman bayar → tombol & pengalihan otomatis ke Showcase (`payment.return_url`); Showcase menu 🔎 Cek Pesanan (T-40). Email kuitansi 📋 |
 | Pembayaran otomatis (webhook gateway → approve) | ✅ Jalan | Provider simulator; tagihan `payments`, webhook bertanda tangan, idempoten, retry tagihan |
 | Payment gateway sungguhan (Midtrans / Xendit) | 📋 Rencana | Tinggal adapter baru; vendor belum dipilih |

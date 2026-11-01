@@ -62,6 +62,10 @@ createApp({
             appForm: { code: '', name: '', description: '', launch_url: '', require_signature: true, status: 'active' },
             manifestForm: { url: '/mini-pos/', preview: null, loading: false, error: '' },
             packageModuleOptions: [],
+            notifications: [],
+            notificationChannel: '',
+            notificationQuery: '',
+            notificationDetail: null,
             moduleForm: { application_id: '', code: '', name: '', module_type: 'standard', description: '', sort_order: 0 },
             packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] },
             customerForm: { code: '', name: '', email: '', phone: '', status: 'active' },
@@ -163,6 +167,7 @@ createApp({
             if (page === 'subscriptions') this.fetchSubscriptions();
             if (page === 'licenses') this.fetchLicenses();
             if (page === 'audit') this.fetchAuditLogs();
+            if (page === 'notifications') this.fetchNotifications();
         },
 
         // API Fetching Methods
@@ -498,6 +503,32 @@ createApp({
             } catch (err) {
                 alert('Error submitting module.');
             }
+        },
+
+        async fetchNotifications() {
+            const q = this.notificationQuery ? '?q=' + encodeURIComponent(this.notificationQuery) : '';
+            const res = await fetch('api/index.php/notifications' + q);
+            const json = await res.json();
+            if (json.success) {
+                this.notifications = json.data.items;
+                this.notificationChannel = json.data.channel;
+            }
+        },
+
+        async openNotification(n) {
+            const res = await fetch('api/index.php/notifications/' + n.id);
+            const json = await res.json();
+            if (!json.success) return alert('Gagal: ' + json.message);
+            this.notificationDetail = json.data;
+            this.modalType = 'notification';
+            this.modalTitle = json.data.subject;
+            this.showModal = true;
+        },
+
+        // Isi notifikasi ditampilkan sebagai teks; hanya URL yang dijadikan link
+        linkify(text) {
+            const esc = String(text || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+            return esc.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color: #38bdf8;">$1</a>');
         },
 
         async loadPackageModules() {

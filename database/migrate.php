@@ -198,6 +198,17 @@ $migrations = [
         $db->exec($m[0]);
         return true;
     },
+
+    // T-43: antrian & riwayat notifikasi ke customer
+    '2026_11_02_notifications' => function (PDO $db) {
+        $exists = $db->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'")->fetchColumn();
+        if ($exists) {
+            return false;
+        }
+        preg_match('/CREATE TABLE IF NOT EXISTS `notifications`.*?;/s', file_get_contents(__DIR__ . '/schema.sql'), $m);
+        $db->exec($m[0]);
+        return true;
+    },
 ];
 
 /**
