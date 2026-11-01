@@ -51,11 +51,23 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-33 | lmd, software-showcase (XAMPP lokal) | AI lokal menulis sendiri fitur pembayaran di XAMPP (di luar repo): `OrderModel::createInvoice/confirmPayment`, `LicenseController::createInvoice/pay`, endpoint **publik** `/licenses/invoice` & `/licenses/pay`, perubahan `app.js`, dan migrasi bernama sama `2026_10_31_payments`. Bila `pay` publik tanpa tanda tangan, siapa pun yang tahu nomor pesanan bisa mengaktifkan lisensi tanpa membayar. Tabel `payments` lokal kemungkinan berbeda struktur dengan versi repo, dan file yang diubah akan bentrok saat `git pull`. | Keamanan / konsistensi | Selesai — terbukti & dipulihkan, lihat Riwayat "Pemulihan XAMPP (T-33)" |
 | T-34 | lmd, sample-mini-pos | Kode modul di LMD harus diketik manual dan **sama persis** dengan kode yang dikenali aplikasi client (Mini POS: `APP_MODULES`). Admin yang tidak hafal bisa salah ketik; LMD tidak memperingatkan, dan fitur di client tetap terkunci tanpa pesan yang jelas. Usulan: client menerbitkan *manifest* (app_code, nama, launch URL, daftar modul) dan LMD mengimpornya. | Desain / UX | Selesai — opsi 1 (manifest), lihat Riwayat "T-34" |
 | T-35 | lmd | Form **Buat Paket Baru** tidak punya pilihan modul (API menerima `module_ids`, UI tidak mengirim) → paket dari dashboard selalu **tanpa modul**, lisensinya tidak membuka fitur apa pun di client. Paket juga tidak bisa diubah/dihapus dan siklus tagihan selalu `monthly`. Ditemukan pemilik saat simulasi (paket Basic/Profesional/Bussiness). | Bug fungsional | Selesai — lihat Riwayat "T-35" |
+| T-36 | software-showcase | Tombol **Berlangganan** hanya bergantung pada `lmdAppCode` di katalog Showcase, bukan pada LMD. Setelah data LMD dikosongkan, Apotek (`lmdAppCode: APOTEK`) tetap tampil "Live Release" + Berlangganan padahal tidak terdaftar/berpaket; wizard baru gagal di langkah pilih paket. | Konsistensi | Selesai — lihat Riwayat "T-36" |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-11-01 — T-36: Showcase mengikuti status LMD (Coming Soon otomatis)
+**Jenis:** Perubahan kode + docs
+**Repo:** software-showcase (commit `f4af373`), lmd (docs)
+
+- Permintaan pemilik saat simulasi: "software yang belum terdaftar di LMD, tampilan di Showcase hanya coming soon".
+- Saat halaman dibuka, Showcase memanggil `GET /packages?app_code=` sekali per `lmdAppCode`. Produk **bisa dipesan** hanya bila ada ≥ 1 paket publik aktif. Selain itu (tanpa `lmdAppCode`, aplikasi tidak terdaftar, tanpa paket, atau LMD tak terjangkau): badge **Coming Soon**, tombol **Segera hadir** nonaktif, statistik & filter status ikut status efektif. Selama pengecekan tombol "Memeriksa…".
+- `openInstallModal` dijaga dengan aturan yang sama; URL API LMD dipusatkan di `lmdApiUrl()`.
+- Docs: `STANDAR_INTEGRASI.md` §3, `SIMULASI_INTEGRASI.md` langkah 2.
+
+Verifikasi (Playwright, DB uji: MINIPOS 2 paket publik, APOTEK 0 paket): Mini POS "Live Release (v1.0)" + Berlangganan; Apotek & LMD "Coming Soon" + Segera hadir; statistik rilis 1 / roadmap 6.
 
 ### 2026-10-31 — T-35: paket memilih modul, bisa diubah & dihapus
 **Jenis:** Perubahan kode + docs

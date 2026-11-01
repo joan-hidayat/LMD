@@ -89,7 +89,7 @@ Centang modulnya di bagian **Modul yang termasuk paket** (kolom *Modul* di tabel
 
 Admin Showcase (`/software-showcase/admin/`) → **Produk Katalog** → edit *Mini POS Express* →
 **Kode Aplikasi di LMD** = `MINIPOS` → Simpan. Perubahan langsung tersimpan di server (`data/products.local.json`)
-dan tombol produk di halaman publik berubah dari "Segera hadir" menjadi **Berlangganan**.
+dan tombol produk di halaman publik berubah dari "Segera hadir" menjadi **Berlangganan** — asalkan aplikasinya sudah punya paket publik di LMD (langkah 1c). Produk lain otomatis tampil **Coming Soon**.
 
 Tombol **Reset ke Default** mengembalikan katalog ke `data/products.js` bawaan repo.
 
