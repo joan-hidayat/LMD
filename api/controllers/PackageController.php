@@ -40,8 +40,33 @@ class PackageController {
             $packageId = $this->packageModel->create($input);
             $package = $this->packageModel->getById($packageId);
             sendJsonResponse($package, 201, 'Package created successfully.');
+        } catch (DomainException $e) {
+            sendJsonResponse(null, 422, $e->getMessage());
         } catch (Exception $e) {
             sendJsonResponse(null, 500, $e->getMessage());
+        }
+    }
+
+    public function update($id) {
+        $input = getJsonInput();
+        if (isset($input['code']) && !preg_match('/^[A-Z0-9_]{2,50}$/', strtoupper(trim($input['code'])))) {
+            sendJsonResponse(null, 400, 'Kode paket: huruf besar, angka, garis bawah (2–50 karakter).');
+        }
+        try {
+            sendJsonResponse($this->packageModel->update($id, $input), 200, 'Package updated successfully.');
+        } catch (OutOfBoundsException $e) {
+            sendJsonResponse(null, 404, $e->getMessage());
+        } catch (DomainException $e) {
+            sendJsonResponse(null, 422, $e->getMessage());
+        }
+    }
+
+    public function destroy($id) {
+        try {
+            $subscriptions = $this->packageModel->delete($id);
+            sendJsonResponse(['subscriptions_kept' => $subscriptions], 200, 'Package deleted.');
+        } catch (OutOfBoundsException $e) {
+            sendJsonResponse(null, 404, $e->getMessage());
         }
     }
 }

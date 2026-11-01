@@ -61,6 +61,7 @@ createApp({
             // Form Models
             appForm: { code: '', name: '', description: '', launch_url: '', require_signature: true, status: 'active' },
             manifestForm: { url: '/mini-pos/', preview: null, loading: false, error: '' },
+            packageModuleOptions: [],
             moduleForm: { application_id: '', code: '', name: '', module_type: 'standard', description: '', sort_order: 0 },
             packageForm: { application_id: '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] },
             customerForm: { code: '', name: '', email: '', phone: '', status: 'active' },
@@ -304,6 +305,7 @@ createApp({
             } else if (type === 'package') {
                 this.modalTitle = 'Tambah Paket Penjualan';
                 this.packageForm = { application_id: this.applications[0]?.id || '', code: '', name: '', base_price: 500000, billing_cycle: 'monthly', max_users: 5, max_instances: 1, future_module_access: false, is_public: true, module_ids: [] };
+                this.loadPackageModules();
             } else if (type === 'customer') {
                 this.modalTitle = 'Tambah Customer Baru';
                 this.customerForm = { code: '', name: '', email: '', phone: '', status: 'active' };
@@ -498,10 +500,49 @@ createApp({
             }
         },
 
-        async submitPackage() {
+        async loadPackageModules() {
+            this.packageModuleOptions = [];
+            if (!this.packageForm.application_id) return;
             try {
-                const res = await fetch('api/index.php/packages', {
-                    method: 'POST',
+                const res = await fetch('api/index.php/applications/' + this.packageForm.application_id + '/modules');
+                const json = await res.json();
+                this.packageModuleOptions = json.success ? json.data : [];
+            } catch (err) {
+                this.packageModuleOptions = [];
+            }
+        },
+
+        openEditPackage(pkg) {
+            this.modalType = 'package';
+            this.modalTitle = 'Ubah Paket ' + pkg.code;
+            this.packageForm = {
+                id: pkg.id, application_id: pkg.application_id, code: pkg.code, name: pkg.name, description: pkg.description,
+                base_price: Number(pkg.base_price), billing_cycle: pkg.billing_cycle, max_users: Number(pkg.max_users),
+                max_instances: Number(pkg.max_instances), future_module_access: !!Number(pkg.future_module_access),
+                is_public: !!Number(pkg.is_public), status: pkg.status, subscriptions_count: Number(pkg.subscriptions_count),
+                module_ids: pkg.module_ids ? pkg.module_ids.split(',').map(Number) : []
+            };
+            this.loadPackageModules();
+            this.showModal = true;
+        },
+
+        async deletePackage(pkg) {
+            const used = Number(pkg.subscriptions_count);
+            const note = used ? `\n${used} subscription yang sudah ada tetap berjalan (lisensinya tidak berubah).` : '';
+            if (!confirm(`Hapus paket ${pkg.code} (${pkg.name})?\nPaket hilang dari Showcase dan tidak bisa dipesan lagi.${note}`)) return;
+            const res = await fetch('api/index.php/packages/' + pkg.id, { method: 'DELETE' });
+            const json = await res.json();
+            if (!json.success) return alert('Gagal: ' + json.message);
+            await this.fetchPackages();
+            await this.fetchApplications();
+        },
+
+        async submitPackage() {
+            const editing = !!this.packageForm.id;
+            if (!this.packageForm.module_ids.length && !confirm('Paket ini belum berisi modul: lisensinya tidak membuka fitur apa pun di aplikasi client. Tetap simpan?')) return;
+            try {
+                const res = await fetch('api/index.php/packages' + (editing ? '/' + this.packageForm.id : ''), {
+                    method: editing ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(this.packageForm)
                 });
@@ -509,7 +550,7 @@ createApp({
                 if (json.success) {
                     this.closeModal();
                     await this.fetchPackages();
-                    alert('Paket penjualan berhasil ditambahkan!');
+                    alert(editing ? 'Paket berhasil diubah!' : 'Paket penjualan berhasil ditambahkan!');
                 } else {
                     alert('Gagal: ' + json.message);
                 }

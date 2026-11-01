@@ -81,7 +81,7 @@ Salah isi? Tombol **Ubah** pada kartu aplikasi (nama, deskripsi, launch URL, tan
 | `MPOS_STARTER` | Starter | 150.000 | monthly | 2 | 1 | KASIR, LAPORAN | ✅ |
 | `MPOS_PRO` | Pro | 350.000 | monthly | 5 | 1 | KASIR, LAPORAN, STOK | ✅ |
 
-Paket harus **publik** dan berstatus aktif agar muncul di Showcase.
+Centang modulnya di bagian **Modul yang termasuk paket** (kolom *Modul* di tabel harus terisi; paket tanpa modul ditandai ⚠). Paket harus **publik** dan aktif agar muncul di Showcase. Salah isi? Tombol **Ubah** / **Hapus** di tabel; perubahan hanya berlaku untuk pesanan baru.
 
 ---
 
