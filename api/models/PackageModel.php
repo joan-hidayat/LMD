@@ -41,14 +41,24 @@ class PackageModel {
         $packages = $stmt->fetchAll();
 
         $modStmt = $this->db->prepare("
-            SELECT m.code, m.name FROM package_modules pm
+            SELECT m.code, m.name, m.sort_order FROM package_modules pm
             JOIN modules m ON pm.module_id = m.id
             WHERE pm.package_id = :package_id AND m.deleted_at IS NULL
-            ORDER BY m.sort_order ASC
+            ORDER BY m.sort_order ASC, m.id ASC
+        ");
+        // Modul aktif aplikasi yang TIDAK termasuk paket: Showcase menampilkannya dicoret sebagai pembanding antarpaket
+        $exStmt = $this->db->prepare("
+            SELECT m.code, m.name, m.sort_order FROM modules m
+            WHERE m.application_id = (SELECT application_id FROM packages WHERE id = :package_id)
+              AND m.deleted_at IS NULL AND m.status = 'active'
+              AND m.id NOT IN (SELECT module_id FROM package_modules WHERE package_id = :package_id2)
+            ORDER BY m.sort_order ASC, m.id ASC
         ");
         foreach ($packages as &$package) {
             $modStmt->execute(['package_id' => $package['id']]);
             $package['modules'] = $modStmt->fetchAll();
+            $exStmt->execute(['package_id' => $package['id'], 'package_id2' => $package['id']]);
+            $package['excluded_modules'] = $exStmt->fetchAll();
         }
         return $packages;
     }

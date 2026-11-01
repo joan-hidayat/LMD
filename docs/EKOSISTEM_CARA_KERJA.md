@@ -116,7 +116,7 @@ Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah pemba
 
 | Endpoint | Fungsi | Respons penting |
 |---|---|---|
-| `GET /packages?app_code=APOTEK` | Katalog paket publik (status `active`, `is_public = 1`) beserta modul | `code`, `name`, `base_price`, `billing_cycle`, `max_users`, `modules[]` |
+| `GET /packages?app_code=APOTEK` | Katalog paket publik (status `active`, `is_public = 1`) beserta modul | `code`, `name`, `base_price`, `billing_cycle`, `max_users`, `modules[]` (termasuk paket), `excluded_modules[]` (modul aktif aplikasi yang tidak termasuk; ditampilkan dicoret di Showcase) |
 | `POST /licenses/order` | Buat pesanan: customer (dicari via email), subscription `pending`, modul, lisensi `suspended`, instance `{subdomain}.pos.local` | `201` + `subscription_no`, `total_price` (PPN 11%), `instance_domain` |
 | `GET /licenses/order_status?subscription_no=` | Polling Showcase | `is_approved`, `is_rejected`, `payment {status, payment_url}`; `license_key` & `app_url` hanya setelah approve |
 | `POST /payments/webhook/{provider}` | Notifikasi payment gateway (publik, wajib tanda tangan provider; simulator: header `X-Simulator-Signature` = HMAC-SHA256 body) | `200` (juga untuk duplikat), `401` tanda tangan salah, `404` tagihan/provider tidak dikenal, `409` nominal tidak cocok |
