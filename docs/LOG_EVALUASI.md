@@ -58,6 +58,15 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-11-01 — T-36 lanjutan: Admin Showcase menampilkan status LMD
+**Jenis:** Perubahan kode + docs
+**Repo:** software-showcase (commit `a2b2623`), lmd (docs)
+
+- Pemilik login Admin Showcase (password dibuat lewat `admin/set-password.php` — cek Bagian C yang tertunda kini terjawab: **login Admin Showcase berhasil**) dan meminta tampilan admin disesuaikan: admin masih menghitung Live Release 4 / Coming Soon 3 dari katalog, sedangkan halaman publik sudah 1 / 6.
+- Admin kini memakai aturan yang sama dengan halaman publik: statistik, filter, dan badge status memakai **status efektif**; bila berbeda ditulis "Di katalog: …". Setiap baris menampilkan status LMD: `🔗 MINIPOS · n paket publik`, `⚠ KODE: belum terdaftar / belum ada paket publik`, atau `— belum dihubungkan ke LMD`. Status LMD dimuat ulang setelah produk disimpan. Kolom *Kode Aplikasi di LMD* diberi petunjuk.
+
+Verifikasi (Playwright): statistik 7 / 1 / 6; Mini POS "🔗 MINIPOS · 2 paket publik"; Apotek "Coming Soon · Di katalog: Live Release (v2.4) · ⚠ APOTEK belum terdaftar…"; LMD & produk lain "— belum dihubungkan ke LMD".
+
 ### 2026-11-01 — T-36: Showcase mengikuti status LMD (Coming Soon otomatis)
 **Jenis:** Perubahan kode + docs
 **Repo:** software-showcase (commit `f4af373`), lmd (docs)
