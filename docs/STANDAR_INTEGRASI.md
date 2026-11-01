@@ -53,7 +53,7 @@ Aplikasi bawaan didaftarkan lewat `database/migrate.php` (fungsi `registerApplic
 | Produk hanya bisa dipesan bila `lmdAppCode` terisi **dan** LMD punya minimal satu paket publik aktif untuk kode itu | Dicek saat halaman dibuka (`GET /packages?app_code=`). Selain itu badge tampil **Coming Soon** dan tombol **Segera hadir** (nonaktif), termasuk bila LMD tidak terjangkau (T-36). |
 | Paket tidak ditulis di Showcase | Kartu paket dimuat dari `GET /packages?app_code={lmdAppCode}`. |
 | Order memakai `app_code` produk | `POST /licenses/order` dengan `app_code = lmdAppCode`. |
-| Pembayaran | Tagihan dibuat LMD bersama order; Showcase membuka `payment.payment_url` dan menunggu `order_status`. Showcase tidak pernah menandai lunas sendiri. |
+| Pembayaran | Tagihan dibuat LMD bersama order; Showcase membuka `payment.payment_url` dan menunggu `order_status`. Showcase tidak pernah menandai lunas sendiri. Setelah lunas, halaman bayar mengarahkan ke `payment.return_url` (default `/software-showcase/?order={subscription_no}&t={token}`); Showcase menyediakan **Cek Pesanan** (`POST /licenses/order_lookup`) untuk status, license key, dan bukti pembayaran. |
 | URL aplikasi dari LMD | Setelah approve, tombol **Buka Aplikasi** memakai `app_url` dari `order_status`. Jika `app_url` kosong (on-premise), tampilkan license key + petunjuk instalasi. |
 
 ---

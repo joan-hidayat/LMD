@@ -119,6 +119,7 @@ Beda dengan Alur A: subscription dibuat **pending** dan baru aktif setelah pemba
 | `GET /packages?app_code=APOTEK` | Katalog paket publik (status `active`, `is_public = 1`) beserta modul | `code`, `name`, `base_price`, `billing_cycle`, `max_users`, `modules[]` (termasuk paket), `excluded_modules[]` (modul aktif aplikasi yang tidak termasuk; ditampilkan dicoret di Showcase) |
 | `POST /licenses/order` | Buat pesanan: customer (dicari via email), subscription `pending`, modul, lisensi `suspended`, instance `{subdomain}.pos.local` | `201` + `subscription_no`, `total_price` (PPN 11%), `instance_domain` |
 | `GET /licenses/order_status?subscription_no=` | Polling Showcase | `is_approved`, `is_rejected`, `payment {status, payment_url}`; `license_key` & `app_url` hanya setelah approve |
+| `POST /licenses/order_lookup` | **Cek Pesanan** di Showcase: `{subscription_no, email}` atau `{subscription_no, token}` (token dari link halaman bayar). Rate limit 20/menit; pesan galat sama untuk "tidak ada" & "tidak cocok" (T-40) | status, license key & `app_url` (bila aktif), masa aktif, `payments[]` dengan `receipt_url` |
 | `POST /payments/webhook/{provider}` | Notifikasi payment gateway (publik, wajib tanda tangan provider; simulator: header `X-Simulator-Signature` = HMAC-SHA256 body) | `200` (juga untuk duplikat), `401` tanda tangan salah, `404` tagihan/provider tidak dikenal, `409` nominal tidak cocok |
 | `POST /licenses/approve_order` | Admin/n8n menyetujui pembayaran: subscription & lisensi `active`, instance aktif, activation dibuat | `200` + `license_key`, `expires_at`, `app_url` |
 | `POST /licenses/reject_order` | Menolak: subscription `cancelled`, lisensi `revoked` (subdomain bisa dipakai lagi) | `200` + `is_rejected: true` |
@@ -305,6 +306,7 @@ Versi visual: https://claude.ai/artifact/EAKYuDsC3ZJrsev4NSFqsk (privat).
 | Penegakan `modules` di Mini POS | ✅ Jalan | Kasir, Laporan, Stok terkunci sesuai paket; halaman di luar paket 403 (T-28) |
 | Transaksi & laporan Mini POS | ✅ Jalan | Produk & transaksi tersimpan di DB `mini_pos`, harga dihitung server; laporan penjualan; stok (modul STOK) (T-28) |
 | Multi Outlet Mini POS | 📋 Rencana | Modul sudah dikunci per paket, fiturnya belum dibuat |
+| Bukti pembayaran & Cek Pesanan | ✅ Jalan | Kuitansi `pay/receipt.php?token=` (cetak/PDF); halaman bayar → tombol & pengalihan otomatis ke Showcase (`payment.return_url`); Showcase menu 🔎 Cek Pesanan (T-40). Email kuitansi 📋 |
 | Pembayaran otomatis (webhook gateway → approve) | ✅ Jalan | Provider simulator; tagihan `payments`, webhook bertanda tangan, idempoten, retry tagihan |
 | Payment gateway sungguhan (Midtrans / Xendit) | 📋 Rencana | Tinggal adapter baru; vendor belum dipilih |
 | Impor aplikasi & modul dari manifest client | ✅ Jalan | Standar v1.2 §4.4: `lmd-manifest.php` di Mini POS & demo Apotek; tombol **⬇ Impor dari Manifest** (T-34) |

@@ -85,7 +85,61 @@ class PaymentModel {
             'amount' => (float) $payment['amount'],
             'expires_at' => $payment['expires_at'],
             'payment_url' => $payment['status'] === 'pending' && $provider ? $provider->checkoutUrl($payment) : null,
+            'receipt_url' => $payment['status'] === 'paid' ? self::receiptUrl($payment) : null,
         ];
+    }
+
+    /**
+     * Semua tagihan sebuah subscription (terbaru dulu) untuk halaman Cek Pesanan.
+     */
+    public function listForSubscription($subscriptionId) {
+        $this->expireDue();
+        $stmt = $this->db->prepare("SELECT * FROM payments WHERE subscription_id = :id ORDER BY id DESC");
+        $stmt->execute(['id' => $subscriptionId]);
+        return array_map(function ($p) {
+            $provider = payment_provider($p['provider']);
+            return [
+                'payment_no' => $p['payment_no'],
+                'status' => $p['status'],
+                'method' => $p['method'],
+                'amount' => (float) $p['amount'],
+                'paid_at' => $p['paid_at'],
+                'created_at' => $p['created_at'],
+                'payment_url' => $p['status'] === 'pending' && $provider ? $provider->checkoutUrl($p) : null,
+                'receipt_url' => $p['status'] === 'paid' ? self::receiptUrl($p) : null,
+            ];
+        }, $stmt->fetchAll());
+    }
+
+    /**
+     * Pemegang checkout token sebuah tagihan dianggap pemilik pesanan (link rahasia dari halaman bayar).
+     */
+    public function tokenBelongsTo($token, $subscriptionId) {
+        if (!is_string($token) || !preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return false;
+        }
+        $stmt = $this->db->prepare("SELECT 1 FROM payments WHERE checkout_token = :token AND subscription_id = :id");
+        $stmt->execute(['token' => $token, 'id' => $subscriptionId]);
+        return (bool) $stmt->fetch();
+    }
+
+    /** Kuitansi: halaman LMD yang bisa dibuka lagi kapan saja lewat link rahasia (checkout token). */
+    public static function receiptUrl(array $payment) {
+        return lmd_base_url() . '/pay/receipt.php?token=' . rawurlencode($payment['checkout_token']);
+    }
+
+    /** URL kembali ke Showcase setelah membayar (payment.return_url). */
+    public static function returnUrl(array $payment, $subscriptionNo) {
+        $template = (string) payment_config('return_url');
+        if ($template === '') {
+            return null;
+        }
+        $url = strtr($template, ['{subscription_no}' => rawurlencode($subscriptionNo), '{token}' => rawurlencode($payment['checkout_token'])]);
+        if ($url[0] === '/') {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $url;
+        }
+        return $url;
     }
 
     /**

@@ -48,6 +48,7 @@ function is_public_endpoint($resource, $id, $method) {
         return in_array($id, ['validate', 'register'], true)
             || ($id === 'order' && $method === 'POST')
             || ($id === 'order_status' && $method === 'GET')
+            || ($id === 'order_lookup' && $method === 'POST')
             || ($id === 'reset_token' && $method === 'POST');
     }
     // Notifikasi payment gateway: keabsahan dicek lewat tanda tangan provider, bukan login
@@ -158,6 +159,8 @@ try {
                 $controller->register();
             } elseif ($id === 'order' && $method === 'POST') {
                 $controller->order();
+            } elseif ($id === 'order_lookup' && $method === 'POST') {
+                $controller->orderLookup();
             } elseif ($id === 'order_status' && $method === 'GET') {
                 $controller->orderStatus();
             } elseif ($id === 'approve_order' && $method === 'POST') {

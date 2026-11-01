@@ -55,11 +55,28 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-37 | software-showcase | Thumbnail produk di Admin Showcase hanya bisa diisi path/URL; gambar harus disalin manual ke `assets/images/`. Selain itu ID produk berhuruf besar baru ditolak saat simpan, dan rating `4,4` terbaca 4. | UX | Selesai — lihat Riwayat "T-37" |
 | T-38 | software-showcase, lmd | Showcase tidak bisa dipakai dari HP lewat IP LAN: URL API LMD memaksa port `:8080` bila tidak ada port, link footer & demo ditulis mati ke `localhost:8080` / IP lama `192.168.0.116`, tombol "Portfolio Showcase" di LMD ke `localhost`. Selain itu pola validasi subdomain (wizard) diabaikan Chrome karena `-` tidak di-escape (mode regex `v`), sehingga `Toko HP` lolos. | Fungsional | Selesai — lihat Riwayat "T-38" |
 | T-39 | software-showcase, lmd | Kartu paket di wizard hanya menampilkan modul yang termasuk (maks 4, sisanya "+n modul lainnya"); modul yang tidak termasuk tidak terlihat, sehingga customer tidak bisa membandingkan paket. Ditemukan pemilik saat uji dari HP. | UX | Selesai — lihat Riwayat "T-39" |
+| T-40 | lmd, software-showcase | Setelah membayar, halaman simulator tidak punya jalan kembali ke Showcase, dan customer tidak punya bukti pembayaran yang bisa dibuka lagi (status/license key hanya terlihat di tab wizard yang masih terbuka). Ditemukan pemilik saat uji dari HP. | UX / fungsional | Selesai — lihat Riwayat "T-40" |
+| T-41 | lmd | `GET /licenses/order_status?subscription_no=` publik dan mengembalikan `license_key` + `app_url` hanya berdasarkan nomor pesanan (`SUB-YYYY-` + 6 hex ≈ 16,7 juta kemungkinan, rate limit 120/menit). Cukup untuk pengembangan, tetapi sebelum production sebaiknya polling memakai token rahasia pesanan (seperti `order_lookup` dengan token) dan `license_key` tidak dikirim lewat polling. | Keamanan (pra-production) | Terbuka |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-11-02 — T-40: kembali ke Showcase, bukti pembayaran, Cek Pesanan
+**Jenis:** Perubahan kode + docs
+**Repo:** lmd, software-showcase (commit `b35dca9`)
+
+- Uji dari HP: pembayaran berhasil (`PAY-20261101-834339F5`, `SUB-2026-A844C0`, Rp 55.500, Basic, Transfer BCA), tetapi pemilik mencatat: tidak ada link/pengalihan kembali ke Showcase, dan tidak ada bukti bayar yang bisa dilihat lagi.
+- **LMD:**
+  - `pay/receipt.php?token=` — kuitansi (LUNAS / status tagihan, pelanggan, pesanan, masa aktif, metode, waktu bayar, ref. transaksi, rincian & total), siap cetak/PDF, link rahasia = checkout token.
+  - Halaman simulator setelah lunas: tombol **Kembali ke Showcase** + **🧾 Lihat bukti pembayaran**, pengalihan otomatis 5 detik (bisa dibatalkan), catatan nomor pesanan.
+  - `payment.return_url` di `api/config/payment.php` (default `/software-showcase/?order={subscription_no}&t={token}`).
+  - `POST /licenses/order_lookup` (publik, rate limit 20/menit): `{subscription_no, email}` atau `{subscription_no, token}`; pesan galat seragam; mengembalikan status, license key & `app_url` bila aktif, masa aktif, daftar tagihan dengan `receipt_url`/`payment_url`. `order_status.payment` kini juga membawa `receipt_url`.
+- **Showcase:** tombol **🔎 Cek Pesanan** di navbar + modal (no. pesanan + email); `?order=…&t=…` dari halaman bayar langsung menampilkan pesanan; layar sukses wizard menampilkan nomor pesanan + link bukti bayar.
+- Ditemukan juga **T-41** (order_status membuka license key hanya dengan nomor pesanan) — dicatat untuk pra-production.
+
+Verifikasi (Playwright, viewport HP): bayar → tombol & hitung mundur tampil → otomatis ke Showcase, Cek Pesanan menampilkan pesanan "Aktif"; tab wizard menampilkan nomor pesanan & link bukti bayar; kuitansi berstempel LUNAS; Cek Pesanan dengan email salah → "Pesanan tidak ditemukan…", email benar (beda huruf besar/kecil, nomor huruf kecil) → license key tampil.
 
 ### 2026-11-02 — Wizard: subdomain dirapikan saat diketik (uji HP)
 **Jenis:** Perubahan kode kecil
