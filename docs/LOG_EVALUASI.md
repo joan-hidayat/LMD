@@ -59,6 +59,14 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-11-01 — Perapian form produk Admin Showcase (lanjutan T-37)
+**Jenis:** Perubahan kode kecil
+**Repo:** software-showcase (commit `8eca2a0`)
+
+- Saat pemilik menambah produk "Nexus Sekolah": ID `sekolah - pro` (berspasi) akan ditolak server → ID kini dirapikan otomatis (huruf kecil, spasi → `-`, minus ganda/ujung dibuang).
+- Petunjuk ganda di kolom *Kode Aplikasi di LMD* dihapus.
+- Catatan: kolom wajib form produk hanya ID, nama, kategori, thumbnail, tagline, deskripsi; bagian Spesifikasi & Demo/Instalasi opsional.
+
 ### 2026-11-01 — T-37: upload thumbnail di Admin Showcase
 **Jenis:** Perubahan kode + docs
 **Repo:** software-showcase (commit `ebe248f`), lmd (log)
