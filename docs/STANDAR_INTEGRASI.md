@@ -50,7 +50,7 @@ Aplikasi bawaan didaftarkan lewat `database/migrate.php` (fungsi `registerApplic
 | Aturan | Keterangan |
 |---|---|
 | Setiap produk yang bisa dipesan punya `lmdAppCode` | Diisi di Admin Showcase → *Kode Aplikasi di LMD*, langsung tersimpan di server (`data/products.local.json`; bawaan repo `data/products.js`). |
-| Produk tanpa `lmdAppCode` tidak bisa dipesan | Tombol tampil **Segera hadir** (nonaktif). |
+| Produk hanya bisa dipesan bila `lmdAppCode` terisi **dan** LMD punya minimal satu paket publik aktif untuk kode itu | Dicek saat halaman dibuka (`GET /packages?app_code=`). Selain itu badge tampil **Coming Soon** dan tombol **Segera hadir** (nonaktif), termasuk bila LMD tidak terjangkau (T-36). |
 | Paket tidak ditulis di Showcase | Kartu paket dimuat dari `GET /packages?app_code={lmdAppCode}`. |
 | Order memakai `app_code` produk | `POST /licenses/order` dengan `app_code = lmdAppCode`. |
 | Pembayaran | Tagihan dibuat LMD bersama order; Showcase membuka `payment.payment_url` dan menunggu `order_status`. Showcase tidak pernah menandai lunas sendiri. |
