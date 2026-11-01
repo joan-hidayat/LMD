@@ -61,6 +61,15 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 
 ## Riwayat
 
+### 2026-11-02 — Wizard: subdomain dirapikan saat diketik (uji HP)
+**Jenis:** Perubahan kode kecil
+**Repo:** software-showcase (commit `a0ce5cc`)
+
+- Uji dari HP: subdomain `Langgeng-jaya01` ditolak ("Please match the requested format") karena keyboard HP membesarkan huruf pertama secara otomatis; pemilik mengira isian sudah sesuai.
+- Kolom subdomain kini `autocapitalize="none" autocorrect="off" spellcheck="false"` dan dirapikan saat diketik: huruf kecil, spasi → `-`, karakter lain dibuang. Validasi pola tetap ada (minus di awal/akhir tetap ditolak).
+
+Verifikasi (Playwright, viewport HP): mengetik `Langgeng Jaya01` → `langgeng-jaya01`.
+
 ### 2026-11-01 — T-39: kartu paket menampilkan semua modul (termasuk & tidak termasuk)
 **Jenis:** Perubahan kode + docs
 **Repo:** lmd, software-showcase (commit `6b90d35`)
