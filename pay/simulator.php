@@ -58,7 +58,7 @@ if ($payment && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($action, ['paid', 'failed'], true) && $payment['status'] === 'pending' && $payment['subscription_status'] === 'pending') {
             $res = send_simulator_webhook($provider, $payment, $action);
             if (!empty($res['success'])) {
-                header('Location: ?token=' . rawurlencode($token));
+                header('Location: ?token=' . rawurlencode($token) . ($action === 'paid' ? '&just_paid=1' : ''));
                 exit;
             }
             $message = ['error', 'Webhook ditolak LMD: ' . ($res['message'] ?? 'server tidak terjangkau')];
@@ -115,6 +115,8 @@ $methodLabel = ['QRIS' => 'QRIS', 'TRANSFER_BCA' => 'Transfer Bank BCA'];
     .btn-retry { background: var(--primary); color: #fff; }
     .msg { background: #fef2f2; color: var(--bad); font-size: 13px; padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; }
     .note { font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
+    .btn-link { display: block; text-align: center; font: 700 14px system-ui, sans-serif; padding: 12px; border-radius: 10px; border: 1px solid var(--line); color: var(--text); text-decoration: none; }
+    .btn-primary-link { background: var(--primary); border-color: var(--primary); color: #fff; }
   </style>
 </head>
 <body>
@@ -150,8 +152,28 @@ $methodLabel = ['QRIS' => 'QRIS', 'TRANSFER_BCA' => 'Transfer Bank BCA'];
             <input type="hidden" name="csrf" value="<?php echo e($_SESSION['csrf']); ?>">
             <button class="btn-retry" name="action" value="retry">Buat tagihan baru &amp; coba lagi</button>
           </form>
-        <?php elseif ($payment['status'] === 'paid'): ?>
-          <p class="note">Kembali ke tab Software Showcase: halaman pesanan akan menampilkan link aplikasi dan license key Anda.</p>
+        <?php elseif ($payment['status'] === 'paid'): $returnUrl = PaymentModel::returnUrl($payment, $payment['subscription_no']); ?>
+          <div class="actions">
+            <?php if ($returnUrl): ?>
+              <a class="btn-link btn-primary-link" href="<?php echo e($returnUrl); ?>">Kembali ke Showcase →</a>
+            <?php endif; ?>
+            <a class="btn-link" href="<?php echo e(PaymentModel::receiptUrl($payment)); ?>">🧾 Lihat bukti pembayaran</a>
+          </div>
+          <?php if ($returnUrl && !empty($_GET['just_paid'])): ?>
+            <p class="note" id="redirectNote">Mengalihkan ke Showcase dalam <strong id="countdown">5</strong> detik… <a href="#" id="stayHere">tetap di sini</a></p>
+            <script>
+              (function () {
+                var left = 5, timer = setInterval(function () {
+                  left--; document.getElementById('countdown').textContent = left;
+                  if (left <= 0) { clearInterval(timer); window.location.href = <?php echo json_encode($returnUrl); ?>; }
+                }, 1000);
+                document.getElementById('stayHere').addEventListener('click', function (ev) {
+                  ev.preventDefault(); clearInterval(timer); document.getElementById('redirectNote').remove();
+                });
+              })();
+            </script>
+          <?php endif; ?>
+          <p class="note">Simpan nomor pesanan <strong><?php echo e($payment['subscription_no']); ?></strong>. Status pesanan, license key, dan bukti pembayaran bisa dilihat lagi kapan saja di Software Showcase → <strong>Cek Pesanan</strong>.</p>
         <?php endif; ?>
         <p class="note">Gateway sungguhan (Midtrans / Xendit) akan menggantikan halaman ini. Alurnya sama: gateway mengirim notifikasi bertanda tangan ke LMD, lalu LMD mengaktifkan lisensi.</p>
       </div>

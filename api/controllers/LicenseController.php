@@ -123,6 +123,23 @@ class LicenseController {
     /**
      * Daftar pesanan pending (untuk otomasi seperti n8n; dashboard memakai data subscriptions)
      */
+    /**
+     * POST /licenses/order_lookup {subscription_no, email | token} — halaman "Cek Pesanan" di Showcase
+     */
+    public function orderLookup() {
+        $input = getJsonInput();
+        $subscriptionNo = trim((string) ($input['subscription_no'] ?? ''));
+        if ($subscriptionNo === '' || (empty($input['email']) && empty($input['token']))) {
+            sendJsonResponse(null, 400, 'Nomor pesanan dan email pemesan wajib diisi.');
+        }
+        try {
+            $result = $this->orderModel->lookupOrder($subscriptionNo, (string) ($input['email'] ?? ''), (string) ($input['token'] ?? ''));
+            sendJsonResponse($result, 200, 'Order found.');
+        } catch (OutOfBoundsException $e) {
+            sendJsonResponse(null, 404, $e->getMessage());
+        }
+    }
+
     public function pendingOrders() {
         sendJsonResponse($this->orderModel->listPending(), 200, 'Pending orders fetched.');
     }

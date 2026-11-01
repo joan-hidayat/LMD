@@ -23,6 +23,8 @@ function rate_limit_rule($resource, $id, $method) {
         'licenses/order' => 10,
         // Showcase polling tiap 2,5 detik = 24/menit per pesanan
         'licenses/order_status' => 120,
+        // Cek Pesanan: dibatasi ketat agar nomor pesanan + email tidak bisa ditebak beruntun
+        'licenses/order_lookup' => 20,
         'licenses/reset_token' => 20,
         'auth/login' => 10,
         'packages' => 120,

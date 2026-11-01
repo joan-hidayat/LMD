@@ -168,6 +168,51 @@ class OrderModel {
         ];
     }
 
+    /**
+     * "Cek Pesanan" oleh customer (Showcase). Wajib membuktikan kepemilikan: email pemesan ATAU checkout token
+     * dari link halaman bayar. Pesan galat sama untuk "tidak ada" dan "tidak cocok" agar nomor pesanan tidak bisa ditebak.
+     */
+    public function lookupOrder($subscriptionNo, $email, $token) {
+        $stmt = $this->db->prepare("
+            SELECT s.id, s.subscription_no, s.status, s.start_date, s.end_date, s.billing_cycle,
+                   s.base_price, s.tax_amount, s.total_price, s.created_at,
+                   c.name AS customer_name, c.email AS customer_email,
+                   p.name AS package_name, a.name AS app_name,
+                   (SELECT ai.instance_name FROM application_instances ai JOIN licenses l ON l.id = ai.license_id
+                    WHERE l.subscription_id = s.id ORDER BY ai.id LIMIT 1) AS store_name
+            FROM subscriptions s
+            JOIN customers c ON c.id = s.customer_id
+            JOIN packages p ON p.id = s.package_id
+            JOIN applications a ON a.id = s.application_id
+            WHERE s.subscription_no = :no
+        ");
+        $stmt->execute(['no' => trim((string) $subscriptionNo)]);
+        $order = $stmt->fetch();
+        $payments = new PaymentModel();
+        $owner = $order && (
+            ($email !== '' && strcasecmp(trim((string) $email), $order['customer_email']) === 0)
+            || ($token !== '' && $payments->tokenBelongsTo($token, $order['id']))
+        );
+        if (!$owner) {
+            throw new OutOfBoundsException('Pesanan tidak ditemukan. Periksa nomor pesanan dan email pemesan.');
+        }
+        return [
+            'customer_name' => $order['customer_name'],
+            'customer_email' => $order['customer_email'],
+            'store_name' => $order['store_name'],
+            'app_name' => $order['app_name'],
+            'package_name' => $order['package_name'],
+            'billing_cycle' => $order['billing_cycle'],
+            'base_price' => (float) $order['base_price'],
+            'tax_amount' => (float) $order['tax_amount'],
+            'total_price' => (float) $order['total_price'],
+            'ordered_at' => $order['created_at'],
+            'start_date' => $order['status'] === 'active' ? $order['start_date'] : null,
+            'end_date' => $order['end_date'],
+            'payments' => $payments->listForSubscription($order['id']),
+        ] + $this->getOrderStatus($order['subscription_no']);
+    }
+
     public function approveOrder($subscriptionNo) {
         $this->db->beginTransaction();
         try {

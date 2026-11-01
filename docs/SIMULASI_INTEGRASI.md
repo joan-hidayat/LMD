@@ -116,7 +116,8 @@ Tiga tempat, satu kode: **LMD registry = Showcase `lmdAppCode` = client `app_cod
 3. Pilih metode → **Buat Tagihan & Bayar**. Halaman bayar **SIMULATOR** terbuka di tab baru.
 4. Klik **Bayar Rp …**. Simulator mengirim webhook bertanda tangan ke LMD → tagihan lunas → pesanan disetujui otomatis.
    - Coba juga **Simulasikan pembayaran gagal** → **Buat tagihan baru & coba lagi**.
-5. Kembali ke tab Showcase: dalam beberapa detik tampil **Pembayaran Disetujui & Lisensi Aktif** + tombol buka aplikasi.
+5. Halaman bayar menampilkan **Kembali ke Showcase** & **🧾 Lihat bukti pembayaran**, lalu otomatis kembali ke Showcase (Cek Pesanan) dalam 5 detik. Tab Showcase semula juga menampilkan **Pembayaran Disetujui & Lisensi Aktif** + tombol buka aplikasi + link bukti bayar.
+6. Kapan saja: Showcase → **🔎 Cek Pesanan** → No. pesanan + email pemesan → status, license key, link aplikasi, bukti bayar.
 
 Tidak memakai simulator? Admin tetap bisa **Approve** manual di *Subscriptions → Persetujuan Pembayaran*.
 

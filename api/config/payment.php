@@ -11,6 +11,9 @@ $config = [
     'provider' => 'simulator',
     // Masa berlaku tagihan sejak dibuat
     'expires_hours' => 24,
+    // Ke mana customer diarahkan setelah membayar. Berawalan "/" = host yang sama dengan LMD.
+    // {subscription_no} & {token} diganti otomatis; Showcase membuka "Cek Pesanan" untuk pesanan itu.
+    'return_url' => '/software-showcase/?order={subscription_no}&t={token}',
     'simulator' => [
         'enabled' => true,
         'webhook_secret' => 'sim-dev-secret-ganti-di-production',
