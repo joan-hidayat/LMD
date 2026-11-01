@@ -155,6 +155,35 @@ Tidak memakai simulator? Admin tetap bisa **Approve** manual di *Subscriptions �
 
 ---
 
+## 8. Notifikasi ke customer (kotak surat lokal)
+
+Belum ada email sungguhan; semua notifikasi disimpan dan bisa dibaca:
+
+| Di mana | Isi |
+|---|---|
+| LMD → **📬 Notifikasi** | Pesanan dibuat (tagihan + link bayar), pembayaran lunas (link kuitansi) / gagal / kedaluwarsa, lisensi aktif (license key + link aplikasi), pesanan dibatalkan, pengingat masa aktif, link reset admin |
+| Mini POS → **Notifikasi** (admin) | Akun admin dibuat, user baru, password diganti, akun dinonaktifkan/diaktifkan, akun dikunci karena 5× gagal login |
+
+**Pengingat harian (H-7, H-1, berakhir) + tagihan kedaluwarsa** dijalankan `database\notify.php`. Aman dijalankan berulang (tiap notifikasi hanya sekali).
+
+Coba manual:
+```bat
+cd C:\xampp\htdocs\License-Management-Dashboard
+C:\xampp\php\php.exe database\notify.php
+```
+
+Jadwalkan otomatis tiap hari (PowerShell **Administrator**; ganti IP dengan IP Wi-Fi PC agar link di email bisa dibuka dari HP):
+```powershell
+$action  = New-ScheduledTaskAction -Execute "C:\xampp\php\php.exe" -Argument "database\notify.php" -WorkingDirectory "C:\xampp\htdocs\License-Management-Dashboard"
+$trigger = New-ScheduledTaskTrigger -Daily -At 7:00am
+[Environment]::SetEnvironmentVariable("LMD_PUBLIC_HOST", "192.168.1.112:8080", "Machine")
+Register-ScheduledTask -TaskName "LMD Notifikasi Harian" -Action $action -Trigger $trigger -Description "Pengingat masa aktif & tagihan kedaluwarsa"
+```
+Cek: `Get-ScheduledTask -TaskName "LMD Notifikasi Harian"` · jalankan sekarang: `Start-ScheduledTask -TaskName "LMD Notifikasi Harian"` · hapus: `Unregister-ScheduledTask -TaskName "LMD Notifikasi Harian"`.
+XAMPP (MySQL) harus menyala saat jadwal berjalan.
+
+---
+
 ## Masalah umum
 
 | Gejala | Penyebab | Solusi |

@@ -65,6 +65,27 @@ class AdminResetModel {
             'reset_url' => $this->buildResetUrl($license['launch_url'], $license['tenant'], $token),
         ];
         $this->log($licenseId, 'admin_reset_issued', ['expires_at' => $expiresAt], ['issued' => true]);
+
+        // T-43: link reset juga dikirim ke email pemesan (admin LMD tidak perlu menyalinnya manual)
+        require_once __DIR__ . '/../helpers/notifier.php';
+        $contact = $this->db->prepare("
+            SELECT c.name, c.email, a.name AS app_name,
+                   (SELECT ai.instance_name FROM application_instances ai WHERE ai.license_id = l.id ORDER BY ai.id LIMIT 1) AS store_name
+            FROM licenses l JOIN subscriptions s ON s.id = l.subscription_id
+            JOIN customers c ON c.id = s.customer_id JOIN applications a ON a.id = l.application_id
+            WHERE l.id = :id
+        ");
+        $contact->execute(['id' => $licenseId]);
+        if ($c = $contact->fetch()) {
+            $result['notified_email'] = Notifier::send('admin_reset_link', $c['email'], $c['name'], [
+                'app_name' => $c['app_name'],
+                'store_name' => $c['store_name'] ?: $license['tenant'],
+                'reset_url' => $result['reset_url'],
+                'token' => $token,
+                'expires_at' => date('d M Y H:i', strtotime($expiresAt)),
+                'license_key' => $license['license_key'],
+            ]) ? $c['email'] : null;
+        }
         return $result;
     }
 

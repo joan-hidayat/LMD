@@ -263,3 +263,24 @@ CREATE TABLE IF NOT EXISTS `payments` (
     CONSTRAINT `fk_payments_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `subscriptions` (`id`) ON DELETE CASCADE,
     KEY `idx_payments_subscription` (`subscription_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 18. notifications (T-43): antrian & riwayat notifikasi ke customer (outbox). Kanal 'mailbox' = kotak surat lokal
+--     (pengembangan: disimpan & dibaca di dashboard, tidak dikirim keluar). dedupe_key mencegah kiriman ganda.
+CREATE TABLE IF NOT EXISTS `notifications` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `event` VARCHAR(50) NOT NULL,
+    `channel` VARCHAR(20) NOT NULL,
+    `recipient` VARCHAR(150) NOT NULL,
+    `recipient_name` VARCHAR(150) NULL,
+    `subject` VARCHAR(200) NOT NULL,
+    `body` TEXT NOT NULL,
+    `ref` VARCHAR(100) NULL COMMENT 'Nomor pesanan / license key terkait',
+    `status` ENUM('queued', 'sent', 'failed') NOT NULL DEFAULT 'queued',
+    `attempts` INT UNSIGNED NOT NULL DEFAULT 0,
+    `last_error` VARCHAR(255) NULL,
+    `dedupe_key` VARCHAR(150) NULL UNIQUE,
+    `sent_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_notifications_recipient` (`recipient`),
+    KEY `idx_notifications_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

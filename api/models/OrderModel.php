@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/security.php';
 require_once __DIR__ . '/LicenseModel.php';
 require_once __DIR__ . '/PaymentModel.php';
+require_once __DIR__ . '/../helpers/notifier.php';
 
 /**
  * Self-Service Order Flow (Software Showcase -> Central SaaS)
@@ -141,6 +142,18 @@ class OrderModel {
             'payment' => (new PaymentModel())->latestSummary($subId)
         ];
         $this->log($licId, $instId, 'order', $data, $result);
+        $pay = $result['payment'];
+        Notifier::send('order_created', $custEmail, $custName, [
+            'subscription_no' => $subNo,
+            'app_name' => $this->contactInfo($subNo)['app_name'],
+            'package_name' => $package['name'],
+            'store_name' => $storeName,
+            'instance_domain' => $domain,
+            'total' => Notifier::rupiah($totalPrice),
+            'expires_at' => $pay ? date('d M Y H:i', strtotime($pay['expires_at'])) : '-',
+            'payment_url' => $pay['payment_url'] ?? null,
+            'lookup_url' => Notifier::lookupUrl($subNo),
+        ], "order_created:{$subNo}");
         return $result;
     }
 
@@ -246,6 +259,19 @@ class OrderModel {
 
         $result = $this->getOrderStatus($subscriptionNo);
         $this->log($order['license_id'], $order['instance_id'], 'approve_order', ['subscription_no' => $subscriptionNo], $result);
+        $c = $this->contactInfo($subscriptionNo);
+        Notifier::send('license_active', $c['customer_email'], $c['customer_name'], [
+            'subscription_no' => $subscriptionNo,
+            'app_name' => $c['app_name'],
+            'package_name' => $c['package_name'],
+            'store_name' => $c['store_name'] ?: $c['customer_name'],
+            'start_date' => Notifier::date($c['start_date']),
+            'end_date' => Notifier::date($c['end_date']),
+            'license_key' => $result['license_key'],
+            'app_url' => $result['app_url'],
+            'email' => $c['customer_email'],
+            'lookup_url' => Notifier::lookupUrl($subscriptionNo),
+        ], "license_active:{$subscriptionNo}");
         return $result;
     }
 
@@ -272,7 +298,33 @@ class OrderModel {
 
         $result = $this->getOrderStatus($subscriptionNo);
         $this->log($order['license_id'], $order['instance_id'], 'reject_order', ['subscription_no' => $subscriptionNo, 'reason' => $reason], $result);
+        $c = $this->contactInfo($subscriptionNo);
+        Notifier::send('order_rejected', $c['customer_email'], $c['customer_name'], [
+            'subscription_no' => $subscriptionNo,
+            'app_name' => $c['app_name'],
+            'package_name' => $c['package_name'],
+            'lookup_url' => Notifier::lookupUrl($subscriptionNo),
+        ], "order_rejected:{$subscriptionNo}");
         return $result;
+    }
+
+    /**
+     * Data kontak & ringkasan pesanan untuk notifikasi (T-43).
+     */
+    public function contactInfo($subscriptionNo) {
+        $stmt = $this->db->prepare("
+            SELECT s.subscription_no, s.start_date, s.end_date, c.name AS customer_name, c.email AS customer_email,
+                   p.name AS package_name, a.name AS app_name,
+                   (SELECT ai.instance_name FROM application_instances ai JOIN licenses l ON l.id = ai.license_id
+                    WHERE l.subscription_id = s.id ORDER BY ai.id LIMIT 1) AS store_name
+            FROM subscriptions s
+            JOIN customers c ON c.id = s.customer_id
+            JOIN packages p ON p.id = s.package_id
+            JOIN applications a ON a.id = s.application_id
+            WHERE s.subscription_no = :no
+        ");
+        $stmt->execute(['no' => $subscriptionNo]);
+        return $stmt->fetch() ?: [];
     }
 
     public function listPending() {

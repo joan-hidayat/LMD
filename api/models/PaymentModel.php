@@ -4,6 +4,7 @@ require_once __DIR__ . '/../helpers/payment_providers.php';
 require_once __DIR__ . '/../helpers/security.php';
 require_once __DIR__ . '/LicenseModel.php';
 require_once __DIR__ . '/OrderModel.php';
+require_once __DIR__ . '/../helpers/notifier.php';
 
 /**
  * Tagihan pesanan Showcase dan notifikasi payment gateway.
@@ -190,6 +191,7 @@ class PaymentModel {
         }
 
         $this->log($payment['subscription_id'], 'payment_' . $note['status'], $note, $result);
+        $this->notifyPayment($payment, $subscriptionNo, $note['status']);
         if ($note['status'] === 'paid') {
             try {
                 (new OrderModel())->approveOrder($subscriptionNo);
@@ -200,6 +202,30 @@ class PaymentModel {
             }
         }
         return $result;
+    }
+
+    /**
+     * Notifikasi status tagihan ke pemesan (T-43): lunas → kuitansi; gagal/kedaluwarsa → link buat tagihan baru.
+     */
+    public function notifyPayment(array $payment, $subscriptionNo, $status) {
+        $events = ['paid' => 'payment_paid', 'failed' => 'payment_failed', 'expired' => 'payment_expired'];
+        if (!isset($events[$status])) {
+            return;
+        }
+        $c = (new OrderModel())->contactInfo($subscriptionNo);
+        if (!$c) {
+            return;
+        }
+        $provider = payment_provider($payment['provider']);
+        Notifier::send($events[$status], $c['customer_email'], $c['customer_name'], [
+            'subscription_no' => $subscriptionNo,
+            'payment_no' => $payment['payment_no'],
+            'total' => Notifier::rupiah($payment['amount']),
+            'receipt_url' => self::receiptUrl($payment),
+            // Halaman bayar tagihan gagal/kedaluwarsa menyediakan tombol "Buat tagihan baru"
+            'payment_url' => $provider ? $provider->checkoutUrl($payment) : null,
+            'lookup_url' => Notifier::lookupUrl($subscriptionNo),
+        ], "{$events[$status]}:{$payment['payment_no']}");
     }
 
     /**

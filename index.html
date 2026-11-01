@@ -83,6 +83,9 @@
             <a class="nav-item" :class="{ active: activePage === 'audit' }" @click="setActivePage('audit')">
                 📝 License Audit Logs
             </a>
+            <a class="nav-item" :class="{ active: activePage === 'notifications' }" @click="setActivePage('notifications')">
+                📬 Notifikasi
+            </a>
         </nav>
     </aside>
 
@@ -729,7 +732,38 @@
                 </div>
             </div>
 
-        
+
+            <!-- PAGE: NOTIFIKASI KE CUSTOMER (T-43) -->
+            <div v-if="activePage === 'notifications'">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="font-size: 22px; font-weight: 800;">📬 Notifikasi ke Customer</h2>
+                        <p style="color: var(--muted); font-size: 13px;">
+                            Email otomatis untuk pesanan, pembayaran, lisensi aktif, pengingat masa aktif, dan reset admin.
+                            Kanal aktif: <code>{{ notificationChannel }}</code><span v-if="notificationChannel === 'mailbox'"> — kotak surat lokal (tidak dikirim keluar; dibaca di sini)</span>.
+                        </p>
+                    </div>
+                    <input v-model="notificationQuery" @keyup.enter="fetchNotifications" class="form-control" placeholder="Cari email / no. pesanan, Enter" style="max-width: 280px;">
+                </div>
+                <div class="card">
+                    <div class="table-responsive">
+                        <table>
+                            <thead><tr><th>Waktu</th><th>Peristiwa</th><th>Penerima</th><th>Subjek</th><th>Status</th></tr></thead>
+                            <tbody>
+                                <tr v-for="n in notifications" :key="n.id" @click="openNotification(n)" style="cursor: pointer;">
+                                    <td style="white-space: nowrap;">{{ n.created_at }}</td>
+                                    <td><code>{{ n.event }}</code></td>
+                                    <td>{{ n.recipient }}<div style="font-size: 11px; color: var(--muted);">{{ n.ref || '' }}</div></td>
+                                    <td>{{ n.subject }}</td>
+                                    <td><span class="badge-pill" :class="n.status === 'sent' ? 'badge-safe' : (n.status === 'failed' ? 'badge-critical' : 'badge-warning')" :title="n.last_error || ''">{{ n.status }}</span></td>
+                                </tr>
+                                <tr v-if="!notifications.length"><td colspan="5" style="text-align: center; color: var(--muted); padding: 24px;">Belum ada notifikasi.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- PAGE 8: USER GUIDE PAGE -->
             <div v-if="activePage === 'guide'">
                 <div style="margin-bottom: 20px;">
@@ -1463,6 +1497,7 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                                     <tr><td>Subscriptions</td><td>Status <code>active</code>; tidak lagi di Persetujuan Pembayaran</td></tr>
                                     <tr><td>Licenses → Detail</td><td>Instalasi <code>tokosimulasi.pos.local</code> aktif, 🔐 Secret terpasang</td></tr>
                                     <tr><td>License Audit Logs</td><td><code>order</code> → <code>payment_paid</code> → <code>approve_order</code> → <code>validate</code></td></tr>
+                                    <tr><td>📬 Notifikasi</td><td>Email (kotak surat lokal) ke customer: pesanan dibuat → pembayaran diterima → lisensi aktif. Pengingat masa aktif: <code>database\notify.php</code> (jadwalkan harian, lihat <code>docs/SIMULASI_INTEGRASI.md</code> §8)</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1538,6 +1573,7 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                         </div>
                         <p v-if="adminReset.error" class="instance-error">{{ adminReset.error }}</p>
                         <div v-if="adminReset.result" class="reset-result">
+                            <p v-if="adminReset.result.notified_email" style="font-size: 12px; color: #34d399; margin-bottom: 6px;">📬 Link juga dikirim ke {{ adminReset.result.notified_email }} (lihat menu Notifikasi).</p>
                             <template v-if="adminReset.result.reset_url">
                                 <label>Kirim link ini ke pemilik toko (hanya ditampilkan sekali):</label>
                                 <div class="reset-copy">
@@ -1638,6 +1674,17 @@ C:\xampp\php\php.exe database\reset_data.php      (ketik KOSONGKAN)</pre>
                             {{ manifestForm.preview && !manifestForm.preview.changes ? 'Tidak ada perubahan' : 'Impor' }}
                         </button>
                     </div>
+                </div>
+
+                <!-- Isi notifikasi (kotak surat) -->
+                <div v-if="modalType === 'notification' && notificationDetail">
+                    <div style="font-size: 12px; color: var(--muted); line-height: 1.7;">
+                        <div><strong>Kepada:</strong> {{ notificationDetail.recipient_name }} &lt;{{ notificationDetail.recipient }}&gt;</div>
+                        <div><strong>Peristiwa:</strong> <code>{{ notificationDetail.event }}</code> · <strong>Kanal:</strong> {{ notificationDetail.channel }} · <strong>Status:</strong> {{ notificationDetail.status }}<span v-if="notificationDetail.last_error"> ({{ notificationDetail.last_error }})</span></div>
+                        <div><strong>Dibuat:</strong> {{ notificationDetail.created_at }}</div>
+                    </div>
+                    <pre style="white-space: pre-wrap; word-break: break-word; background: var(--bg-surface, #0b1220); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px; margin-top: 12px; font-size: 13px; line-height: 1.6; font-family: inherit;" v-html="linkify(notificationDetail.body)"></pre>
+                    <div class="modal-footer" style="margin-top: 16px;"><button type="button" class="btn" @click="closeModal">Tutup</button></div>
                 </div>
 
                 <!-- App Form -->

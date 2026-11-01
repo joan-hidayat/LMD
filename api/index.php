@@ -17,6 +17,7 @@ require_once __DIR__ . '/controllers/LicenseController.php';
 require_once __DIR__ . '/controllers/AuditController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/PaymentController.php';
+require_once __DIR__ . '/controllers/NotificationController.php';
 require_once __DIR__ . '/helpers/auth.php';
 require_once __DIR__ . '/helpers/rate_limit.php';
 
@@ -202,6 +203,17 @@ try {
         case 'payments':
             if ($id === 'webhook' && $action && $method === 'POST') {
                 (new PaymentController())->webhook($action);
+            } else {
+                sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
+            }
+            break;
+
+        case 'notifications':
+            $controller = new NotificationController();
+            if ($method === 'GET' && $id && is_numeric($id)) {
+                $controller->show($id);
+            } elseif ($method === 'GET') {
+                $controller->index();
             } else {
                 sendJsonResponse(null, 404, "Endpoint '/{$path}' not found.");
             }
