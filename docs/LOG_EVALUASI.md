@@ -58,11 +58,20 @@ Dokumen terkait: [`HASIL_REVIEW_DOCS.md`](HASIL_REVIEW_DOCS.md) · [`EKOSISTEM_C
 | T-40 | lmd, software-showcase | Setelah membayar, halaman simulator tidak punya jalan kembali ke Showcase, dan customer tidak punya bukti pembayaran yang bisa dibuka lagi (status/license key hanya terlihat di tab wizard yang masih terbuka). Ditemukan pemilik saat uji dari HP. | UX / fungsional | Selesai — lihat Riwayat "T-40" |
 | T-41 | lmd | `GET /licenses/order_status?subscription_no=` publik dan mengembalikan `license_key` + `app_url` hanya berdasarkan nomor pesanan (`SUB-YYYY-` + 6 hex ≈ 16,7 juta kemungkinan, rate limit 120/menit). Cukup untuk pengembangan, tetapi sebelum production sebaiknya polling memakai token rahasia pesanan (seperti `order_lookup` dengan token) dan `license_key` tidak dikirim lewat polling. | Keamanan (pra-production) | Terbuka |
 | T-42 | sample-mini-pos, lmd | (a) Customer yang kehilangan nomor pesanan tidak bisa menemukannya sendiri; (b) setup akun admin Mini POS hanya meminta email pemesan, sehingga orang yang tahu alamat toko + email bisa mendahului membuat admin bila customer belum menyelesaikan setup (mis. perangkat mati di halaman setup). | UX / keamanan | Selesai — lihat Riwayat "T-42" |
+| T-43 | lmd, software-showcase, sample-mini-pos | Belum ada notifikasi ke customer (email/WhatsApp) untuk peristiwa apa pun: pesanan dibuat, pembayaran berhasil/gagal/kedaluwarsa, lisensi aktif, lisensi akan habis, akun admin dibuat, password diganti/direset, user baru ditambahkan. Semua informasi hanya tampil di layar saat itu (dan Cek Pesanan / kuitansi / menu Langganan). Tidak ada kode pengirim email di ketiga repo. | Fungsional | Terbuka — menunggu keputusan desain |
 | T-30 | sample-mini-pos | Belum ada halaman kelola produk: setiap toko hanya punya 6 produk contoh, harga tidak bisa diubah, produk tidak bisa ditambah (tercatat 📋 di entri T-28). | Fungsional | Selesai — lihat Riwayat "T-30" |
 
 ---
 
 ## Riwayat
+
+### 2026-11-02 — Analisis: notifikasi ke customer (T-43)
+**Jenis:** Analisis (tanpa perubahan kode)
+**Repo:** lmd, software-showcase, sample-mini-pos
+
+- Pertanyaan pemilik: apakah Showcase/LMD sudah memberi notifikasi ke client (pemesanan, pembayaran, pembuatan akun, ubah password, dll.). Jawaban: **belum ada**; tidak ada `mail()`/SMTP/WhatsApp di ketiga repo. Yang ada hanya informasi di layar (wizard, halaman bayar, kuitansi, Cek Pesanan, menu Langganan Mini POS).
+- Usulan pembagian tanggung jawab: **LMD** mengirim notifikasi komersial (pesanan & tagihan, pembayaran berhasil/gagal/kedaluwarsa + kuitansi, lisensi aktif + link aplikasi, pengingat masa aktif H-7/H-1/habis, link reset admin); **aplikasi client** (Mini POS) mengirim notifikasi akun di dalam aplikasinya (akun admin dibuat, password diganti, user baru, akun dinonaktifkan).
+- Arsitektur usulan: tabel *outbox* notifikasi + template per peristiwa + kanal (email SMTP dulu, WhatsApp menyusul via gateway/n8n) + mode pengembangan "kotak surat lokal" (email disimpan & dibaca di dashboard, tanpa SMTP sungguhan).
 
 ### 2026-11-02 — T-42: halaman Langganan di Mini POS, setup lintas perangkat
 **Jenis:** Perubahan kode + docs
